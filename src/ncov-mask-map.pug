@@ -1,0 +1,227 @@
+extends /layout
+
+block beforehtml
+  - var title = '武漢肺炎藥局口罩地圖'
+  - var description = '顯示您附近的藥局，方便您前往購買口罩，遠離武漢肺炎！'
+
+block style
+  meta(name="description" content=description)
+  meta(property="og:description" content=description)
+  meta(property="og:image" content="https://taichunmin.idv.tw/images/works/ncov-mask-map.png?v=1")
+  meta(property="og:title" content=title)
+  meta(property="og:type" content="website")
+  meta(property="og:url" content="https://taichunmin.idv.tw/pug/ncov-mask-map.html")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.Default.css")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      html, body, #app
+        height: 100%
+        width: 100vw
+      .leaflet-popup-content
+        font-size: 14px
+        h6
+          font-size: 18px
+          margin-bottom: 1rem
+        .table-store
+          th
+            white-space: nowrap
+          td
+            text-align: right
+        .table-time th
+          background-color: #d6d8db
+
+block content
+  #app(v-cloak)
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
+  script.
+    /* global _, L, Qs, Papa */
+    const httpBuildQuery = obj => Qs.stringify(obj, { arrayFormat: 'brackets' })
+
+    const storeToIcon = (() => {
+      const MAX_MASK = 600
+      const LeafIcon = L.Icon.extend({
+        options: {
+          iconAnchor: [18, 36],
+          iconSize: [36, 36],
+          popupAnchor: [0, -38]
+        }
+      })
+      const ICONS = {
+        green: new LeafIcon({ iconUrl: 'https://i.imgur.com/1KRTaAO.png' }),
+        red: new LeafIcon({ iconUrl: 'https://i.imgur.com/Ed6iMMC.png' }),
+        unknown: new LeafIcon({ iconUrl: 'https://i.imgur.com/mfATTxs.png' }),
+        yellow: new LeafIcon({ iconUrl: 'https://i.imgur.com/raxi9vh.png' }),
+      }
+      return store => {
+        if (!store.mask_updated) return ICONS.unknown
+        const rate = (store.adult + store.child) / MAX_MASK
+        if (rate < 0.2) return ICONS.red
+        if (rate < 0.5) return ICONS.yellow
+        return ICONS.green
+      }
+    })()
+
+    const storeToPopup = (() => {
+      const storeToGoogleMap = store => {
+        const baseUrl = 'https://www.google.com/maps/dir/?'
+        const query = {
+          api: 1,
+          destination: `${store.lat},${store.lng}`,
+          openExternalBrowser: 1,
+          travelmode: 'walking'
+        }
+        if (_.isString(store.place_id) && store.place_id) query.destination_place_id = store.place_id
+        return baseUrl + httpBuildQuery(query)
+      }
+
+      const storeTimeTable = time => {
+        const tmp1 = ['<tr><th>　</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>']
+        const th2 = ['上', '下', '晚']
+        for (let i = 0; i < 3; i++) {
+          const tmp2 = [`<th>${th2[i]}</th>`]
+          for (let j = 0; j < 7; j++) {
+            if (time[i * 7 + j] === '1') tmp2.push('<td class="table-success"><i class="fa fa-check"></i></td>')
+            else tmp2.push('<td class="table-danger"><i class="fa fa-times"></i></td>')
+          }
+          tmp1.push('<tr>' + tmp2.join('') + '</tr>')
+        }
+        return tmp1.join('')
+      }
+
+      const storeMaskDetail = store => {
+        if (!store.mask_updated) return '<tr><th>口罩</th><td>無資料</td></tr>'
+        return `<tr><th>口罩</th><td>成人 ${store.adult} / 兒童 ${store.child}</td></tr>
+        <tr><th>時間</th><td>${store.mask_updated}</td></tr>`
+      }
+
+      return store => `<h6>${store.name}</h6>
+    <table class="table table-sm table-borderless table-store text-monospace">
+      ${storeMaskDetail(store)}
+      <tr><th>電話</th><td><a href="tel:${store.tel}">${store.tel}</a></td></tr>
+      <tr><th>地址</th><td>${store.address}</td></tr>
+    </table>
+    <table class="table table-sm table-bordered text-center table-time">${storeTimeTable(store.time)}</table>
+    <a class="btn btn-dark btn-block text-white mt-3" href="${storeToGoogleMap(store)}" role="button" target="_blank">
+      Google 導航
+    </a>`
+    })()
+
+    const [DEFAULT_LAT, DEFAULT_LNG, DEFAULT_ZOOM] = [25.040857, 121.567904, 15]
+    let map
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: () => ({
+        src: 'https://storage-taichunmin.taichunmin.idv.tw/ncov-mask-map/maskdata.csv'
+      }),
+      async mounted () {
+        await this.init()
+      },
+      methods: {
+        async init () {
+          this.initMap()
+          this.initStores()
+          this.showNews()
+        },
+        async showNews () {
+          const STORAGE_KEY = 'ncov-mask-map-news-timestamp'
+          const NEWS_TIMESTAMP = +new Date(2020, 2, 20, 2, 40, 0)
+          const read = _.parseInt(localStorage.getItem(STORAGE_KEY))
+          if (read >= NEWS_TIMESTAMP) return
+          const result = await Swal.fire({
+            cancelButtonText: '與開發者聯絡',
+            confirmButtonText: '我知道了',
+            icon: 'info',
+            reverseButtons: true,
+            showCancelButton: true,
+            html: `<div style="font-size: .9rem">
+            <p>ℹ️ 手機使用本地圖前，<strong class="text-danger">請開啟定位服務</strong>。</p>
+            <p>ℹ️ 本地圖不會自動重抓即時口罩數量，<strong class="text-danger">請重新整理頁面</strong>。</p>
+            <p>ℹ️ 部分藥局因採發放號碼牌方式，<strong class="text-danger">線上查詢之口罩數量僅供參考</strong>。</p>
+            <p>ℹ️ 2/20 起各據點口罩數量<strong class="text-danger">增加為 400 片成人和 200 片兒童</strong>。</p>
+            </div>`,
+          })
+          localStorage.setItem(STORAGE_KEY, NEWS_TIMESTAMP)
+          if (!result.value) location.href = 'https://fb.me/taichunmin'
+        },
+        async initStores () {
+          const stores = _.map(await this.getStores(), store => {
+            return L.marker([store.lat, store.lng], { icon: storeToIcon(store) })
+              .bindPopup(storeToPopup(store), { minWidth: 200 })
+          })
+          map.addLayer(L.markerClusterGroup({
+            chunkedLoading: true,
+            disableClusteringAtZoom: 18,
+          }).addLayers(stores))
+        },
+        async getStores () {
+          const stores = await this.getCsv(this.src)
+          return _.filter(stores, store => {
+            store.lat = _.toNumber(store.lat)
+            store.lng = _.toNumber(store.lng)
+            store.adult = _.toInteger(store.adult)
+            store.child = _.toInteger(store.child)
+            return _.inRange(store.lat, 21, 28) && _.inRange(store.lng, 117, 123)
+          })
+        },
+        async initMap () {
+          if (map) return
+          const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>'
+          })
+          map = L.map('app', {
+            center: [DEFAULT_LAT, DEFAULT_LNG],
+            zoom: DEFAULT_ZOOM,
+            layers: [tiles]
+          })
+          await this.locate()
+        },
+        async locate () {
+          const latlng = await new Promise(resolve => {
+            map.locate({ setView: true })
+              .on('locationfound', e => { resolve(e.latlng) })
+              .on('locationerror', e => { resolve(L.latLng(DEFAULT_LAT, DEFAULT_LNG)) })
+          })
+          map.setZoom(DEFAULT_ZOOM)
+          L.circle(latlng, {
+            stroke: false,
+            fillColor: '#00beff',
+            fillOpacity: 0.2,
+            radius: 300
+          }).addTo(map)
+          L.circle(latlng, {
+            stroke: false,
+            fillColor: '#00beff',
+            fillOpacity: 0.1,
+            radius: 1000
+          }).addTo(map)
+          L.marker(latlng, {
+            icon: L.icon({
+              iconAnchor: [10, 36],
+              iconSize: [20, 38],
+              iconUrl: 'https://i.imgur.com/vXd4IW8.png',
+              popupAnchor: [0, -38]
+            })
+          }).addTo(map)
+        },
+        coordAbs (a, b) {
+          return Math.abs(a.lat - b.lat) + Math.abs(a.lng - b.lng)
+        },
+        async getCsv (url) {
+          url = new URL(url)
+          url.searchParams.set('cachebust', _.floor(new Date() / 3e4))
+          const csv = _.trim(_.get(await axios.get(url.href), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        }
+      }
+    })
