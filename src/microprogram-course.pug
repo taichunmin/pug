@@ -1,0 +1,172 @@
+extends /layout
+
+block beforehtml
+  - var title = '微程式課程簽到簿'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      img.card-img
+        width: 100px
+
+block content
+  #app.container.text-monospace(v-cloak)
+    h1.my-3.text-center= title
+    #not-signin.my-3(v-if="!user")
+      button.btn.btn-success.btn-block(type="button", @click="btnSignin") #[span.fa.fa-google] 請用微程式 Google 帳戶登入
+    #signin.card.border-danger.my-3(v-else)
+      .row.no-gutters
+        img.card-img(:src="user.imageUrl")
+        .col
+          .card-body
+            h5.card-title {{ user.name }} #[small.text-muted {{ username }}]
+            p.card-text 已累計課程點數 {{ totalScore }} 點
+    .card.my-3(v-if="course")
+      img.card-img-top(v-if="course.image", :src="course.image")
+      .card-body
+        h5.card-title {{ course.name }}
+        h6.card-subtitle.mb-2.text-muted(v-if="course.score > 0") 簽到將可累計課程點數 {{ course.score }} 點
+        button.btn.btn-success.mr-2(v-if="!user", type="button", @click="btnSignin") #[span.fa.fa-google] 請登入簽到
+        button.btn.btn-success.mr-2(v-else-if="loading", type="button", disabled) #[span.spinner-border.spinner-border-sm(role="status")] 正在簽到中
+        button.btn.btn-success.mr-2(v-else-if="isCheckIn", type="button", disabled) 已簽到
+        button.btn.btn-success.mr-2(v-else, type="button", @click="btnCheckIn") 課程簽到
+        a.btn.btn-outline-primary(type="button", :href="course.url", target="_blank") 相關連結
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js")
+  script.
+    /* global gapi */
+    const LOCAL_STORAGE_KEY = 'microprogram-course'
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        attends: [],
+        idToken: null,
+        loading: false,
+        user: null,
+        i: {
+          checkins: [],
+        },
+      },
+      async mounted () {
+        try {
+          let saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
+          if (saved) this.$set(this, 'i', {...this.i, ...saved})
+        } catch (err) {}
+        this.$watch('i', (newVal, oldVal) => {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.i))
+        }, { deep: true })
+        await this.getAttends()
+      },
+      computed: {
+        totalScore () {
+          return _.sumBy(this.attends, a => a.id === this.user.id ? _.parseInt(a.score) : 0)
+        },
+        username () {
+          if (!this.user) return ''
+          return _.get(this.user.email.split('@'), '0', '')
+        },
+        c () {
+          const url = new URL(location)
+          return url.searchParams.get('c')
+        },
+        course () {
+          try {
+            return JSON.parse(this.btoa(this.c.split('.')[1]))
+          } catch (err) {
+            return null
+          }
+        },
+        isCheckIn () {
+          if (!this.course) return false
+          return _.includes(this.i.checkins, this.course.nonce)
+        },
+      },
+      methods: {
+        async gapiOnInit () {
+          // 初始化函式庫
+          await new Promise(resolve => { gapi.load('client:auth2', resolve) })
+          await gapi.client.init({
+            clientId: '417954202747-62a0pn2ankrsco790jr1h29n9vnf92lm.apps.googleusercontent.com',
+            scope: 'profile email',
+          })
+          // 等候使用者登入
+          const auth2 = gapi.auth2.getAuthInstance()
+          await new Promise(resolve => {
+            const updateSigninStatus = isSignedIn => { if (isSignedIn) resolve() }
+            auth2.isSignedIn.listen(updateSigninStatus)
+            updateSigninStatus(auth2.isSignedIn.get())
+          })
+          // 登入成功
+          const googleUser = auth2.currentUser.get()
+          const profile = googleUser.getBasicProfile()
+          this.$set(this, 'user', {
+            email: profile.getEmail(),
+            familyName: profile.getFamilyName(),
+            givenName: profile.getGivenName(),
+            id: profile.getId(),
+            imageUrl: profile.getImageUrl(),
+            name: profile.getName(),
+          })
+          this.idToken = googleUser.getAuthResponse().id_token
+        },
+        btnSignin () {
+          gapi.auth2.getAuthInstance().signIn()
+        },
+        btoa (str) {
+          str = str.replace(/[-_]/g, c => _.get({'-': '+', '_': '/'}, c, ''))
+          return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str))
+        },
+        async btnCheckIn () {
+          try {
+            this.loading = true
+            await axios.post('https://us-central1-ai-country.cloudfunctions.net/microprogram-course', {
+              c: this.c,
+              g: this.idToken,
+            })
+            this.saveCheckIns()
+            this.attends.push({ // 新增一個假的課程紀錄，因為資料不會那麼快更新
+              id: this.user.id,
+              score: this.course.score,
+            })
+            Swal.fire({
+              icon: 'success',
+              title: '簽到成功',
+              text: this.course.score > 0 ? `您已成功獲得 ${this.course.score} 點課程點數` : '感謝您參加課程',
+            })
+          } catch (err) {
+            console.log(err)
+            if (err.status !== 500) this.saveCheckIns()
+            Swal.fire({
+              icon: 'error',
+              title: '簽到失敗',
+              text: _.get(err, 'response.data.message') || err.message,
+            })
+          }
+          this.loading = false
+        },
+        saveCheckIns () {
+          const checkins = _.slice(_.uniq([...this.i.checkins, this.course.nonce]), -10)
+          this.$set(this.i, 'checkins', checkins)
+        },
+        async getCsv (url) {
+          url = new URL(url)
+          url.searchParams.set('cachebust', _.floor(new Date() / 3e4))
+          const csv = _.trim(_.get(await axios.get(url.href), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async getAttends () {
+          this.attends = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTDyD-tW4bDQ-7NILOhpBPRrskDpQZvaQw9_my-Mbd8TJ7j_xRlBxSUdYtNSfeNhF-gzALuNHia8f36/pub?gid=1069299348&single=true&output=csv')
+        },
+      },
+    })
+  script(src="https://apis.google.com/js/api.js", async, defer,
+    onload="this.onload=function(){}; vm.gapiOnInit()",
+    onreadystatechange="if (this.readyState === 'complete') this.onload()")

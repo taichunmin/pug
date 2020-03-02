@@ -65,14 +65,14 @@ html
     script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
     script(src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
     script.
+      /* global bwipjs, QRCode, Base64 */
       const getQuery = (() => {
         const params = new URL(location).searchParams
         return k => params.get(k)
       })()
 
       const domById = k => window.document.getElementById(k)
-      const domByClass = k => window.document.getElementsByClassName(k)
-      const encodeBase64url = str => Base64.encode(str).replace(/[+/=]/g, c => _.get({'+':'-','/':'_','=':''}, c))
+      const encodeBase64url = str => Base64.encode(str).replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_', '=': '' }, c)) // eslint-disable-line
       const joiFn = (schema, options) => value => schema.validateAsync(value, options)
       const pad0 = (v, n) => _.padStart(v, n, '0')
 
@@ -98,17 +98,17 @@ html
       const formatPeriod = date => {
         let [y, m] = [date.year() - 1911, date.month() + 1]
         if (m % 2) m++
-        return `${y}年${pad0(m-1, 2)}-${pad0(m, 2)}月`
+        return `${y}年${pad0(m - 1, 2)}-${pad0(m, 2)}月`
       }
 
       const formatCode39 = inv => {
         const date = inv.date
         const [y, m] = [date.year() - 1911, date.month() + 1]
-        const ym = `${y}${pad0(m + m%2, 2)}`
+        const ym = `${y}${pad0(m + m % 2, 2)}`
         const text = `${ym}${inv.id}${inv.check}`
         const canvas = document.createElement('canvas')
         bwipjs.toCanvas(canvas, {
-          bcid: "code39",
+          bcid: 'code39',
           height: 15,
           includecheck: false,
           includetext: false,
@@ -122,7 +122,7 @@ html
 
         // part 1
         parts.push(_.map(['id', 'date', 'check', 'salesAmount', 'totalAmount', 'buyerId', 'sellerId', 'encrypt'], k => {
-          if (k === 'date') return `${inv[k].year()-1911}${inv[k].format('MMDD')}`
+          if (k === 'date') return `${inv[k].year() - 1911}${inv[k].format('MMDD')}`
           if (_.includes(['salesAmount', 'totalAmount'], k)) return pad0(inv[k].toString(16), 8)
           return inv[k]
         }).join(''))

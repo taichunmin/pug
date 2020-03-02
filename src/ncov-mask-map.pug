@@ -46,7 +46,8 @@ block script
     const httpBuildQuery = obj => Qs.stringify(obj, { arrayFormat: 'brackets' })
 
     const storeToIcon = (() => {
-      const MAX_MASK = 600
+      const MAX_ADULT_MASK = 600
+      const MAX_CHILD_MASK = 200
       const LeafIcon = L.Icon.extend({
         options: {
           iconAnchor: [18, 36],
@@ -62,7 +63,9 @@ block script
       }
       return store => {
         if (!store.mask_updated) return ICONS.unknown
-        const rate = (store.adult + store.child) / MAX_MASK
+        const adult = _.min([store.adult, MAX_ADULT_MASK])
+        const child = _.min([store.child, MAX_CHILD_MASK])
+        const rate = (adult + child) / (MAX_ADULT_MASK + MAX_CHILD_MASK)
         if (rate < 0.2) return ICONS.red
         if (rate < 0.5) return ICONS.yellow
         return ICONS.green
@@ -107,6 +110,7 @@ block script
       ${storeMaskDetail(store)}
       <tr><th>電話</th><td><a href="tel:${store.tel}">${store.tel}</a></td></tr>
       <tr><th>地址</th><td>${store.address}</td></tr>
+      <tr><th>備註</th><td>${store.notice}</td></tr>
     </table>
     <table class="table table-sm table-bordered text-center table-time">${storeTimeTable(store.time)}</table>
     <a class="btn btn-dark btn-block text-white mt-3" href="${storeToGoogleMap(store)}" role="button" target="_blank">
@@ -132,7 +136,7 @@ block script
         },
         async showNews () {
           const STORAGE_KEY = 'ncov-mask-map-news-timestamp'
-          const NEWS_TIMESTAMP = +new Date(2020, 2, 20, 2, 40, 0)
+          const NEWS_TIMESTAMP = +new Date(2020, 3, 5, 0, 0, 0)
           const read = _.parseInt(localStorage.getItem(STORAGE_KEY))
           if (read >= NEWS_TIMESTAMP) return
           const result = await Swal.fire({
@@ -143,9 +147,10 @@ block script
             showCancelButton: true,
             html: `<div style="font-size: .9rem">
             <p>ℹ️ 手機使用本地圖前，<strong class="text-danger">請開啟定位服務</strong>。</p>
-            <p>ℹ️ 本地圖不會自動重抓即時口罩數量，<strong class="text-danger">請重新整理頁面</strong>。</p>
-            <p>ℹ️ 部分藥局因採發放號碼牌方式，<strong class="text-danger">線上查詢之口罩數量僅供參考</strong>。</p>
-            <p>ℹ️ 2/20 起各據點口罩數量<strong class="text-danger">增加為 400 片成人和 200 片兒童</strong>。</p>
+            <p>ℹ️ 若要更新即時口罩數量，<strong class="text-danger">請重新整理頁面</strong>。</p>
+            <p>ℹ️ 部分販賣點因發放號碼牌，<strong class="text-danger">即時口罩數量僅供參考</strong>。</p>
+            <p>ℹ️ 3/5 起各販賣點口罩<strong class="text-danger">增加為 600 片成人和 200 片兒童</strong>。</p>
+            <p>ℹ️ 3/5 起口罩可購買量為<strong class="text-danger">成人 7 天 3 片、兒童 7 天 5 片</strong>。</p>
             </div>`,
           })
           localStorage.setItem(STORAGE_KEY, NEWS_TIMESTAMP)
@@ -158,11 +163,12 @@ block script
           })
           map.addLayer(L.markerClusterGroup({
             chunkedLoading: true,
-            disableClusteringAtZoom: 18,
+            disableClusteringAtZoom: 16,
           }).addLayers(stores))
         },
         async getStores () {
           const stores = await this.getCsv(this.src)
+          window.stores = stores
           return _.filter(stores, store => {
             store.lat = _.toNumber(store.lat)
             store.lng = _.toNumber(store.lng)

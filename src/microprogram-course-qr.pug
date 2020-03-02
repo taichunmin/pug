@@ -1,0 +1,282 @@
+extends /layout
+
+block beforehtml
+  - var title = '微程式課程簽到 QR 碼'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      #qrcode
+        svg
+          width: 300px
+
+block content
+  #app.container.text-monospace(v-cloak)
+    h2.my-2.text-center= title
+    #not-signin(v-if="!idToken")
+      button.btn.btn-primary.btn-block(type="button", @click="signin") #[span.fa.fa-google] 請用微程式 Google 帳戶登入
+    #signin(v-else)
+      #qrcode.text-center.my-4(v-if="!loading && qrSvg")
+        a(:href="url", target="_blank", v-html="qrSvg")
+      button.btn.btn-primary.btn-block.my-2(v-if="loading", type="button", disabled) #[span.spinner-border.spinner-border-sm(role="status")] 正在產生第 {{ cnt + 1 }} 個
+      button.btn.btn-primary.btn-block.my-2(v-else, @click="btnNext", type="button") 產生第 {{ cnt + 1 }} 個
+      .input-group.my-2
+        .input-group-prepend
+          .input-group-text 名稱
+        input.form-control(v-model="i.name")
+      .input-group.my-2
+        .input-group-prepend
+          .input-group-text 點數
+        input.form-control(type="number", v-model.number="i.score")
+      .input-group.my-2
+        .input-group-prepend
+          .input-group-text 網址
+        input.form-control(type="url", v-model="i.url")
+      .input-group.my-2
+        .input-group-prepend
+          .input-group-text 圖片
+        input.form-control(type="url", v-model="i.image")
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
+  script.
+    /* global gapi */
+    const LOCAL_STORAGE_KEY = 'microprogram-course-qr'
+    const SPREADSHEET_ID = '1dJhB5_auh5Fzqy7VfUnmFPpiT7OYF5BvpZ6nmrV9RJo'
+    const GAPI_INIT_ARGS = 'eyJhcGlLZXkiOiJBSXphU3lCc1A0ekhCWnREU2NKMV81b3FZZlM1OWZiTnNPXzN4V0UiLCJjbGllbnRJZCI6IjQxNzk1NDIwMjc0Ny02MmEwcG4yYW5rcnNjbzc5MGpyMWgyOW45dm5mOTJsbS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9'
+    let sheetsAPI = null
+
+    const textToQrSvg = (() => {
+      const config = { margin: 0 }
+      return text => QRCode.toString(text, config)
+    })()
+
+    const sleep = t => new Promise(resolve => { setTimeout(resolve, t) }) 
+
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        cnt: 0,
+        course: '',
+        idToken: null,
+        loading: false,
+        qrSvg: '',
+        secret: '',
+        i: {
+          image: '',
+          name: '',
+          score: 0,
+          url: '',
+        },
+      },
+      async mounted () {
+        try {
+          let saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
+          if (saved) this.$set(this, 'i', {...this.i, ...saved})
+        } catch (err) {}
+        this.$watch('i', (newVal, oldVal) => {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.i))
+        }, { deep: true })
+      },
+      watch: {
+        async url (url) {
+          if (!url) return
+          this.qrSvg = await textToQrSvg(url)
+        }
+      },
+      computed: {
+        url () {
+          if (!this.course || !this.secret) return ''
+          const header = this.atob(JSON.stringify({
+            alg: 'HS256',
+            typ: 'JWT'
+          }))
+          const course = this.atob(JSON.stringify(this.course))
+          const sign = this.atob(CryptoJS.HmacSHA256(`${header}.${course}`, this.secret))
+          const url = new URL('https://taichunmin.idv.tw/pug/microprogram-course.html')
+          url.searchParams.set('c', `${header}.${course}.${sign}`)
+          return url.href
+        },
+      },
+      methods: {
+        async gapiOnInit () {
+          try {
+            // 初始化函式庫
+            await new Promise(resolve => { gapi.load('client:auth2', resolve) })
+            await gapi.client.init({
+              discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+              scope: 'profile email https://www.googleapis.com/auth/spreadsheets',
+              ...JSON.parse(this.btoa(GAPI_INIT_ARGS)),
+            })
+            // 等候使用者登入
+            const auth2 = gapi.auth2.getAuthInstance()
+            await new Promise(resolve => {
+              const updateSigninStatus = isSignedIn => { if (isSignedIn) resolve() }
+              auth2.isSignedIn.listen(updateSigninStatus)
+              updateSigninStatus(auth2.isSignedIn.get())
+            })
+            // 登入成功
+            sheetsAPI = gapi.client.sheets.spreadsheets // shortcut
+            this.idToken = auth2.currentUser.get().getAuthResponse().id_token
+            this.secret = await this.sheetGetJwtSecret()
+          } catch (err) {
+            console.log(err)
+            Swal.fire({
+              icon: 'error',
+              title: '取得加密金鑰失敗',
+              text: err.message,
+            })
+          }
+        },
+        signin () {
+          gapi.auth2.getAuthInstance().signIn()
+        },
+        atob (str) {
+          if (_.isString(str)) str = CryptoJS.enc.Utf8.parse(str)
+          return CryptoJS.enc.Base64.stringify(str)
+            .replace(/[+\/=]/g, c => _.get({'+': '-', '/': '_'}, c, ''))
+        },
+        btoa (str) {
+          str = str.replace(/[-_]/g, c => _.get({'-': '+', '_': '/'}, c, ''))
+          return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str))
+        },
+        randomBase64 (len) {
+          return this.atob(CryptoJS.lib.WordArray.random(len))
+        },
+        async btnNext () {
+          try {
+            this.loading = true
+
+            // 新增到 attended 後面
+            const nowStr = moment().format('YYYY-MM-DD HH:mm:ss')
+            const row = ['', this.i.name, this.i.score, nowStr, '']
+            const range = _.get(await this.sheetAppend('attended!A:E', row), 'updates.updatedRange')
+
+            const nonce = this.randomBase64(9)
+            await this.sheetSetRowMetadata(range, 'nonce', nonce)
+
+            this.course = {
+              image: this.i.image,
+              name: this.i.name,
+              nonce,
+              score: this.i.score,
+              url: this.i.url,
+            }
+            this.cnt++
+          } catch (err) {
+            console.log(err)
+            Swal.fire({
+              icon: 'error',
+              title: '產生 QR 碼失敗',
+              text: err.message,
+            })
+          }
+          this.loading = false
+        },
+        async sheetAppend (range, row) {
+          const res = await sheetsAPI.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            responseValueRenderOption: 'FORMATTED_VALUE',
+            responseDateTimeRenderOption: 'FORMATTED_STRING',
+            // https://developers.google.com/sheets/api/guides/concepts#partial_responses
+            fields: 'updates',
+          }, {
+            range,
+            majorDimension: 'ROWS',
+            values: [row],
+          })
+          console.log(res.result)
+          return res.result
+        },
+        async sheetRowToLocation (range) {
+          const res = await sheetsAPI.get({
+            spreadsheetId: SPREADSHEET_ID,
+            includeGridData: false,
+            ranges: [range],
+            // https://developers.google.com/sheets/api/guides/concepts#partial_responses
+            fields: 'sheets(data.startRow,properties.sheetId)',
+          })
+          console.log(res.result)
+          const startIndex = _.get(res, 'result.sheets.0.data.0.startRow')
+          return {
+            dimensionRange: {
+              sheetId: _.get(res, 'result.sheets.0.properties.sheetId'),
+              dimension: 'ROWS',
+              startIndex: startIndex,
+              endIndex: startIndex + 1,
+            }
+          }
+        },
+        async sheetSetRowMetadata (range, key, value) {
+          const res = await sheetsAPI.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            // https://developers.google.com/sheets/api/guides/concepts#partial_responses
+            fields: 'replies',
+          }, _.set({}, 'requests.0.createDeveloperMetadata.developerMetadata', {
+            metadataKey: key,
+            metadataValue: value,
+            visibility: 'DOCUMENT',
+            location: await this.sheetRowToLocation(range),
+          }))
+          console.log(res.result)
+          return res.result
+        },
+        async sheetSetJwtSecret (secret) {
+          await this.sheetDelJwtSecret()
+          const res = await sheetsAPI.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+          }, _.set({}, 'requests.0.createDeveloperMetadata.developerMetadata', {
+            metadataId: 1,
+            metadataKey: 'jwt-secret',
+            metadataValue: secret,
+            visibility: 'DOCUMENT',
+            location: { spreadsheet: true },
+          }))
+          console.log(res.result)
+          return secret
+        },
+        async sheetGetJwtSecret () {
+          try {
+            const res = await sheetsAPI.developerMetadata.get({
+              spreadsheetId: SPREADSHEET_ID,
+              metadataId: 1,
+              // https://developers.google.com/sheets/api/guides/concepts#partial_responses
+              fields: 'metadataKey,metadataValue',
+            })
+            console.log(res.result)
+            const { metadataKey: key, metadataValue: value } = _.get(res, 'result')
+            return key === 'jwt-secret' ? value : null
+          } catch (err) {
+            if (_.get(err, 'result.error.code') === 404) return null
+            throw err
+          }
+        },
+        async sheetDelJwtSecret () {
+          try {
+            const res = await sheetsAPI.batchUpdate({
+              spreadsheetId: SPREADSHEET_ID,
+            }, _.set({}, 'requests.0.deleteDeveloperMetadata.dataFilter.developerMetadataLookup', {
+              locationType: 'SPREADSHEET',
+              metadataId: 1,
+            }))
+            console.log(res.result)
+          } catch (err) {
+            throw err
+          }
+        },
+        async sheetRenewJetSecret () {
+          this.secret = await this.sheetSetJwtSecret(this.randomBase64(48))
+          return this.secret
+        }
+      },
+    })
+  script(src="https://apis.google.com/js/api.js", async, defer,
+    onload="this.onload=function(){}; vm.gapiOnInit()",
+    onreadystatechange="if (this.readyState === 'complete') this.onload()")

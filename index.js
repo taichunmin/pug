@@ -5,6 +5,8 @@ const pug = require('pug')
 
 const pugFiles = [
   'index',
+  'microprogram-course-qr',
+  'microprogram-course',
   'ncov-mask-map',
   'tw-invonce',
 ]

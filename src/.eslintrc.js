@@ -10,8 +10,12 @@ module.exports = {
     'standard'
   ],
   globals: {
+    _: 'readonly',
     axios: 'readonly',
+    joi: 'readonly',
+    moment: 'readonly',
     Qs: 'readonly',
+    Swal: 'readonly',
     Vue: 'readonly'
   },
   parserOptions: {
