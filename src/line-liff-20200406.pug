@@ -1,0 +1,92 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '在 LIFF 傳送隱藏資料'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      .w-96px
+        width: 96px
+        height: 96px
+
+block content
+  #app.container.text-monospace.my-3(v-cloak)
+    #internal(v-if="page==='chat'")
+      h1.text-center 請選擇 sender
+      .card.my-3(v-for="sender of senders", @click="selectSender(sender)")
+        .row.no-gutters
+          img.card-img.w-96px(:src="sender.image")
+          .col
+            .card-body
+              h5.mt-0 {{ sender.name }}
+              small.text-muted 請點選
+    #external(v-if="page==='non-chat'")
+      h3.text-center.my-5 請在聊天視窗內開啟
+      a.btn.btn-block.btn-lg.btn-success(href="https://line.me/R/ti/p/%40336zwcug", target="_blank") 開啟 LINE
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2.1/sdk.js")
+  script.
+    const vConsole = new VConsole() // eslint-disable-line
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        page: '',
+        senders: [
+          {
+            name: 'Brown',
+            image: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/52002734/iPhone/sticker_key@2x.png',
+          },
+          {
+            name: 'Cony',
+            image: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/52002735/iPhone/sticker_key@2x.png',
+          },
+          {
+            name: 'Sally',
+            image: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/52002736/iPhone/sticker_key@2x.png',
+          },
+        ],
+      },
+      async mounted () {
+        try {
+          await liff.init({ liffId: '1654046335-DzXpM8mx' })
+          if (!liff.isInClient()) throw new Error('liff.isInClient() = false')
+          const contextType = _.get(liff.getContext(), 'type')
+          if (!_.includes(['utou', 'room', 'group'], contextType)) throw new Error(`liff.getContext().type = ${contextType}`)
+          this.page = 'chat'
+        } catch (err) {
+          this.page = 'non-chat'
+          console.log(err)
+          Swal.fire({
+            icon: 'error',
+            title: '請在聊天視窗內開啟',
+            text: err.message,
+          })
+        }
+      },
+      methods: {
+        async selectSender (sender) {
+          try {
+            const url = new URL('https://i.imgur.com/WN88L3I.png')
+            url.searchParams.set('sender', sender.name)
+            await liff.sendMessages([{
+              type: 'image',
+              originalContentUrl: url.href,
+              previewImageUrl: url.href,
+            }])
+            liff.closeWindow()
+          } catch (err) {
+            console.log(err)
+            Swal.fire({
+              icon: 'error',
+              title: 'sendMessages 失敗',
+              text: err.message,
+            })
+          }
+        },
+      },
+    })

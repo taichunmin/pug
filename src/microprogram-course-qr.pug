@@ -1,4 +1,4 @@
-extends /layout
+extends /layouts/default
 
 block beforehtml
   - var title = '微程式課程簽到 QR 碼'
@@ -55,8 +55,6 @@ block script
       return text => QRCode.toString(text, config)
     })()
 
-    const sleep = t => new Promise(resolve => { setTimeout(resolve, t) }) 
-
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
@@ -75,8 +73,8 @@ block script
       },
       async mounted () {
         try {
-          let saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
-          if (saved) this.$set(this, 'i', {...this.i, ...saved})
+          const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
         } catch (err) {}
         this.$watch('i', (newVal, oldVal) => {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.i))
@@ -86,14 +84,14 @@ block script
         async url (url) {
           if (!url) return
           this.qrSvg = await textToQrSvg(url)
-        }
+        },
       },
       computed: {
         url () {
           if (!this.course || !this.secret) return ''
           const header = this.atob(JSON.stringify({
             alg: 'HS256',
-            typ: 'JWT'
+            typ: 'JWT',
           }))
           const course = this.atob(JSON.stringify(this.course))
           const sign = this.atob(CryptoJS.HmacSHA256(`${header}.${course}`, this.secret))
@@ -108,7 +106,7 @@ block script
             // 初始化函式庫
             await new Promise(resolve => { gapi.load('client:auth2', resolve) })
             await gapi.client.init({
-              discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+              discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
               scope: 'profile email https://www.googleapis.com/auth/spreadsheets',
               ...JSON.parse(this.btoa(GAPI_INIT_ARGS)),
             })
@@ -138,10 +136,10 @@ block script
         atob (str) {
           if (_.isString(str)) str = CryptoJS.enc.Utf8.parse(str)
           return CryptoJS.enc.Base64.stringify(str)
-            .replace(/[+\/=]/g, c => _.get({'+': '-', '/': '_'}, c, ''))
+            .replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_' }, c, ''))
         },
         btoa (str) {
-          str = str.replace(/[-_]/g, c => _.get({'-': '+', '_': '/'}, c, ''))
+          str = str.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
           return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str))
         },
         randomBase64 (len) {
@@ -211,7 +209,7 @@ block script
               dimension: 'ROWS',
               startIndex: startIndex,
               endIndex: startIndex + 1,
-            }
+            },
           }
         },
         async sheetSetRowMetadata (range, key, value) {
@@ -259,22 +257,18 @@ block script
           }
         },
         async sheetDelJwtSecret () {
-          try {
-            const res = await sheetsAPI.batchUpdate({
-              spreadsheetId: SPREADSHEET_ID,
-            }, _.set({}, 'requests.0.deleteDeveloperMetadata.dataFilter.developerMetadataLookup', {
-              locationType: 'SPREADSHEET',
-              metadataId: 1,
-            }))
-            console.log(res.result)
-          } catch (err) {
-            throw err
-          }
+          const res = await sheetsAPI.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+          }, _.set({}, 'requests.0.deleteDeveloperMetadata.dataFilter.developerMetadataLookup', {
+            locationType: 'SPREADSHEET',
+            metadataId: 1,
+          }))
+          console.log(res.result)
         },
         async sheetRenewJetSecret () {
           this.secret = await this.sheetSetJwtSecret(this.randomBase64(48))
           return this.secret
-        }
+        },
       },
     })
   script(src="https://apis.google.com/js/api.js", async, defer,

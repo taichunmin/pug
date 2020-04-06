@@ -1,7 +1,4 @@
 module.exports = {
-  plugins: [
-    "pug"
-  ],
   env: {
     es6: true,
     node: true
@@ -18,6 +15,13 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'comma-dangle': ['error', 'only-multiline'],
+    'no-return-await': 0, // 0 = off, 1 = warn, 2 = error
+    'comma-dangle': ['error', {
+      arrays: 'always-multiline',
+      objects: 'always-multiline',
+      imports: 'always-multiline',
+      exports: 'always-multiline',
+      functions: 'only-multiline',
+    }],
   }
 }

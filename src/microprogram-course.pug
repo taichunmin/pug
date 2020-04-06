@@ -1,4 +1,4 @@
-extends /layout
+extends /layouts/default
 
 block beforehtml
   - var title = '微程式課程簽到簿'
@@ -54,8 +54,8 @@ block script
       },
       async mounted () {
         try {
-          let saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
-          if (saved) this.$set(this, 'i', {...this.i, ...saved})
+          const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
         } catch (err) {}
         this.$watch('i', (newVal, oldVal) => {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.i))
@@ -118,7 +118,7 @@ block script
           gapi.auth2.getAuthInstance().signIn()
         },
         btoa (str) {
-          str = str.replace(/[-_]/g, c => _.get({'-': '+', '_': '/'}, c, ''))
+          str = str.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
           return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str))
         },
         async btnCheckIn () {

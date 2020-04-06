@@ -1,4 +1,4 @@
-extends /layout
+extends /layouts/default
 
 block beforehtml
   - var title = '武漢肺炎藥局口罩地圖'
@@ -52,8 +52,8 @@ block script
         options: {
           iconAnchor: [18, 36],
           iconSize: [36, 36],
-          popupAnchor: [0, -38]
-        }
+          popupAnchor: [0, -38],
+        },
       })
       const ICONS = {
         green: new LeafIcon({ iconUrl: 'https://i.imgur.com/1KRTaAO.png' }),
@@ -79,7 +79,7 @@ block script
           api: 1,
           destination: `${store.lat},${store.lng}`,
           openExternalBrowser: 1,
-          travelmode: 'walking'
+          travelmode: 'walking',
         }
         if (_.isString(store.place_id) && store.place_id) query.destination_place_id = store.place_id
         return baseUrl + httpBuildQuery(query)
@@ -123,7 +123,7 @@ block script
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: () => ({
-        src: 'https://storage-taichunmin.taichunmin.idv.tw/ncov-mask-map/maskdata.csv'
+        src: 'https://storage-taichunmin.taichunmin.idv.tw/ncov-mask-map/maskdata.csv',
       }),
       async mounted () {
         await this.init()
@@ -136,7 +136,7 @@ block script
         },
         async showNews () {
           const STORAGE_KEY = 'ncov-mask-map-news-timestamp'
-          const NEWS_TIMESTAMP = +new Date(2020, 3, 5, 0, 0, 0)
+          const NEWS_TIMESTAMP = +new Date(2020, 4, 9, 0, 0, 0)
           const read = _.parseInt(localStorage.getItem(STORAGE_KEY))
           if (read >= NEWS_TIMESTAMP) return
           const result = await Swal.fire({
@@ -150,7 +150,7 @@ block script
             <p>ℹ️ 若要更新即時口罩數量，<strong class="text-danger">請重新整理頁面</strong>。</p>
             <p>ℹ️ 部分販賣點因發放號碼牌，<strong class="text-danger">即時口罩數量僅供參考</strong>。</p>
             <p>ℹ️ 3/5 起各販賣點口罩<strong class="text-danger">增加為 600 片成人和 200 片兒童</strong>。</p>
-            <p>ℹ️ 3/5 起口罩可購買量為<strong class="text-danger">成人 7 天 3 片、兒童 7 天 5 片</strong>。</p>
+            <p>ℹ️ 4/9 起每 14 天可購買 <strong class="text-danger">9 片成人口罩或 10 片兒童口罩</strong>。</p>
             </div>`,
           })
           localStorage.setItem(STORAGE_KEY, NEWS_TIMESTAMP)
@@ -180,12 +180,12 @@ block script
         async initMap () {
           if (map) return
           const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>',
           })
           map = L.map('app', {
             center: [DEFAULT_LAT, DEFAULT_LNG],
             zoom: DEFAULT_ZOOM,
-            layers: [tiles]
+            layers: [tiles],
           })
           await this.locate()
         },
@@ -200,21 +200,21 @@ block script
             stroke: false,
             fillColor: '#00beff',
             fillOpacity: 0.2,
-            radius: 300
+            radius: 300,
           }).addTo(map)
           L.circle(latlng, {
             stroke: false,
             fillColor: '#00beff',
             fillOpacity: 0.1,
-            radius: 1000
+            radius: 1000,
           }).addTo(map)
           L.marker(latlng, {
             icon: L.icon({
               iconAnchor: [10, 36],
               iconSize: [20, 38],
               iconUrl: 'https://i.imgur.com/vXd4IW8.png',
-              popupAnchor: [0, -38]
-            })
+              popupAnchor: [0, -38],
+            }),
           }).addTo(map)
         },
         coordAbs (a, b) {
@@ -228,6 +228,6 @@ block script
             encoding: 'utf8',
             header: true,
           }), 'data', [])
-        }
-      }
+        },
+      },
     })

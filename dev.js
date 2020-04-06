@@ -14,13 +14,13 @@ async function main () {
   const publicDir = path.resolve(__dirname, 'dist')
 
   const livereloadServer = livereload.createServer({
-    delay: 500
+    delay: 500,
   })
   livereloadServer.watch(publicDir)
 
   const staticServer = http.createServer((req, res) => {
     serveStatic(publicDir, {
-      index: ['index.html', 'index.htm']
+      index: ['index.html', 'index.htm'],
     })(req, res, finalhandler(req, res))
   })
   staticServer.listen(8080)
