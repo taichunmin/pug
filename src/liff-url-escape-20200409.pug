@@ -10,7 +10,7 @@ block style
         display: none
 
 block content
-  #app.container.text-monospace.my-3(v-cloak)
+  #app.container.my-3(v-cloak)
     h2.text-center.my-3= title
     h4 請將此連結複製到聊天視窗內貼上再打開
     .input-group.mb-3
@@ -22,6 +22,7 @@ block content
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2.1/sdk.js")
   script.
     const vConsole = new VConsole() // eslint-disable-line
     const vm = new Vue({
