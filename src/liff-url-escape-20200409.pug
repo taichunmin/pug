@@ -16,7 +16,8 @@ block content
     .input-group.mb-3
       input.form-control(type="url", ref="gmap", :value="gmap", readonly)
       .input-group-append
-        button.btn.btn-outline-success.btn-block(@click="btnCopy") 點選複製網址
+        button.btn.btn-outline-success(type="button", @click="btnCopy") 複製
+        a.btn.btn-outline-success(:href="gmap") 開啟
     h4 參數帶入結果
     pre #[code.language-json {{ code }}]
 
@@ -51,7 +52,7 @@ block script
           gmap.searchParams.set('api', '1')
           gmap.searchParams.set('query', query)
           if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
-          const url = new URL('https://liff.line.me/1654046335-48OjmpAl')
+          const url = new URL('https://liff.line.me/1654046335-48OjmpAl/pug/liff-url-escape-20200409.html')
           url.searchParams.set('u', gmap.href)
           return url.href
         },
