@@ -21,18 +21,25 @@ block content
     h4 參數帶入結果
     pre #[code.language-json {{ code }}]
     h4 Google Maps 的網址應該要是
-    pre #[code.language-text ]
+    pre #[code.language-text {{ gmap }}]
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
   script(src="https://static.line-scdn.net/liff/edge/2.1/sdk.js")
   script.
     const vConsole = new VConsole() // eslint-disable-line
+    const genGoogleMapUrl = (query, queryPlaceId) => {
+      const gmap = new URL('https://www.google.com/maps/search/')
+      gmap.searchParams.set('api', '1')
+      gmap.searchParams.set('query', query)
+      if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
+      return gmap.href
+    }
     const vm = new Vue({
       el: '#app',
       data: {
         code: '',
-        gmap: this.genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY'),
+        gmap: genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY'),
         liff: '',
       },
       async mounted () {
@@ -49,13 +56,6 @@ block script
       methods: {
         getSearchParams (url, name) {
           return new URL(url).searchParams.get(name)
-        },
-        genGoogleMapUrl (query, queryPlaceId) {
-          const gmap = new URL('https://www.google.com/maps/search/')
-          gmap.searchParams.set('api', '1')
-          gmap.searchParams.set('query', query)
-          if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
-          return gmap.href
         },
         genLiffUrl (u) {
           const url = new URL('https://liff.line.me/1654046335-48OjmpAl/pug/liff-url-escape-20200409.html')
