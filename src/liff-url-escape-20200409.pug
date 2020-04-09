@@ -1,0 +1,65 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = 'LINE iOS 沒有 escape 的錯誤'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.container.text-monospace.my-3(v-cloak)
+    h2.text-center.my-3= title
+    h4 請將此連結複製貼上到聊天視窗內再打開
+    .input-group.mb-3
+      input.form-control(type="url", ref="gmap", :value="gmap", readonly)
+      .input-group-append
+        button.btn.btn-outline-success.btn-block(@click="btnCopy") 點選複製網址
+    h4 參數帶入結果
+    pre #[code.language-json {{ code }}]
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script.
+    const vConsole = new VConsole() // eslint-disable-line
+    const vm = new Vue({
+      el: '#app',
+      data: {
+        code: '',
+        gmap: '',
+      },
+      mounted () {
+        this.gmap = this.genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY')
+        this.code = JSON.stringify({
+          urlSearch: location.search,
+          data: this.getSearchParams('u'),
+        }, null, 2)
+      },
+      methods: {
+        getSearchParams (name, defaultValue) {
+          const value = new URL(location).searchParams.get(name)
+          return value || defaultValue
+        },
+        genGoogleMapUrl (query, queryPlaceId) {
+          const gmap = new URL('https://www.google.com/maps/search/')
+          gmap.searchParams.set('api', '1')
+          gmap.searchParams.set('query', query)
+          if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
+          const url = new URL('https://liff.line.me/1654046335-48OjmpAl')
+          url.searchParams.set('u', gmap.href)
+          return url.href
+        },
+        async btnCopy () {
+          const copyText = this.$refs.gmap
+          copyText.select()
+          copyText.setSelectionRange(0, 99999) // For mobile devices
+          document.execCommand("copy")
+          await Swal.fire({
+            icon: 'success',
+            title: '複製成功',
+          })
+        },
+      },
+    })
