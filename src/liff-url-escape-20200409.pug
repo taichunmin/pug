@@ -14,12 +14,14 @@ block content
     h2.text-center.my-3= title
     h4 請將此連結複製到聊天視窗內貼上再打開
     .input-group.mb-3
-      input.form-control(type="url", ref="gmap", :value="gmap", readonly)
+      input.form-control(type="url", ref="liff", :value="liff", readonly)
       .input-group-append
         button.btn.btn-outline-success(type="button", @click="btnCopy") 複製
-        a.btn.btn-outline-success(:href="gmap") 開啟
+        a.btn.btn-outline-success(:href="liff") 開啟
     h4 參數帶入結果
     pre #[code.language-json {{ code }}]
+    h4 Google Maps 的網址應該要是
+    pre #[code.language-text ]
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
@@ -30,11 +32,12 @@ block script
       el: '#app',
       data: {
         code: '',
-        gmap: '',
+        gmap: this.genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY'),
+        liff: '',
       },
       async mounted () {
         await liff.init({ liffId: '1654046335-48OjmpAl' })
-        this.gmap = this.genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY')
+        this.liff = this.genLiffUrl(this.gmap)
         const liffState = this.getSearchParams(location.href, 'liff.state')
         this.code = JSON.stringify({
           locationSearch: location.search,
@@ -52,12 +55,15 @@ block script
           gmap.searchParams.set('api', '1')
           gmap.searchParams.set('query', query)
           if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
+          return gmap.href
+        },
+        genLiffUrl (u) {
           const url = new URL('https://liff.line.me/1654046335-48OjmpAl/pug/liff-url-escape-20200409.html')
-          url.searchParams.set('u', gmap.href)
+          url.searchParams.set('u', u)
           return url.href
         },
         async btnCopy () {
-          const copyText = this.$refs.gmap
+          const copyText = this.$refs.liff
           copyText.select()
           copyText.setSelectionRange(0, 99999) // For mobile devices
           document.execCommand("copy")
