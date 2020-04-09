@@ -1,7 +1,7 @@
 extends /layouts/default
 
 block beforehtml
-  - var title = 'LINE iOS 沒有 escape 的錯誤'
+  - var title = 'LIFF 沒有 escape 的錯誤'
 
 block style
   style
@@ -32,15 +32,16 @@ block script
       },
       mounted () {
         this.gmap = this.genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY')
+        const liffState = this.getSearchParams(location.href, 'liff.state')
         this.code = JSON.stringify({
-          urlSearch: location.search,
-          data: this.getSearchParams('u'),
+          locationSearch: location.search,
+          liffState,
+          u: this.getSearchParams(new URL(liffState, 'https://localhost'), 'u'),
         }, null, 2)
       },
       methods: {
-        getSearchParams (name, defaultValue) {
-          const value = new URL(location).searchParams.get(name)
-          return value || defaultValue
+        getSearchParams (url, name) {
+          return new URL(url).searchParams.get(name)
         },
         genGoogleMapUrl (query, queryPlaceId) {
           const gmap = new URL('https://www.google.com/maps/search/')
