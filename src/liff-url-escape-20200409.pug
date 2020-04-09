@@ -12,16 +12,17 @@ block style
 block content
   #app.container.my-3(v-cloak)
     h2.text-center.my-3= title
-    h4 請將此連結複製到聊天視窗內貼上再打開
-    .input-group.mb-3
+    h4.my-3 請將此連結複製到聊天視窗內貼上再打開
+    .input-group.my-3
       input.form-control(type="url", ref="liff", :value="liff", readonly)
       .input-group-append
         button.btn.btn-outline-success(type="button", @click="btnCopy") 複製
         a.btn.btn-outline-success(:href="liff") 開啟
-    h4 參數帶入結果
-    pre #[code.language-json {{ code }}]
-    h4 Google Maps 的網址應該要是
-    pre #[code.language-text {{ gmap }}]
+    h4.my-3 參數帶入結果
+    pre.my-3 #[code.language-json {{ code }}]
+    button.my-3.btn.btn-block.btn-outline-primary(type="button", @click="btnLiffInit") 點此執行 liff.init
+    h4.my-3 Google Maps 的網址應該要是
+    pre.my-3 #[code.language-text {{ gmap }}]
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
@@ -43,7 +44,6 @@ block script
         liff: '',
       },
       async mounted () {
-        await liff.init({ liffId: '1654046335-48OjmpAl' })
         this.liff = this.genLiffUrl(this.gmap)
         const liffState = this.getSearchParams(location.href, 'liff.state')
         this.code = JSON.stringify({
@@ -54,6 +54,9 @@ block script
         }, null, 2)
       },
       methods: {
+        async btnLiffInit () {
+          await liff.init({ liffId: '1654046335-48OjmpAl' })
+        },
         getSearchParams (url, name) {
           return new URL(url).searchParams.get(name)
         },
