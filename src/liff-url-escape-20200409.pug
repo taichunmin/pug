@@ -12,7 +12,7 @@ block style
 block content
   #app.container.text-monospace.my-3(v-cloak)
     h2.text-center.my-3= title
-    h4 請將此連結複製貼上到聊天視窗內再打開
+    h4 請將此連結複製到聊天視窗內貼上再打開
     .input-group.mb-3
       input.form-control(type="url", ref="gmap", :value="gmap", readonly)
       .input-group-append
@@ -30,13 +30,15 @@ block script
         code: '',
         gmap: '',
       },
-      mounted () {
+      async mounted () {
+        await liff.init({ liffId: '1654046335-48OjmpAl' })
         this.gmap = this.genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY')
         const liffState = this.getSearchParams(location.href, 'liff.state')
         this.code = JSON.stringify({
           locationSearch: location.search,
           liffState,
-          u: this.getSearchParams(new URL(liffState, 'https://localhost'), 'u'),
+          gmapFromLiffState: this.getSearchParams(new URL(liffState, 'https://localhost'), 'u'),
+          gmapFromLocationSearch: this.getSearchParams(location.href, 'u'),
         }, null, 2)
       },
       methods: {
