@@ -165,6 +165,7 @@ block script
           map.addLayer(L.markerClusterGroup({
             chunkedLoading: true,
             disableClusteringAtZoom: 16,
+            spiderfyOnMaxZoom: false,
           }).addLayers(stores))
         },
         async getStores () {
