@@ -126,11 +126,12 @@ block script
         },
         async pushMessage (to, messages, notificationDisabled = false) {
           try {
+            if (!this.isLineId(to)) throw new Error(`不正確的 LINE userId: "${to}"`)
             if (_.includes(['bubble', 'carousel'], _.get(messages, 'type'))) {
               // 幫 Flex 訊息模擬器補上外層
               messages = {
                 type: 'flex',
-                altText: '替代文字',
+                altText: '您有一則新訊息',
                 contents: messages,
               }
             }
@@ -153,6 +154,9 @@ block script
             }
             throw err
           }
+        },
+        isLineId (lineId) {
+          return lineId !== 'Udeadbeefdeadbeefdeadbeefdeadbeef' && /^U[0-9a-f]{32}$/.test(lineId)
         },
       },
     })
