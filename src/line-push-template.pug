@@ -24,7 +24,7 @@ block style
 block content
   .container.text-monospace.my-3#app(v-cloak, v-show="ready")
     .alert.alert-danger#error(role="alert", v-show="error")
-      pre.mb-0 {{ error }}
+      pre.mb-0 {{ `${error}\n請於開發者工具中查看詳細錯誤內容` }}
       button.close(type="button", @click="error = ''") #[span &times;]
     h1 LINE 訊息推送工具
     .form-group
@@ -104,14 +104,15 @@ block script
                 const msg = JSON5.parse(tplMsg({ ...item, _ }))
                 await this.pushMessage(to, msg)
               } catch (err) {
-                err.message = `${this.status} ${err.message}`
+                err.message = `第 ${sendCnt} 筆發生錯誤: ${err.message}`
+                console.error(err)
                 errors.push(err)
               }
             }
           } catch (err) {
+            console.error(err)
             errors.push(err)
           }
-          console.log(errors)
           this.error = _.map(errors, err => err.message).join('\n')
           this.status = ''
         },
@@ -127,6 +128,7 @@ block script
         async pushMessage (to, messages, notificationDisabled = false) {
           try {
             if (!this.isLineId(to)) throw new Error(`不正確的 LINE userId: "${to}"`)
+            if (!/^[A-Za-z0-9+/=]+$/.test(this.i.accessToken)) throw new Error(`不正確的 Access Token: "${this.i.accessToken}"`)
             if (_.includes(['bubble', 'carousel'], _.get(messages, 'type'))) {
               // 幫 Flex 訊息模擬器補上外層
               messages = {
