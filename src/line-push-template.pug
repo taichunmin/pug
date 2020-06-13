@@ -1,0 +1,158 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '在 LIFF 傳送隱藏資料'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      .h-400px
+        height: 400px !important
+      #error
+        position: fixed
+        bottom: 0
+        z-index: 1071
+        left: 1rem
+        right: 1rem
+        button.close
+          position: absolute
+          right: 1.25rem
+          top: .75rem
+
+block content
+  .container.text-monospace.my-3#app(v-cloak, v-show="ready")
+    .alert.alert-danger#error(role="alert", v-show="error")
+      pre.mb-0 {{ error }}
+      button.close(type="button", @click="error = ''") #[span &times;]
+    h1 LINE 訊息推送工具
+    .form-group
+      label(for="csv") CSV 網址 (第一列會成為變數名稱)
+      textarea#csv.form-control.form-control-sm(v-model="i.csv")
+    .row
+      .col
+        .form-group
+          label(for="to") 傳送給 (請使用變數)
+          input#to.form-control.form-control-sm(v-model="i.to")
+      .col
+        .form-group
+          label(for="access-token") Access Token
+          input#access-token.form-control.form-control-sm(type="password", v-model="i.accessToken")
+    .form-group
+      label(for="msg") 訊息內容 JSON (先處理變數才會轉 JSON，務必注意 JSON escape 的問題)
+      textarea#msg.form-control.form-control-sm.h-400px(v-model="i.msg")
+    .row.mx-n2
+      button.btn.btn-light.mx-2.my-1(disabled, v-if="status") {{ status }}…
+      button.btn.btn-success.mx-2.my-1(type="button", @click="linePush", v-else) 推送訊息
+      a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/flex-simulator/", target="_blank") Flex 訊息模擬器
+      a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/en/reference/messaging-api/#flex-message", target="_blank") LINE 訊息文件
+      a.btn.btn-outline-info.mx-2.my-1(href="https://lodash.com/docs/4.17.15#template", target="_blank") _.template 變數語法說明
+
+block script
+  script.
+    const sleep = wait => new Promise(resolve => setTimeout(resolve, wait))
+
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        i: {
+          accessToken: '',
+          csv: '',
+          msg: '',
+          to: '${line_id}', // eslint-disable-line
+        },
+        error: '',
+        ready: false,
+        status: '',
+      },
+      async mounted () {
+        try {
+          const saved = JSON.parse(sessionStorage.getItem('line-push-template'))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', (newVal, oldVal) => {
+          sessionStorage.setItem('line-push-template', JSON.stringify(this.i))
+        }, { deep: true })
+        this.ready = true
+      },
+      methods: {
+        async linePush () {
+          const errors = []
+          try {
+            // 取得 csv
+            this.status = '正在從 csv 取得資料'
+            const rows = await this.getCsv(this.i.csv)
+            console.log(`成功從 csv 中取得 ${rows.length} 筆資料`)
+            if (rows.length <= 0) throw new Error('csv 中沒有任何記錄')
+
+            // 推送確認
+            this.status = '等候使用者確認推送'
+            await sleep(100)
+            if (!confirm(`即將推送 ${rows.length} 則訊息！`)) throw new Error('使用者自行取消推送')
+
+            // compile tpl
+            this.status = '正在解析訊息內容 JSON'
+            const tplTo = _.template(this.i.to)
+            const tplMsg = _.template(this.i.msg)
+    
+            let sendCnt = 0
+            for (const item of rows) {
+              try {
+                this.status = `正在傳送訊息 (${++sendCnt} / ${rows.length})`
+                const to = tplTo({ ...item, _ })
+                const msg = JSON5.parse(tplMsg({ ...item, _ }))
+                await this.pushMessage(to, msg)
+              } catch (err) {
+                err.message = `${this.status} ${err.message}`
+                errors.push(err)
+              }
+            }
+          } catch (err) {
+            errors.push(err)
+          }
+          console.log(errors)
+          this.error = _.map(errors, err => err.message).join('\n')
+          this.status = ''
+        },
+        async getCsv (url) {
+          url = new URL(url)
+          url.searchParams.set('cachebust', +new Date())
+          const csv = _.trim(_.get(await axios.get(url.href), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async pushMessage (to, messages, notificationDisabled = false) {
+          try {
+            if (_.includes(['bubble', 'carousel'], _.get(messages, 'type'))) {
+              // 幫 Flex 訊息模擬器補上外層
+              messages = {
+                type: 'flex',
+                altText: '替代文字',
+                contents: messages,
+              }
+            }
+            if (!_.isArray(messages)) messages = [messages]
+            await axios.post('https://cors-anywhere.herokuapp.com/https://api.line.me/v2/bot/message/push', {
+              to,
+              messages,
+              notificationDisabled,
+            }, {
+              headers: {
+                Authorization: `Bearer ${this.i.accessToken}`,
+              },
+            })
+          } catch (err) {
+            if (_.hasIn(err, 'response')) {
+              const res = err.response
+              const debugObj = { status: res.status, headers: res.headers, data: res.data, to, messages }
+              console.log(debugObj)
+              err.stack = `${err.name}: LINE pushMessage failed with status code ${res.status}\n${JSON.stringify(debugObj, null, 2)}`
+            }
+            throw err
+          }
+        },
+      },
+    })

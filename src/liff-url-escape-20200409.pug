@@ -36,7 +36,7 @@ block script
       if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
       return gmap.href
     }
-    const vm = new Vue({
+    const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
         code: '',
@@ -69,7 +69,7 @@ block script
           const copyText = this.$refs.liff
           copyText.select()
           copyText.setSelectionRange(0, 99999) // For mobile devices
-          document.execCommand("copy")
+          document.execCommand('copy')
           await Swal.fire({
             icon: 'success',
             title: '複製成功',
