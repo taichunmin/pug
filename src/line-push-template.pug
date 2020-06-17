@@ -101,8 +101,8 @@ block script
             for (const item of rows) {
               try {
                 this.status = `正在傳送訊息 (${++sendCnt} / ${rows.length})`
-                const to = tplTo({ ...item, _ })
-                const msg = JSON5.parse(tplMsg({ ...item, _ }))
+                const to = tplTo({ ...item, _, Qs })
+                const msg = JSON5.parse(tplMsg({ ...item, _, Qs }))
                 await this.pushMessage(to, msg)
               } catch (err) {
                 err.message = `第 ${sendCnt} 筆發生錯誤: ${err.message}`
