@@ -215,9 +215,6 @@ block script
             }),
           }).addTo(map)
         },
-        coordAbs (a, b) {
-          return Math.abs(a.lat - b.lat) + Math.abs(a.lng - b.lng)
-        },
         async getCsv (url) {
           url = new URL(url)
           url.searchParams.set('cachebust', _.floor(new Date() / 3e4))

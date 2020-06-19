@@ -1,0 +1,215 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = 'YouBike 地圖'
+  - var description = 'YouBike 1.0 + 2.0 地圖'
+
+block style
+  meta(name="description" content=description)
+  meta(property="og:description" content=description)
+  meta(property="og:image" content="https://taichunmin.idv.tw/images/works/ncov-mask-map.png?v=1")
+  meta(property="og:title" content=title)
+  meta(property="og:type" content="website")
+  meta(property="og:url" content="https://taichunmin.idv.tw/pug/youbike-maps.html")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.Default.css")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      html, body, #app
+        height: 100%
+        width: 100vw
+      .leaflet-popup-content
+        font-size: 14px
+        h6
+          font-size: 18px
+          margin-bottom: 1rem
+        .table-station
+          th
+            white-space: nowrap
+          td
+            text-align: right
+        .table-time th
+          background-color: #d6d8db
+
+block content
+  #app(v-cloak)
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/@hapi/joi@17/dist/joi-browser.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js")
+  script.
+    /* global _, L, Qs, Papa, moment */
+    const httpBuildQuery = obj => Qs.stringify(obj, { arrayFormat: 'brackets' })
+
+    const verifyStationRealtime = (() => {
+      const schema = joi.object({
+        id: joi.number().integer().min(1).empty('').required(),
+        name: joi.string().empty('').required(),
+        type: joi.number().integer().valid(1, 2).empty('').required(),
+        space: joi.number().integer().min(0).default(0).empty(''),
+        full: joi.number().integer().min(0).default(0).empty(''),
+        empty: joi.number().integer().min(0).default(0).empty(''),
+        city: joi.string().empty('').optional(),
+        area: joi.string().empty('').optional(),
+        lat: joi.number().min(21).max(28).empty('0').required(),
+        lng: joi.number().min(117).max(123).empty('0').required(),
+        place_id: joi.string().empty('').optional(),
+        address: joi.string().empty('').optional(),
+        is_open: joi.number().integer().min(0).default(0).empty(''),
+        updated_at: joi.date().timestamp('unix').required(),
+      })
+      return value => schema.validateAsync(value, { stripUnknown: true })
+    })()
+
+    const stationToIcon = (() => {
+      const LeafIcon = L.Icon.extend({
+        options: {
+          iconAnchor: [13, 37],
+          iconSize: [26, 40],
+          popupAnchor: [0, -39],
+        },
+      })
+      const ICONS = {
+        1: {
+          gray: new LeafIcon({ iconUrl: 'https://i.imgur.com/Ds0qFq3.png' }),
+          green: new LeafIcon({ iconUrl: 'https://i.imgur.com/ReY0lVJ.png' }),
+          red: new LeafIcon({ iconUrl: 'https://i.imgur.com/4eoBKk4.png' }),
+          yellow: new LeafIcon({ iconUrl: 'https://i.imgur.com/cuIV9SU.png' }),
+        },
+        2: {
+          gray: new LeafIcon({ iconUrl: 'https://i.imgur.com/6Le0sE3.png' }),
+          green: new LeafIcon({ iconUrl: 'https://i.imgur.com/5aYRtXr.png' }),
+          red: new LeafIcon({ iconUrl: 'https://i.imgur.com/dZtjHXS.png' }),
+          yellow: new LeafIcon({ iconUrl: 'https://i.imgur.com/yjIc9m9.png' }),
+        },
+      }
+      return s => {
+        if (!s.is_open) return ICONS[s.type].gray
+        if (s.space === 0) return ICONS[s.type].red
+        if (s.full === 0) return ICONS[s.type].yellow
+        return ICONS[s.type].green
+      }
+    })()
+
+    const stationToPopup = (() => {
+      const stationToGoogleMap = station => {
+        const baseUrl = 'https://www.google.com/maps/dir/?'
+        const query = {
+          api: 1,
+          destination: `${station.lat},${station.lng}`,
+          travelmode: 'walking',
+        }
+        if (_.isString(station.place_id) && station.place_id) query.destination_place_id = station.place_id
+        return baseUrl + httpBuildQuery(query)
+      }
+
+      return s => `<h6 class="mb-2"><strong>${s.name}</strong></h6>
+    <div class="text-monospace px-2">
+      <h6 class="bike mb-1"><i class="fa fa-fw fa-bicycle"></i> ${s.full} / ${s.full+s.empty} ${s.is_open ? '' : ' (暫停營運)'}</h6>
+      <div class="area mb-1">行政區：${s.city}${s.area}</div>
+      <div class="address text-break mb-1">位　置：${s.address}</div>
+      <div class="updated_at text-break mb-1">更　新：${moment(s.updated_at).format('YYYY-MM-DD HH:mm:ss')}</div>
+    </div>
+    <a class="btn btn-dark btn-sm btn-block text-white mt-3" href="${stationToGoogleMap(s)}" role="button" target="_blank">
+      <i class="fa fa-fw fa-map-o"></i>
+      導航
+    </a>`
+    })()
+
+    const [DEFAULT_LAT, DEFAULT_LNG, DEFAULT_ZOOM] = [25.040857, 121.567904, 15]
+    let map
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        src: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/latest-data/youbike-station.csv',
+      },
+      async mounted () {
+        moment.locale('zh-tw')
+        this.initMap()
+        this.initStations()
+      },
+      methods: {
+        async getStations () {
+          const stations = await this.getCsv(this.src)
+          const nowts = +new Date()
+          return _.filter(await Promise.all(_.map(stations, async s => {
+            try {
+              s = await verifyStationRealtime(s)
+              s.is_open = (s.is_open === 1 && (s.empty + s.full) > 0 && (nowts - s.updated_at) < 864e5) ? 1 : 0
+              return s
+            } catch (err) {
+              return null
+            }
+          })))
+        },
+        async initStations () {
+          const groups = _.groupBy(await this.getStations(), 'type') // 根據 type 進行分組
+          window.groups = groups
+          _.each(groups, (stations, group) => {
+            const cluster = L.markerClusterGroup({
+              chunkedLoading: true,
+              disableClusteringAtZoom: 16,
+              spiderfyOnMaxZoom: false,
+            }).addLayers(_.map(stations, s => {
+              return L.marker([s.lat, s.lng], { icon: stationToIcon(s) })
+                .bindPopup(stationToPopup(s), { minWidth: 200 })
+            }))
+            map.addLayer(cluster)
+          })
+        },
+        async initMap () {
+          if (map) return
+          const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>',
+          })
+          map = L.map('app', {
+            center: [DEFAULT_LAT, DEFAULT_LNG],
+            zoom: DEFAULT_ZOOM,
+            layers: [tiles],
+          })
+          const latlng = await new Promise(resolve => {
+            map.locate({ setView: true })
+              .on('locationfound', e => { resolve(e.latlng) })
+              .on('locationerror', e => { resolve(L.latLng(DEFAULT_LAT, DEFAULT_LNG)) })
+          })
+          map.setZoom(DEFAULT_ZOOM)
+          L.circle(latlng, {
+            stroke: false,
+            fillColor: '#00beff',
+            fillOpacity: 0.2,
+            radius: 300,
+          }).addTo(map)
+          L.circle(latlng, {
+            stroke: false,
+            fillColor: '#00beff',
+            fillOpacity: 0.1,
+            radius: 1000,
+          }).addTo(map)
+          L.marker(latlng, {
+            icon: L.icon({
+              iconAnchor: [10, 36],
+              iconSize: [20, 38],
+              iconUrl: 'https://i.imgur.com/vXd4IW8.png',
+              popupAnchor: [0, -38],
+            }),
+          }).addTo(map)
+        },
+        async getCsv (url) {
+          url = new URL(url)
+          url.searchParams.set('cachebust', _.floor(new Date() / 3e4))
+          const csv = _.trim(_.get(await axios.get(url.href), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+      },
+    })
