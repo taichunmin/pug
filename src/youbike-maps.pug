@@ -19,9 +19,26 @@ block style
     :sass
       [v-cloak]
         display: none
-      html, body, #app
+      html, body, #app, #map
         height: 100%
         width: 100vw
+      #app
+        position: relative
+      #ubike-visible
+        background-color: white
+        border: 1px solid #ccc
+        padding: 0.5rem
+        position: absolute
+        right: 10px
+        top: 10px
+        z-index: 500
+        box-shadow: 0 1px 5px rgba(0,0,0,.65)
+        border-radius: 4px
+      .unselectable
+        -webkit-user-select: none
+        -moz-user-select: none
+        -ms-user-select: none
+        user-select: none
       .leaflet-popup-content
         font-size: 14px
         h6
@@ -37,6 +54,11 @@ block style
 
 block content
   #app(v-cloak)
+    #ubike-visible.unselectable.text-monospace(v-if="_.keys(visible).length")
+      .custom-control.custom-switch(v-for="(v, k) in visible", :key="k")
+        input.custom-control-input(type="checkbox", v-model="visible[k]", :id="`switch-ubike${k}`")
+        label.custom-control-label(:for="`switch-ubike${k}`") YouBike {{ k }}.0
+    #map
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/@hapi/joi@17/dist/joi-browser.min.js")
@@ -130,6 +152,7 @@ block script
       el: '#app',
       data: {
         src: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/latest-data/youbike-station.csv',
+        visible: {},
       },
       async mounted () {
         moment.locale('zh-tw')
@@ -151,9 +174,9 @@ block script
           })))
         },
         async initStations () {
-          const groups = _.groupBy(await this.getStations(), 'type') // 根據 type 進行分組
-          window.groups = groups
-          _.each(groups, (stations, group) => {
+          const saved = this.parseJsonOrDefault(localStorage.getItem('youbike-maps-visible'), {})
+          const types = window.types = _.groupBy(await this.getStations(), 'type') // 根據 type 進行分組
+          _.each(types, (stations, type) => {
             const cluster = L.markerClusterGroup({
               chunkedLoading: true,
               disableClusteringAtZoom: 16,
@@ -162,7 +185,16 @@ block script
               return L.marker([s.lat, s.lng], { icon: stationToIcon(s) })
                 .bindPopup(stationToPopup(s), { minWidth: 200 })
             }))
-            map.addLayer(cluster)
+            // TODO: localStorage load
+            this.$set(this.visible, type, false)
+            this.$watch(`visible.${type}`, (newVal, oldVal) => {
+              const hasLayer = map.hasLayer(cluster)
+              if (hasLayer ^ newVal) {
+                map[newVal ? 'addLayer' : 'removeLayer'](cluster)
+                localStorage.setItem('youbike-maps-visible', JSON.stringify(this.visible))
+              }
+            })
+            if (_.get(saved, type, true)) this.$set(this.visible, type, true)
           })
         },
         async initMap () {
@@ -170,7 +202,7 @@ block script
           const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>',
           })
-          map = L.map('app', {
+          map = L.map('map', {
             center: [DEFAULT_LAT, DEFAULT_LNG],
             zoom: DEFAULT_ZOOM,
             layers: [tiles],
@@ -210,6 +242,13 @@ block script
             encoding: 'utf8',
             header: true,
           }), 'data', [])
+        },
+        parseJsonOrDefault (str, defaultValue) {
+          try {
+            return JSON.parse(str)
+          } catch (err) {
+            return defaultValue
+          }
         },
       },
     })
