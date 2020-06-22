@@ -23,12 +23,12 @@ async function main () {
       index: ['index.html', 'index.htm'],
     })(req, res, finalhandler(req, res))
   })
-  staticServer.listen(8080)
+  staticServer.listen(3000)
 
   watch('./src', { recursive: true }, async (e, name) => {
     const match = name.match(/src[\\/](.+)\.pug/)
     if (!match) log(`"${name}" changed.`)
-    else log(`http://localhost:8080/${match[1].replace(/\\/g, '/')}.html`)
+    else log(`http://localhost:3000/${match[1].replace(/\\/g, '/')}.html`)
     await build(true)
   })
 }

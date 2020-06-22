@@ -216,9 +216,9 @@ block script
           }).addTo(map)
         },
         async getCsv (url) {
-          url = new URL(url)
-          url.searchParams.set('cachebust', _.floor(new Date() / 3e4))
-          const csv = _.trim(_.get(await axios.get(url.href), 'data'))
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: new Date() / 3e4 },
+          }), 'data'))
           return _.get(Papa.parse(csv, {
             encoding: 'utf8',
             header: true,

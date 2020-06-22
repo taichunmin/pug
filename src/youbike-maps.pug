@@ -32,14 +32,10 @@ block style
         position: relative
       #ubike-visible
         background-color: white
-        border: 1px solid #ccc
-        padding: 0.5rem
+        padding: .3rem .5rem
         position: absolute
         right: 10px
         top: 10px
-        z-index: 500
-        box-shadow: 0 1px 5px rgba(0,0,0,.65)
-        border-radius: 4px
       .unselectable
         -webkit-user-select: none
         -moz-user-select: none
@@ -60,7 +56,7 @@ block style
 
 block content
   #app(v-cloak)
-    #ubike-visible.unselectable.text-monospace(v-if="_.keys(visible).length")
+    #ubike-visible.leaflet-bar.leaflet-control.unselectable.text-monospace(v-if="_.keys(visible).length")
       .custom-control.custom-switch(v-for="(v, k) in visible", :key="k")
         input.custom-control-input(type="checkbox", v-model="visible[k]", :id="`switch-ubike${k}`")
         label.custom-control-label(:for="`switch-ubike${k}`") YouBike {{ k }}.0
@@ -140,13 +136,13 @@ block script
       }
 
       return s => `<h6 class="mb-2"><strong>${s.name}</strong></h6>
-    <div class="text-monospace px-2">
-      <h6 class="bike mb-1"><i class="fa fa-fw fa-bicycle"></i> ${s.full} / ${s.full+s.empty} ${s.is_open ? '' : ' (暫停營運)'}</h6>
-      <div class="area mb-1">行政區：${s.city}${s.area}</div>
-      <div class="address text-break mb-1">位　置：${s.address}</div>
-      <div class="updated_at text-break mb-1">更　新：${moment(s.updated_at).format('YYYY-MM-DD HH:mm:ss')}</div>
-    </div>
-    <a class="btn btn-dark btn-sm btn-block text-white mt-3" href="${stationToGoogleMap(s)}" role="button" target="_blank">
+    <table class="table table-sm table-borderless table-station text-monospace">
+      <tr><th>車輛</th><td><i class="fa fa-fw fa-bicycle"></i> ${s.full} / ${s.full + s.empty} ${s.is_open ? '' : ' (暫停營運)'}</td></tr>
+      <tr><th>縣市</th><td>${s.city}${s.area}</td></tr>
+      <tr><th>位置</th><td>${s.address}</td></tr>
+      <tr><th>更新</th><td>${moment(s.updated_at).format('YYYY-MM-DD HH:mm:ss')}</td></tr>
+    </table>
+    <a class="btn btn-dark btn-sm btn-block text-white" href="${stationToGoogleMap(s)}" role="button" target="_blank">
       <i class="fa fa-fw fa-map-o"></i>
       導航
     </a>`
@@ -241,9 +237,9 @@ block script
           }).addTo(map)
         },
         async getCsv (url) {
-          url = new URL(url)
-          url.searchParams.set('cachebust', _.floor(new Date() / 3e4))
-          const csv = _.trim(_.get(await axios.get(url.href), 'data'))
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: new Date() / 3e4 },
+          }), 'data'))
           return _.get(Papa.parse(csv, {
             encoding: 'utf8',
             header: true,

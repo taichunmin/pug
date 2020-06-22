@@ -1,18 +1,18 @@
 module.exports = {
   env: {
     es6: true,
-    node: true
+    node: true,
   },
   extends: [
-    'standard'
+    'standard',
   ],
   globals: {
     Atomics: 'readonly',
-    SharedArrayBuffer: 'readonly'
+    SharedArrayBuffer: 'readonly',
   },
   parserOptions: {
     ecmaVersion: 2018,
-    sourceType: 'module'
+    sourceType: 'module',
   },
   rules: {
     'no-return-await': 0, // 0 = off, 1 = warn, 2 = error
@@ -23,5 +23,5 @@ module.exports = {
       exports: 'always-multiline',
       functions: 'only-multiline',
     }],
-  }
+  },
 }
