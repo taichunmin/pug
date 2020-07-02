@@ -1,0 +1,209 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = 'GOGORO 電池交換站地圖'
+  - var description = 'GOGORO 電池交換站地圖'
+
+block style
+  meta(name="description" content=description)
+  meta(name="keywords" content="gogoro,換電站,電池交換站,地圖,電池")
+  meta(property="fb:app_id" content="2133031763635285")
+  meta(property="og:description" content=description)
+  meta(property="og:image:height" content="315")
+  meta(property="og:image:width" content="600")
+  meta(property="og:image" content="https://i.imgur.com/Av4FEFk.png")
+  meta(property="og:locale" content="zh_TW")
+  meta(property="og:site_name" content="筆記國度")
+  meta(property="og:title" content=title)
+  meta(property="og:type" content="website")
+  meta(property="og:url" content="https://taichunmin.idv.tw/pug/gogoro-maps.html")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.Default.css")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      html, body, #app, #map
+        height: 100%
+        width: 100vw
+      #app
+        position: relative
+      #ubike-visible
+        background-color: white
+        padding: .3rem .5rem
+        position: absolute
+        right: 10px
+        top: 10px
+      .unselectable
+        -webkit-user-select: none
+        -moz-user-select: none
+        -ms-user-select: none
+        user-select: none
+      .leaflet-popup-content
+        font-size: 14px
+        h6
+          font-size: 18px
+          margin-bottom: 1rem
+        .table-station
+          th
+            white-space: nowrap
+          td
+            text-align: right
+        .table-time th
+          background-color: #d6d8db
+
+block content
+  #app(v-cloak)
+    #ubike-visible.leaflet-bar.leaflet-control.unselectable.text-monospace(v-if="_.keys(visible).length")
+      .custom-control.custom-switch(v-for="(v, k) in visible", :key="k")
+        input.custom-control-input(type="checkbox", v-model="visible[k]", :id="`switch-ubike${k}`")
+        label.custom-control-label(:for="`switch-ubike${k}`") YouBike {{ k }}.0
+    #map
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/@hapi/joi@17/dist/joi-browser.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js")
+  script.
+    /* global _, L, Qs, Papa, moment */
+    const httpBuildQuery = obj => Qs.stringify(obj, { arrayFormat: 'brackets' })
+
+    const verifyStationRealtime = (() => {
+      const schema = joi.object({
+        id: joi.string().uuid().required(),
+        name: joi.string().empty('').required(),
+        lat: joi.number().min(21).max(28).empty('0').required(),
+        lng: joi.number().min(117).max(123).empty('0').required(),
+        address: joi.string().replace('台', '臺').replace(/(\([^)]+\))/, '<br>$1').empty('').optional(),
+        district: joi.string().empty('').optional(),
+        city: joi.string().replace('台', '臺').empty('').optional(),
+        state: joi.number().integer().valid(1).required(),
+      })
+      return value => schema.validateAsync(value, { stripUnknown: true })
+    })()
+
+    const stationToPopup = (() => {
+      const stationToGoogleMap = station => {
+        const baseUrl = 'https://www.google.com/maps/dir/?'
+        const query = {
+          api: 1,
+          destination: `${station.lat},${station.lng}`,
+          travelmode: 'driving',
+        }
+        return baseUrl + httpBuildQuery(query)
+      }
+
+      return s => `<h6 class="mb-2"><strong>${s.name}</strong></h6>
+    <table class="table table-sm table-borderless table-station text-monospace">
+      <tr><th>縣市</th><td>${s.city} / ${s.district}</td></tr>
+      <tr><th>位置</th><td>${s.address}</td></tr>
+    </table>
+    <a class="btn btn-dark btn-sm btn-block text-white" href="${stationToGoogleMap(s)}" role="button" target="_blank">
+      <i class="fa fa-fw fa-map-o"></i>
+      導航
+    </a>`
+    })()
+
+    const [DEFAULT_LAT, DEFAULT_LNG, DEFAULT_ZOOM] = [25.040857, 121.567904, 15]
+    let map
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        src: 'https://storage-gogoro.taichunmin.idv.tw/data/gogoro-battery.csv',
+        visible: {},
+      },
+      async mounted () {
+        moment.locale('zh-tw')
+        this.initMap()
+        this.initStations()
+      },
+      methods: {
+        async getStations () {
+          return _.filter(await Promise.all(_.map(await this.getCsv(this.src), async s => {
+            try {
+              s = await verifyStationRealtime(s)
+              const tmp = `${s.city}${s.district}`
+              if (tmp === s.address.slice(0, tmp.length)) s.address = s.address.slice(tmp.length)
+              return s
+            } catch (err) {
+              return null
+            }
+          })))
+        },
+        async initMap () {
+          if (map) return
+          const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>',
+          })
+          map = L.map('map', {
+            center: [DEFAULT_LAT, DEFAULT_LNG],
+            zoom: DEFAULT_ZOOM,
+            layers: [tiles],
+          })
+          const latlng = await new Promise(resolve => {
+            map.locate({ setView: true })
+              .on('locationfound', e => { resolve(e.latlng) })
+              .on('locationerror', e => { resolve(L.latLng(DEFAULT_LAT, DEFAULT_LNG)) })
+          })
+          map.setZoom(DEFAULT_ZOOM)
+          L.circle(latlng, {
+            stroke: false,
+            fillColor: '#00beff',
+            fillOpacity: 0.2,
+            radius: 300,
+          }).addTo(map)
+          L.circle(latlng, {
+            stroke: false,
+            fillColor: '#00beff',
+            fillOpacity: 0.1,
+            radius: 1000,
+          }).addTo(map)
+          L.marker(latlng, {
+            icon: L.icon({
+              iconAnchor: [10, 36],
+              iconSize: [20, 38],
+              iconUrl: 'https://i.imgur.com/vXd4IW8.png',
+              popupAnchor: [0, -38],
+            }),
+          }).addTo(map)
+        },
+        async initStations () {
+          const stations = await this.getStations()
+          const icon = L.icon({
+            iconAnchor: [18, 36],
+            iconSize: [36, 36],
+            iconUrl: 'https://i.imgur.com/1KRTaAO.png',
+            popupAnchor: [0, -38],
+          })
+          L.markerClusterGroup({
+            chunkedLoading: true,
+            disableClusteringAtZoom: 16,
+            spiderfyOnMaxZoom: false,
+          }).addLayers(_.map(stations, s => {
+            return L.marker([s.lat, s.lng], { icon })
+              .bindPopup(stationToPopup(s), { minWidth: 200 })
+          })).addTo(map)
+        },
+        async getCsv (url) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: new Date() / 3e4 },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        parseJsonOrDefault (str, defaultValue) {
+          try {
+            return JSON.parse(str)
+          } catch (err) {
+            return defaultValue
+          }
+        },
+      },
+    })
