@@ -16,7 +16,7 @@ block content
       .form-group
         label(for="i-icon") 圖示
         input#i-icon.form-control(type="url", name="icon", v-model="icon")
-        small#help-icon.form-text.text-muted 捷徑圖，附檔名 #[code .ico]
+        small#help-icon.form-text.text-muted 捷徑圖
       .form-group
         label(for="i-label") 名稱
         input#i-label.form-control(type="text", name="label", v-model="label")
@@ -44,9 +44,9 @@ block script
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
-        icon: 'https://iconarchive.com/download/i107326/google/noto-emoji-animals-nature/22215-dog.ico',
-        label: '測試',
-        link: 'https://taichunmin.idv.tw',
+        icon: 'https://obs.line-scdn.net/0hSG8QEK4LDGgFKCflNDtzPyR1Bwo2ShJjJ05ECiIvUFkrHE5QaUwQXnUqUVsgGx5uP0tHWU4oWg0pG0s4OwtCXSMvVVoqHQ/f256x256',
+        label: 'YouBike Today',
+        link: 'https://line.me/R/ti/p/@katacha',
         page: '',
       },
       async mounted () {
