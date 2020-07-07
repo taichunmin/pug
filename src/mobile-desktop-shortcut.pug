@@ -30,20 +30,21 @@ block content
       .form-group.my-2
         label(for="i-icon") 圖示
         input#i-icon.form-control.form-control-sm(type="url", name="icon", v-model="icon")
-        small#help-icon.form-text.text-muted 捷徑圖
+        small#help-icon.form-text.text-muted 請填寫捷徑圖示。
       .form-group.my-2
         label(for="i-label") 名稱
         input#i-label.form-control.form-control-sm(type="text", name="label", v-model="label")
-        small#help-label.form-text.text-muted 請填寫捷徑名稱
+        small#help-label.form-text.text-muted 請填寫捷徑名稱。
       .form-group.my-2
         label(for="i-link") 網址
         input#i-link.form-control.form-control-sm(type="url", name="link", v-model="link")
-        small#help-label.form-text.text-muted 請填寫捷徑網址
+        small#help-label.form-text.text-muted 請填寫捷徑網址。
       .form-group.my-2
         label(for="i-result") 結果
-        textarea#brwoser.form-control.form-control-sm(style="height: 150px", :value="shortcut", readonly)
-        small#help-label.form-text.text-muted 請複製此網址
-      a.btn.btn-primary.my-2(:href="shortcut", target="_blank") 測試
+        textarea#brwoser.form-control.form-control-sm(style="height: 150px", :value="shortcut", ref="result", readonly)
+        small#help-label.form-text.text-muted 請複製此網址，然後在 LINE 中傳給使用者。
+      button.btn.btn-success.my-2.mr-2(@click="btnCopy") 複製
+      a.btn.btn-primary.my-2.mr-2(:href="shortcut", target="_blank") 測試
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
@@ -123,6 +124,16 @@ block script
           const url = new URL('mobile-desktop-shortcut-redirect.html', location)
           url.searchParams.set('link', link)
           history.replaceState(null, '', url.href)
+        },
+        async btnCopy () {
+          const copyText = this.$refs.result
+          copyText.select()
+          copyText.setSelectionRange(0, 99999) // For mobile devices
+          document.execCommand('copy')
+          await Swal.fire({
+            icon: 'success',
+            title: '複製成功',
+          })
         },
       },
     })
