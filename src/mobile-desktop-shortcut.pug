@@ -11,7 +11,19 @@ block style
 
 block content
   #app.container.text-monospace(v-cloak)
-    #generate.text-monospace
+    #android-chrome(v-if="page==='android-chrome'")
+      h1 把捷徑加到主畫面
+      ol
+        | 步驟
+        li 點選瀏覽器右上角的「更多」按鈕
+        li 點選「加到主畫面」
+    #ios-safari(v-else-if="page==='android-chrome'")
+      h1 把捷徑加到主畫面
+      ol
+        | 步驟
+        li 點選瀏覽器下方的「分享」按鈕
+        li 點選「加入主畫面螢幕」
+    #generate.text-monospace(v-else)
       h2.my-2.text-center= title
       .form-group.my-2
         label(for="i-icon") 圖示
@@ -31,18 +43,6 @@ block content
         small#help-label.form-text.text-muted 請複製此網址
       textarea#brwoser.form-control(style="font-size: 12px; height: 100px", :value="JSON.stringify(browser)")
       a.btn.btn-primary.my-2(:href="shortcut", target="_blank") 測試
-    #android-chrome
-      h1 把捷徑加到主畫面
-      ol
-        | 步驟
-        li 點選瀏覽器右上角的「更多」按鈕
-        li 點選「加到主畫面」
-    #ios-safari
-      h1 把捷徑加到主畫面
-      ol
-        | 步驟
-        li 點選瀏覽器下方的「分享」按鈕
-        li 點選「加入主畫面螢幕」
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
