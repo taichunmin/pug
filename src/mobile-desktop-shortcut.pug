@@ -13,24 +13,24 @@ block content
   #app.container.text-monospace(v-cloak)
     #generate.text-monospace
       h2.my-2.text-center= title
-      .form-group
+      .form-group.my-2
         label(for="i-icon") 圖示
         input#i-icon.form-control(type="url", name="icon", v-model="icon")
         small#help-icon.form-text.text-muted 捷徑圖
-      .form-group
+      .form-group.my-2
         label(for="i-label") 名稱
         input#i-label.form-control(type="text", name="label", v-model="label")
         small#help-label.form-text.text-muted 請填寫捷徑名稱
-      .form-group
+      .form-group.my-2
         label(for="i-link") 網址
         input#i-link.form-control(type="url", name="link", v-model="link")
         small#help-label.form-text.text-muted 請填寫捷徑網址
-      .form-group
+      .form-group.my-2
         label(for="i-result") 結果
         input#i-result.form-control(:value="shortcut", readonly)
         small#help-label.form-text.text-muted 請複製此網址
       textarea#brwoser.form-control(style="font-size: 12px; height: 100px", :value="JSON.stringify(browser)")
-      a.btn.btn-primary(:href="shortcut", target="_blank") 測試
+      a.btn.btn-primary.my-2(:href="shortcut", target="_blank") 測試
     #android-chrome
     #ios-safari
 
