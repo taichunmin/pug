@@ -41,9 +41,8 @@ block content
         small#help-label.form-text.text-muted 請填寫捷徑網址
       .form-group.my-2
         label(for="i-result") 結果
-        input#i-result.form-control(:value="shortcut", readonly)
+        textarea#brwoser.form-control(style="font-size: 12px; height: 150px", :value="shortcut", readonly)
         small#help-label.form-text.text-muted 請複製此網址
-      textarea#brwoser.form-control(style="font-size: 12px; height: 100px", :value="JSON.stringify(browser)")
       a.btn.btn-primary.my-2(:href="shortcut", target="_blank") 測試
 
 block script
@@ -91,13 +90,14 @@ block script
             label: this.param('label'),
             link: this.param('link'),
           }
+          console.log(params)
           if (this.fnIsValid(params)) {
             // 設定 url, title, icon
             this.setIcon(params.icon)
             this.setLabel(params.label)
             this.setLink(params.link)
             // 判斷作業系統及瀏覽器
-            this.page = _.lower(this.browser.os.name)
+            this.page = _.toLower(this.browser.os.name)
           } else this.page = 'generate'
         },
         fnIsValid (params) {
