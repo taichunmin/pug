@@ -95,8 +95,7 @@ block script
             this.setLabel(params.label)
             this.setLink(params.link)
             // 判斷作業系統及瀏覽器
-            const browser = this.browser
-            this.page = _.lower(browser.os.name)
+            this.page = _.lower(this.browser.os.name)
           } else this.page = 'generate'
         },
         fnIsValid (params) {
