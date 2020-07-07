@@ -11,16 +11,18 @@ block style
 
 block content
   #app.container.text-monospace(v-cloak)
-    #android-chrome(v-if="page==='android-chrome'")
+    #android-chrome(v-if="page==='android'")
       h1 把捷徑加到主畫面
       ol
-        | 步驟
+        | 步驟：
+        li 請使用 Chrome 開啟
         li 點選瀏覽器右上角的「更多」按鈕
         li 點選「加到主畫面」
-    #ios-safari(v-else-if="page==='android-chrome'")
+    #ios-safari(v-else-if="page==='ios'")
       h1 把捷徑加到主畫面
       ol
-        | 步驟
+        | 步驟：
+        li 請使用 Safari 開啟
         li 點選瀏覽器下方的「分享」按鈕
         li 點選「加入主畫面螢幕」
     #generate.text-monospace(v-else)
@@ -94,7 +96,7 @@ block script
             this.setLink(params.link)
             // 判斷作業系統及瀏覽器
             const browser = this.browser
-            this.page = _.lower(`${browser.browser.name}-${browser.os.name}`)
+            this.page = _.lower(browser.os.name)
           } else this.page = 'generate'
         },
         fnIsValid (params) {
@@ -105,11 +107,15 @@ block script
           return url.searchParams.get(key)
         },
         setIcon (icon) {
-          const dom = document.querySelector("link[rel*='icon']") || document.createElement('link')
-          dom.type = 'image/x-icon'
-          dom.rel = 'shortcut icon'
-          dom.href = icon
-          document.getElementsByTagName('head')[0].appendChild(dom)
+          const favicon = document.querySelector("link[rel*='icon']") || document.createElement('link')
+          favicon.rel = 'shortcut icon'
+          favicon.href = icon
+          document.getElementsByTagName('head')[0].appendChild(favicon)
+
+          const appleTouchIcon = document.querySelector("link[rel*='apple-touch-icon']") || document.createElement('link')
+          favicon.rel = 'apple-touch-icon'
+          favicon.href = icon
+          document.getElementsByTagName('head')[0].appendChild(favicon)
         },
         setLabel (label) {
           document.title = label
