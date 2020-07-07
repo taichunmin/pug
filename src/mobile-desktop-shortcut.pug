@@ -8,20 +8,27 @@ block style
     :sass
       [v-cloak]
         display: none
+      .icon
+        width: 64px
+        height: 64px
+        display: block
+        margin: 0 auto
+        border-radius: 20%
+      .label
+        font-size: 12px
 
 block content
   #app.container.text-monospace(v-cloak)
-    #android-chrome(v-if="page==='android'")
-      h1.my-2.text-center 把捷徑加到主畫面
-      p 步驟：
-      ol
+    #tutorial(v-if="~['android', 'ios'].indexOf(page)")
+      h1.mt-2.mb-5.text-center 把捷徑加到主畫面
+      img.icon.mb-2(:src="icon")
+      .text-center.label.mb-5 {{ label }}
+      p 新增步驟：
+      ol#android-chrome(v-if="page==='android'")
         li 請使用 Android 的 Chrome 瀏覽器開啟
         li 點選瀏覽器右上角的「更多」按鈕
         li 點選「加到主畫面」
-    #ios-safari(v-else-if="page==='ios'")
-      h1.my-2.text-center 把捷徑加到主畫面
-      p 步驟：
-      ol
+      ol#ios-safari(v-else="page==='ios'")
         li 請使用 iOS 的 Safari 瀏覽器開啟
         li 點選瀏覽器下方的「分享」按鈕
         li 點選「加入主畫面螢幕」
@@ -91,8 +98,11 @@ block script
           }
           console.log(params)
           if (this.fnIsValid(params)) {
+            // 設定 this
+            _.each(params, (v, k) => { this[k] = v })
             // 設定 url, title, icon
-            this.setIcon(params.icon)
+            this.setIcon('shortcut icon', params.icon)
+            this.setIcon('apple-touch-icon', params.icon)
             this.setLabel(params.label)
             this.setLink(params.link)
             // 判斷作業系統及瀏覽器
@@ -106,16 +116,11 @@ block script
           const url = new URL(location)
           return url.searchParams.get(key)
         },
-        setIcon (icon) {
-          const favicon = document.querySelector("link[rel*='icon']") || document.createElement('link')
-          favicon.rel = 'shortcut icon'
-          favicon.href = icon
-          document.getElementsByTagName('head')[0].appendChild(favicon)
-
-          const appleTouchIcon = document.querySelector("link[rel*='apple-touch-icon']") || document.createElement('link')
-          favicon.rel = 'apple-touch-icon'
-          favicon.href = icon
-          document.getElementsByTagName('head')[0].appendChild(favicon)
+        setIcon (rel, icon) {
+          const dom = document.querySelector(`link[rel='${rel}']`) || document.createElement('link')
+          dom.rel = rel
+          dom.href = icon
+          document.getElementsByTagName('head')[0].appendChild(dom)
         },
         setLabel (label) {
           document.title = label
