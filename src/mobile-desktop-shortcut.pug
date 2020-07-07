@@ -1,0 +1,112 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '手機桌面捷徑產生器'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.container.text-monospace(v-cloak)
+    #generate.text-monospace
+      h2.my-2.text-center= title
+      .form-group
+        label(for="i-icon") 圖示
+        input#i-icon.form-control(type="url", name="icon", v-model="icon")
+        small#help-icon.form-text.text-muted 捷徑圖，附檔名 #[code .ico]
+      .form-group
+        label(for="i-label") 名稱
+        input#i-label.form-control(type="text", name="label", v-model="label")
+        small#help-label.form-text.text-muted 請填寫捷徑名稱
+      .form-group
+        label(for="i-link") 網址
+        input#i-link.form-control(type="url", name="link", v-model="link")
+        small#help-label.form-text.text-muted 請填寫捷徑網址
+      .form-group
+        label(for="i-result") 結果
+        input#i-result.form-control(:value="shortcut", readonly)
+        small#help-label.form-text.text-muted 請複製此網址
+      textarea#brwoser.form-control(style="font-size: 12px; height: 100px", :value="JSON.stringify(browser)")
+      a.btn.btn-primary(:href="shortcut", target="_blank") 測試
+    #android-chrome
+    #ios-safari
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
+  script.
+    /* global UAParser */
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        icon: 'https://iconarchive.com/download/i107326/google/noto-emoji-animals-nature/22215-dog.ico',
+        label: '測試',
+        link: 'https://taichunmin.idv.tw',
+        page: '',
+      },
+      async mounted () {
+        this.init()
+      },
+      computed: {
+        shortcut () {
+          if (!this.fnIsValid(this)) return '#'
+          const url = new URL('?', location)
+          url.searchParams.set('icon', this.icon)
+          url.searchParams.set('label', this.label)
+          url.searchParams.set('link', this.link)
+          url.searchParams.set('openExternalBrowser', 1) // for LINE
+          return url.href
+        },
+        browser () {
+          const parser = new UAParser()
+          const browser = parser.getResult()
+          delete browser.ua
+          return browser
+        },
+      },
+      methods: {
+        async init () {
+          // 讀取網址上的參數
+          const params = {
+            icon: this.param('icon'),
+            label: this.param('label'),
+            link: this.param('link'),
+          }
+          if (this.fnIsValid(params)) {
+            // 設定 url, title, icon
+            this.setIcon(params.icon)
+            this.setLabel(params.label)
+            this.setLink(params.link)
+            // 判斷作業系統及瀏覽器
+            this.page = 'android-chrome'
+          } else this.page = 'generate'
+        },
+        fnIsValid (params) {
+          return params.icon && params.label && params.link
+        },
+        param (key) {
+          const url = new URL(location)
+          return url.searchParams.get(key)
+        },
+        setIcon (icon) {
+          const dom = document.querySelector("link[rel*='icon']") || document.createElement('link')
+          dom.type = 'image/x-icon'
+          dom.rel = 'shortcut icon'
+          dom.href = icon
+          document.getElementsByTagName('head')[0].appendChild(dom)
+        },
+        setLabel (label) {
+          document.title = label
+        },
+        setLink (link) {
+          const url = new URL('mobile-desktop-shortcut-redirect.html', location)
+          url.searchParams.set('link', link)
+          history.replaceState(null, '', url.href)
+        },
+      },
+    })
