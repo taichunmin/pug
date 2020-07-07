@@ -8,7 +8,7 @@ block style
     :sass
       [v-cloak]
         display: none
-      .icon
+      .favicon
         width: 64px
         height: 64px
         display: block
@@ -16,22 +16,26 @@ block style
         border-radius: 20%
       .label
         font-size: 12px
+      .icon-18px
+        width: 18px
+        height: 18px
+
 
 block content
   #app.container.text-monospace(v-cloak)
     #tutorial(v-if="~['android', 'ios'].indexOf(page)")
       h1.mt-2.mb-5.text-center 把捷徑加到主畫面
-      img.icon.mb-2(:src="icon")
+      img.favicon.mb-2(:src="icon")
       .text-center.label.mb-5 {{ label }}
       p 新增步驟：
       ol#android-chrome(v-if="page==='android'")
         li 請使用 Android 的 Chrome 瀏覽器開啟
-        li 點選瀏覽器右上角的「更多」按鈕
-        li 點選「加到主畫面」
+        li 按一下瀏覽器右上角的「更多」圖示 #[img.icon-18px(src="https://lh3.googleusercontent.com/E2q6Vj9j60Dw0Z6NZFEx5vSB9yoZJp7C8suuvQXVA_2weMCXstGD7JEvNrzX3wuQrPtL=w18-h18")]
+        li 按一下「加到主畫面」
       ol#ios-safari(v-else="page==='ios'")
         li 請使用 iOS 的 Safari 瀏覽器開啟
-        li 點選瀏覽器下方的「分享」按鈕
-        li 點選「加入主畫面螢幕」
+        li 按一下下方工具列的「分享」按鈕 #[img.icon-18px(src="https://help.apple.com/assets/5E191630680CE2E07445B58A/5E191634680CE2E07445B591/zh_TW/27e42e6f0cf55937a03d7be3b912b6fa.png")]
+        li 按一下「加入主畫面螢幕」
     #generate.text-monospace(v-else)
       h2.my-2.text-center= title
       .form-group.my-2
