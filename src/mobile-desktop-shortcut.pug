@@ -13,15 +13,15 @@ block content
   #app.container.text-monospace(v-cloak)
     #android-chrome(v-if="page==='android'")
       h1 把捷徑加到主畫面
+      p 步驟：
       ol
-        | 步驟：
         li 請使用 Chrome 開啟
         li 點選瀏覽器右上角的「更多」按鈕
         li 點選「加到主畫面」
     #ios-safari(v-else-if="page==='ios'")
       h1 把捷徑加到主畫面
+      p 步驟：
       ol
-        | 步驟：
         li 請使用 Safari 開啟
         li 點選瀏覽器下方的「分享」按鈕
         li 點選「加入主畫面螢幕」
@@ -51,8 +51,10 @@ block script
   script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
   script(src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
   script(src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
   script.
     /* global UAParser */
+    const vConsole = new VConsole() // eslint-disable-line
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
