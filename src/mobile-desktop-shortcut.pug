@@ -46,7 +46,7 @@ block script
       data: {
         icon: 'https://obs.line-scdn.net/0hSG8QEK4LDGgFKCflNDtzPyR1Bwo2ShJjJ05ECiIvUFkrHE5QaUwQXnUqUVsgGx5uP0tHWU4oWg0pG0s4OwtCXSMvVVoqHQ/f256x256',
         label: 'YouBike Today',
-        link: 'https://line.me/R/ti/p/@katacha',
+        link: 'https://line.me/R/ti/p/@kadacha',
         page: '',
       },
       async mounted () {
@@ -83,7 +83,8 @@ block script
             this.setLabel(params.label)
             this.setLink(params.link)
             // 判斷作業系統及瀏覽器
-            this.page = 'android-chrome'
+            const browser = this.browser
+            this.page = _.lower(`${browser.browser.name}-${browser.os.name}`)
           } else this.page = 'generate'
         },
         fnIsValid (params) {
