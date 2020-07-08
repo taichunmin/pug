@@ -18,14 +18,20 @@ block content
     #page-step2(v-if="page === 'step2'")
       h1.my-3.text-center Step 2
       p 成功呼叫 getProfile，接下來請回到 Open Chat 中再次開啟 LIFF。
-      pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
     #page-step3(v-if="page === 'step3'")
       h1.my-3.text-center Step 3
       p 成功從 localStorage 中取得 profile。
-      pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
       button.btn.btn-danger.btn-block(type="button", @click="btnClearProfile") 清除 profile
     #page-error(v-if="page === 'error'")
       h1.my-3.text-center 發生錯誤
+    template(v-if="context")
+      h4 context
+      pre.language-json(v-html="prismjs(JSON.stringify(context, null, 2))")
+    template(v-if="profile")
+      h4 profile
+      pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
+    template(v-if="error")
+      h4 error
       pre.language-json(v-html="prismjs(JSON.stringify(error, null, 2))")
 
 block script
