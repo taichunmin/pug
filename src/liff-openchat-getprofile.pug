@@ -76,7 +76,7 @@ block script
           if (_.get(this, 'context.type') === 'square_chat') {
             // 在 Open Chat 內開啟
             this.profile = this.getSavedProfile()
-            this.page = this.profile ? 'step1' : 'step3'
+            this.page = this.profile ? 'step3' : 'step1'
           } else {
             // 在其他環境內開啟
             const cid = this.param('cid')
