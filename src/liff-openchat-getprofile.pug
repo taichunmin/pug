@@ -10,7 +10,7 @@ block style
         display: none
 
 block content
-  #app.container.text-monospace(v-cloak)
+  #app.container.my-4.text-monospace(v-cloak)
     #page-step1(v-if="page === 'step1'")
       h1.my-3.text-center Step 1
       p 請點選以下按鈕，讓程式可以順利呼叫 getProfile。
@@ -18,20 +18,20 @@ block content
     #page-step2(v-if="page === 'step2'")
       h1.my-3.text-center Step 2
       p 成功呼叫 getProfile，接下來請回到 Open Chat 中再次開啟 LIFF。
-      button.btn.btn-primary.btn-block(type="button", @click="btnClose") getProfile
+      button.btn.btn-primary.btn-block(type="button", @click="btnClose") 關閉頁面
     #page-step3(v-if="page === 'step3'")
       h1.my-3.text-center Step 3
       p 成功從 localStorage 中取得 profile。
       button.btn.btn-danger.btn-block(type="button", @click="btnClearProfile") 清除 profile
     #page-error(v-if="page === 'error'")
       h1.my-3.text-center 發生錯誤
-    template(v-if="context")
+    .my-3(v-if="context")
       h4 context
       pre.language-json(v-html="prismjs(JSON.stringify(context, null, 2))")
-    template(v-if="profile")
+    .my-3(v-if="profile")
       h4 profile
       pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
-    template(v-if="error")
+    .my-3(v-if="error")
       h4 error
       pre.language-json(v-html="prismjs(JSON.stringify(error, null, 2))")
 
@@ -129,6 +129,7 @@ block script
               url: url.href,
               external: true,
             })
+            return await new Promise(resolve => {}) // 永遠不會結束的 Promise
           } catch (err) {
             this.handleError(err)
           }
@@ -148,6 +149,7 @@ block script
           try {
             const cid = this.getCid()
             localStorage.removeItem(cid)
+            this.btnClose()
           } catch (err) {
             this.handleError(err)
           }
