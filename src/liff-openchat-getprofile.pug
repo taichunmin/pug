@@ -18,6 +18,7 @@ block content
     #page-step2(v-if="page === 'step2'")
       h1.my-3.text-center Step 2
       p 成功呼叫 getProfile，接下來請回到 Open Chat 中再次開啟 LIFF。
+      button.btn.btn-primary.btn-block(type="button", @click="btnClose") getProfile
     #page-step3(v-if="page === 'step3'")
       h1.my-3.text-center Step 3
       p 成功從 localStorage 中取得 profile。
@@ -130,6 +131,17 @@ block script
             })
           } catch (err) {
             this.handleError(err)
+          }
+        },
+        btnClose () {
+          try {
+            liff.closeWindow()
+          } catch (err) {
+            Swal.fire({
+              icon: 'error',
+              title: '發生錯誤',
+              text: '請手動關閉頁面',
+            })
           }
         },
         btnClearProfile () {
