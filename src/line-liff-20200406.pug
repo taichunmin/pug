@@ -56,7 +56,7 @@ block script
           await liff.init({ liffId: '1654046335-DzXpM8mx' })
           if (!liff.isInClient()) throw new Error('liff.isInClient() = false')
           const contextType = _.get(liff.getContext(), 'type')
-          if (!_.includes(['utou', 'room', 'group'], contextType)) throw new Error(`liff.getContext().type = ${contextType}`)
+          if (!_.includes(['utou', 'room', 'group', 'square_chat'], contextType)) throw new Error(`liff.getContext().type = ${contextType}`)
           this.page = 'chat'
         } catch (err) {
           this.page = 'non-chat'
