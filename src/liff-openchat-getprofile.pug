@@ -121,7 +121,7 @@ block script
           const url = new URL(location)
           return url.searchParams.get(key)
         },
-        btnOpenExternal () {
+        async btnOpenExternal () {
           try {
             const url = new URL('https://liff.line.me/1654046335-BWEQYWM1/')
             url.searchParams.set('cid', this.getCid())
