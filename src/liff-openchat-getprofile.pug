@@ -1,0 +1,146 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '在 Open Chat 執行 getProfile'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.container.text-monospace(v-cloak)
+    #page-step1(v-if="page === 'step1'")
+      h1.my-3.text-center Step 1
+      p 請點選以下按鈕，讓程式可以順利呼叫 getProfile。
+      button.btn.btn-primary.btn-block(type="button", @click="btnOpenExternal") getProfile
+    #page-step2(v-if="page === 'step2'")
+      h1.my-3.text-center Step 2
+      p 成功呼叫 getProfile，接下來請回到 Open Chat 中再次開啟 LIFF。
+      pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
+    #page-step3(v-if="page === 'step3'")
+      h1.my-3.text-center Step 3
+      p 成功從 localStorage 中取得 profile。
+      pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
+    #page-error(v-if="page === 'error'")
+      h1.my-3.text-center 發生錯誤
+      pre.language-json(v-html="prismjs(JSON.stringify(error, null, 2))")
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/vconsole/dist/vconsole.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script.
+    const vConsole = new VConsole() // eslint-disable-line
+    const errorToJson = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'originalError.response.data',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.transform(ERROR_KEYS, (json, k) => {
+        if (_.hasIn(err, k)) _.set(json, k, _.get(err, k))
+      }, {})
+    })()
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        context: null,
+        error: '',
+        page: '',
+        profile: null,
+      },
+      async mounted () {
+        try {
+          await liff.init({ liffId: '1654046335-BWEQYWM1' })
+          this.context = liff.getContext()
+
+          if (_.get(this, 'context.type') === 'square_chat') {
+            // 在 Open Chat 內開啟
+            this.profile = this.getSavedProfile()
+            this.page = this.profile ? 'step1' : 'step3'
+          } else {
+            // 在其他環境內開啟
+            const cid = this.param('cid')
+            if (!cid) throw new Error('cid is required.')
+            if (!liff.isLoggedIn()) {
+              liff.login({ redirectUri: location.href })
+              return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+            }
+            this.profile = await liff.getProfile()
+            localStorage.setItem(cid, JSON.stringify(this.profile))
+            this.page = 'step2'
+          }
+        } catch (err) {
+          this.handleError(err)
+        }
+      },
+      methods: {
+        getCid () {
+          const sid = _.get(this, 'context.squareId')
+          const mid = _.get(this, 'context.squareMemberId')
+          if (!sid || !mid) throw new Error()
+          return `${sid}-${mid}`
+        },
+        getSavedProfile () {
+          try {
+            const cid = this.getCid()
+            const saved = localStorage.getItem(cid)
+            return JSON.parse(saved)
+          } catch (err) {
+            return null
+          }
+        },
+        param (key) {
+          const url = new URL(location)
+          return url.searchParams.get(key)
+        },
+        btnOpenExternal () {
+          try {
+            const url = new URL('https://liff.line.me/1654046335-BWEQYWM1/')
+            url.searchParams.set('cid', this.getCid())
+            liff.openWindow({
+              url: url.href,
+              external: true,
+            })
+          } catch (err) {
+            this.handleError(err)
+          }
+        },
+        handleError (err) {
+          this.page = 'error'
+          this.error = errorToJson(err)
+          console.error(err)
+          Swal.fire({
+            icon: 'error',
+            title: '發生錯誤',
+            text: err.message,
+          })
+        },
+        prismjs (code, language = 'json') {
+          let dom = document.createElement('code')
+          dom.textContent = code
+          dom.className = `language-${language}`
+          Prism.highlightElement(dom)
+          return dom.outerHTML
+        },
+      },
+    })
