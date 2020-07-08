@@ -23,6 +23,7 @@ block content
       h1.my-3.text-center Step 3
       p 成功從 localStorage 中取得 profile。
       pre.language-json(v-html="prismjs(JSON.stringify(profile, null, 2))")
+      button.btn.btn-danger.btn-block(type="button", @click="btnClearProfile") 清除 profile
     #page-error(v-if="page === 'error'")
       h1.my-3.text-center 發生錯誤
       pre.language-json(v-html="prismjs(JSON.stringify(error, null, 2))")
@@ -121,6 +122,14 @@ block script
               url: url.href,
               external: true,
             })
+          } catch (err) {
+            this.handleError(err)
+          }
+        },
+        btnClearProfile () {
+          try {
+            const cid = this.getCid()
+            localStorage.removeItem(cid)
           } catch (err) {
             this.handleError(err)
           }
