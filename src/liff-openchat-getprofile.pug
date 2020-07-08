@@ -87,13 +87,13 @@ block script
             this.page = this.profile ? 'step3' : 'step1'
           } else {
             // 在其他環境內開啟
-            const cid = this.param('cid')
-            if (!cid) throw new Error('cid is required.')
             if (!liff.isLoggedIn()) {
               liff.login({ redirectUri: location.href })
               return await new Promise(resolve => {}) // 永遠不會結束的 Promise
             }
             this.profile = await liff.getProfile()
+            const cid = this.param('cid')
+            if (!cid) throw new Error('cid is required.')
             localStorage.setItem(cid, JSON.stringify(this.profile))
             this.page = 'step2'
           }
