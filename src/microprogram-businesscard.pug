@@ -297,7 +297,7 @@ block script
         英文姓名: joi.string().trim().empty().required(),
         手機號碼: joi.string().trim().regex(/^\d{10}$/).required(),
         分機: joi.string().trim().regex(/^\d{3}$/).required(),
-        電子郵件: joi.string().trim().empty().email().required(),
+        電子郵件: joi.string().trim().email({ tlds: false }).empty().required(),
       })
       return value => schema.validateAsync(value, { stripUnknown: true })
     })()
