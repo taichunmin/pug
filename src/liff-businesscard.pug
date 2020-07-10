@@ -31,15 +31,15 @@ block content
       .form-group.my-2
         label(for="i-csv") CSV 資料
         textarea#i-csv.form-control.form-control-sm(type="url", name="csv", v-model="i.csv")
-        small#help-label.form-text.text-muted 請填寫電子名片的 CSV 資料網址。
+        small#help-label.form-text.text-muted 請填寫數位版名片的 CSV 資料網址。
       .form-group.my-2
         label(for="i-tpl") JSON5 樣板
         textarea#i-tpl.form-control.form-control-sm(type="url", name="tpl", v-model="i.tpl")
-        small#help-label.form-text.text-muted 請填寫電子名片的 JSON5 樣板網址。
+        small#help-label.form-text.text-muted 請填寫數位版名片的 JSON5 樣板網址。
       .form-group.my-2
         label(for="i-uuid") UUID
         input#i-uuid.form-control.form-control-sm(type="text", name="uuid", v-model="i.uuid")
-        small#help-label.form-text.text-muted 請填寫電子名片的 CSV 資料中存在的 uuid。
+        small#help-label.form-text.text-muted 請填寫數位版名片的 CSV 資料中存在的 uuid。
       .form-group.my-2
         label(for="i-result") 結果
         textarea#brwoser.form-control.form-control-sm(:value="shortcut", ref="result", readonly)
@@ -193,7 +193,7 @@ block script
             if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
             let msg = JSON5.parse(this.render({ vcard: this.vcard, _, Qs }))
             if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
-              msg = { type: 'flex', altText: '請在手機上查看電子名片。', contents: msg }
+              msg = { type: 'flex', altText: '請在手機上查看數位版名片。', contents: msg }
             }
             if (!_.isArray(msg)) msg = [msg]
             console.log('msg =', JSON.stringify(msg))
