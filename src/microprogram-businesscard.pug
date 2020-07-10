@@ -11,12 +11,15 @@ block style
 
 block content
   #app.container.my-4.text-monospace(v-cloak)
+    h1.my-3.text-center 微程式 LINE 名片
     #share(v-if="vcard")
-      h1.my-3.text-center 微程式 LINE 名片
       p 請按一下「選擇分享對象」來透過 LINE 分享「{{ vcard.name_tw }}」的名片吧！
       button.btn.btn-lg.btn-success.btn-block(type="button", @click="btnShare") 選擇分享對象
+    #loading(v-else)
+      p 載入名片資料中，請稍候…
 
 block script
+  script(src="https://cdn.jsdelivr.net/npm/@hapi/joi@17/dist/joi-browser.min.js")
   script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     const errorToJson = (() => {
@@ -183,11 +186,21 @@ block script
                           size: 'sm',
                           text: `+886 ${vcard.mobile.slice(1)}`,
                           type: 'text',
+                          action: {
+                            type: 'uri',
+                            label: 'action',
+                            uri: `tel:${vcard.mobile}`,
+                          },
                         },
                         {
                           size: 'sm',
                           text: `+886 4 2369 2699 #${vcard.ext}`,
                           type: 'text',
+                          action: {
+                            type: 'uri',
+                            label: 'action',
+                            uri: `tel:04-23692699,${vcard.ext}`,
+                          },
                         },
                         {
                           size: 'sm',
@@ -203,12 +216,22 @@ block script
                   text: `${vcard.email}`,
                   type: 'text',
                   wrap: true,
+                  action: {
+                    type: 'uri',
+                    label: 'action',
+                    uri: `mailto:${vcard.email}`,
+                  },
                 },
                 {
                   margin: 'lg',
                   size: 'xxs',
                   text: '40757 台中市西屯區市政路402號7樓',
                   type: 'text',
+                  action: {
+                    type: 'uri',
+                    label: 'action',
+                    uri: 'https://www.google.com/maps/search/?api=1&query_place_id=ChIJAaZEqCYWaTQRMv6fuIsJEuo&query=%E5%BE%AE%E7%A8%8B%E5%BC%8F%E8%B3%87%E8%A8%8A',
+                  },
                 },
                 {
                   margin: 'none',
@@ -216,6 +239,11 @@ block script
                   text: '7F, No.402, Shizheng Rd., Xitun Dist., Taichung City 407, Taiwan',
                   type: 'text',
                   wrap: true,
+                  action: {
+                    type: 'uri',
+                    label: 'action',
+                    uri: 'https://www.google.com/maps/search/?api=1&query_place_id=ChIJAaZEqCYWaTQRMv6fuIsJEuo&query=%E5%BE%AE%E7%A8%8B%E5%BC%8F%E8%B3%87%E8%A8%8A',
+                  },
                 },
                 {
                   size: 'xxs',
@@ -228,6 +256,20 @@ block script
         },
       },
     })
+
+    const verifyVcard = (() => {
+      const schema = joi.object({
+        中文職稱: Joi.string().trim().empty().required(),
+        中文姓名: Joi.string().trim().empty().required(),
+        英文職稱: Joi.string().trim().empty().required(),
+        英文姓名: Joi.string().trim().empty().required(),
+        手機號碼: Joi.string().trim().regex(/^\d{10}$/).required(),
+        分機: Joi.string().trim().regex(/^\d{3}$/).required(),
+        電子郵件: Joi.string().trim().empty().email().required(),
+      })
+      return value => schema.validateAsync(value, { stripUnknown: true })
+    })()
+
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
@@ -280,16 +322,19 @@ block script
           }), 'data', [])
         },
         async getVcard (ext) {
-          const vcard = _.find(await this.getCsv(this.csv), { 分機: ext })
-          if (!vcard) return null
-          return {
-            title_tw: vcard['中文職稱'],
-            name_tw: vcard['中文姓名'],
-            title_en: vcard['英文職稱'],
-            name_en: vcard['英文姓名'],
-            mobile: vcard['手機號碼'],
-            ext: vcard['分機'],
-            email: vcard['電子郵件'],
+          try {
+            const vcard = await verifyVcard(_.find(await this.getCsv(this.csv), { 分機: ext }))
+            return {
+              title_tw: vcard['中文職稱'],
+              name_tw: vcard['中文姓名'],
+              title_en: vcard['英文職稱'],
+              name_en: vcard['英文姓名'],
+              mobile: vcard['手機號碼'],
+              ext: vcard['分機'],
+              email: vcard['電子郵件'],
+            }
+          } catch (err) {
+            return null
           }
         },
       },
