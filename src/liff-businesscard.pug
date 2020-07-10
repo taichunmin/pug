@@ -1,0 +1,216 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '數位版名片'
+
+block style
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/microprogram-businesscard.html")
+  meta(property="og:title", content="數位版名片")
+  meta(property="og:description", content="請開啟本連結並按一下「選擇分享對象」來透過 LINE 分享名片")
+  meta(property="og:image", content="https://i.imgur.com/5zNfhhe.png")
+  meta(property="og:image:width", content="600")
+  meta(property="og:image:height", content="315")
+  meta(property="og:type", content="website")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="fb:app_id", content="2133031763635285")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      textarea
+        height: 150px
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h1.my-3.text-center 數位版名片
+    #share(v-if="vcard")
+      p 請按一下「選擇分享對象」來透過 LINE 分享名片吧！
+      button.btn.btn-lg.btn-success.btn-block(type="button", @click="btnShare") 選擇分享對象
+    #form(v-else-if="!params", method="get", target="_blank")
+      .form-group.my-2
+        label(for="i-csv") CSV 資料
+        textarea#i-csv.form-control.form-control-sm(type="url", name="csv", v-model="i.csv")
+        small#help-label.form-text.text-muted 請填寫電子名片的 CSV 資料網址。
+      .form-group.my-2
+        label(for="i-tpl") JSON5 樣板
+        textarea#i-tpl.form-control.form-control-sm(type="url", name="tpl", v-model="i.tpl")
+        small#help-label.form-text.text-muted 請填寫電子名片的 JSON5 樣板網址。
+      .form-group.my-2
+        label(for="i-uuid") UUID
+        input#i-uuid.form-control.form-control-sm(type="text", name="uuid", v-model="i.uuid")
+        small#help-label.form-text.text-muted 請填寫電子名片的 CSV 資料中存在的 uuid。
+      .form-group.my-2
+        label(for="i-result") 結果
+        textarea#brwoser.form-control.form-control-sm(:value="shortcut", ref="result", readonly)
+        small#help-label.form-text.text-muted 請複製此網址，然後在 LINE 中傳給使用者。
+      button.btn.btn-success.my-2.mr-2(@click="btnCopy") 複製
+      a.btn.btn-primary.my-2.mr-2(:href="shortcut", target="_blank") 測試
+    #loading(v-else)
+      .text-center.py-3 載入名片資料中，請稍候…
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/@hapi/joi@17/dist/joi-browser.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script.
+    const errorToJson = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'originalError.response.data',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.transform(ERROR_KEYS, (json, k) => {
+        if (_.hasIn(err, k)) _.set(json, k, _.get(err, k))
+      }, {})
+    })()
+
+    const validateParams = (() => {
+      const schema = joi.object({
+        csv: joi.string().empty().required(),
+        tpl: joi.string().empty().required(),
+        uuid: joi.string().empty().required(),
+      })
+      return value => schema.validateAsync(value, { stripUnknown: true })
+    })()
+
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        error: null,
+        params: null,
+        render: null,
+        vcard: null,
+        i: {
+          csv: 'https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.csv',
+          tpl: 'https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.txt',
+          uuid: '00000000-0000-0000-0000-00000000000',
+        },
+      },
+      async mounted () {
+        try {
+          await liff.init({ liffId: '1654437282-nLNm7LAz' })
+          let params = {
+            csv: this.param('csv'),
+            tpl: this.param('tpl'),
+            uuid: this.param('uuid'),
+          }
+          try {
+            this.$set(this, 'params', await validateParams(params))
+          } catch (err) {
+            this.params = null
+            if (params.csv || params.tpl || params.uuid) {
+              this.$set(this, 'i', params)
+              throw err
+            }
+            return
+          }
+          if (!liff.isLoggedIn()) {
+            liff.login({ redirectUri: location.href })
+            return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+          }
+          if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker')
+          await Promise.all([
+            this.getTpl(),
+            this.getVcard(),
+          ])
+        } catch (err) {
+          this.handleError(err)
+        }
+      },
+      computed: {
+        shortcut () {
+          if (!this.i.csv || !this.i.tpl || !this.i.uuid) return ''
+          return `https://liff.line.me/1654437282-nLNm7LAz/?${Qs.stringify(this.i)}`
+        },
+      },
+      methods: {
+        param (key) {
+          const url = new URL(location)
+          return url.searchParams.get(key)
+        },
+        handleError (err) {
+          this.$set(this, 'error', errorToJson(err))
+          console.error(this.error)
+          Swal.fire({
+            icon: 'error',
+            title: '發生錯誤',
+            text: err.message,
+          })
+        },
+        async getTpl () {
+          try {
+            this.render = _.template(_.get(await axios.get(this.params.tpl, {
+              params: { cachebust: +new Date() },
+            }), 'data'))
+            if (!_.isFunction(this.render)) throw new Error('')
+          } catch (err) {
+            err.message = err.message ? `樣板獲取失敗: ${err.message}` :　'樣板獲取失敗'
+            this.render = null
+            throw err
+          }
+        },
+        async getCsv (csv) {
+          const res = _.trim(_.get(await axios.get(csv, {
+            params: { cachebust: +new Date() },
+          }), 'data'))
+          return _.get(Papa.parse(res, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async getVcard () {
+          try {
+            this.vcard = _.find(await this.getCsv(this.params.csv), { uuid: this.params.uuid })
+            if (!this.vcard) throw new Error('找不到 uuid 相同的名片')
+          } catch (err) {
+            err.message = err.message ? `名片資料獲取失敗: ${err.message}` :　'名片資料獲取失敗'
+            this.vcard = null
+            throw err
+          }
+        },
+        async btnShare () {
+          try {
+            if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
+            let msg = this.render({ vcard: this.vcard, _, Qs })
+            if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
+              msg = { type: 'flex', altText: '請在手機上查看電子名片。', contents: msg }
+            }
+            if (!_.isArray(msg)) msg = [msg]
+            await liff.shareTargetPicker(msg)
+            Swal.fire({
+              icon: 'success',
+              title: '名片已送出',
+            })
+          } catch (err) {
+            this.handleError(err)
+          }
+        },
+        async btnCopy () {
+          const copyText = this.$refs.result
+          copyText.select()
+          copyText.setSelectionRange(0, 99999) // For mobile devices
+          document.execCommand('copy')
+          await Swal.fire({
+            icon: 'success',
+            title: '複製成功',
+          })
+        },
+      },
+    })
