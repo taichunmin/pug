@@ -327,7 +327,6 @@ block script
           }
           if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker')
           this.vcard = await this.getVcard(this.param('ext'))
-          if (!this.vcard) throw new Error('無法取得名片資料')
         } catch (err) {
           this.handleError(err)
         }
@@ -364,19 +363,15 @@ block script
           }), 'data', [])
         },
         async getVcard (ext) {
-          try {
-            const vcard = await verifyVcard(_.find(await this.getCsv(this.csv), { 分機: ext }))
-            return {
-              title_tw: vcard['中文職稱'],
-              name_tw: vcard['中文姓名'],
-              title_en: vcard['英文職稱'],
-              name_en: vcard['英文姓名'],
-              mobile: vcard['手機號碼'],
-              ext: vcard['分機'],
-              email: vcard['電子郵件'],
-            }
-          } catch (err) {
-            return null
+          const vcard = await verifyVcard(_.find(await this.getCsv(this.csv), { 分機: ext }))
+          return {
+            title_tw: vcard['中文職稱'],
+            name_tw: vcard['中文姓名'],
+            title_en: vcard['英文職稱'],
+            name_en: vcard['英文姓名'],
+            mobile: vcard['手機號碼'],
+            ext: vcard['分機'],
+            email: vcard['電子郵件'],
           }
         },
       },
