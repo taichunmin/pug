@@ -107,7 +107,7 @@ block script
       async mounted () {
         try {
           await liff.init({ liffId: '1654437282-nLNm7LAz' })
-          let params = {
+          const params = {
             csv: this.param('csv'),
             tpl: this.param('tpl'),
             uuid: this.param('uuid'),
@@ -164,7 +164,7 @@ block script
             }), 'data'))
             if (!_.isFunction(this.render)) throw new Error('')
           } catch (err) {
-            err.message = err.message ? `樣板獲取失敗: ${err.message}` :　'樣板獲取失敗'
+            err.message = err.message ? `樣板獲取失敗: ${err.message}` : '樣板獲取失敗'
             this.render = null
             throw err
           }
@@ -183,7 +183,7 @@ block script
             this.vcard = _.find(await this.getCsv(this.params.csv), { uuid: this.params.uuid })
             if (!this.vcard) throw new Error('找不到 uuid 相同的名片')
           } catch (err) {
-            err.message = err.message ? `名片資料獲取失敗: ${err.message}` :　'名片資料獲取失敗'
+            err.message = err.message ? `名片資料獲取失敗: ${err.message}` : '名片資料獲取失敗'
             this.vcard = null
             throw err
           }
