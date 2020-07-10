@@ -49,6 +49,20 @@ block script
         if (_.hasIn(err, k)) _.set(json, k, _.get(err, k))
       }, {})
     })()
+    const gaScreenView = vcard => {
+      return `https://www.google-analytics.com/collect?${Qs.stringify({
+        an: '微程式 LINE 名片',
+        cd: `${vcard.name_tw}-${vcard.mobile}`, // 畫面名稱,
+        cid: `00000000-0000-0000-0000-00${vcard.mobile}`, // 手機號碼
+        ds: 'app', // 資料來源，填寫為 app
+        t: 'screenview',
+        tid: 'UA-39556213-12', // GA 追蹤代碼
+        uid: `${vcard.mobile}`, // 手機號碼
+        ul: 'zh-tw', // locale
+        v: 1, // api version
+        z: +new Date(),
+      })}`
+    }
     const renderVcard = vcard => ({
       altText: `請在手機上查看「${vcard.name_tw}」的名片。`,
       type: 'flex',
@@ -252,6 +266,24 @@ block script
                 },
               ],
             },
+            {
+              height: '1px',
+              layout: 'vertical',
+              offsetStart: '0px',
+              offsetTop: '0px',
+              position: 'absolute',
+              type: 'box',
+              width: '1px',
+              contents: [
+                {
+                  aspectMode: 'cover',
+                  aspectRatio: '1:1',
+                  size: 'full',
+                  type: 'image',
+                  url: gaScreenView(vcard),
+                },
+              ],
+            },
           ],
         },
       },
@@ -259,13 +291,13 @@ block script
 
     const verifyVcard = (() => {
       const schema = joi.object({
-        中文職稱: Joi.string().trim().empty().required(),
-        中文姓名: Joi.string().trim().empty().required(),
-        英文職稱: Joi.string().trim().empty().required(),
-        英文姓名: Joi.string().trim().empty().required(),
-        手機號碼: Joi.string().trim().regex(/^\d{10}$/).required(),
-        分機: Joi.string().trim().regex(/^\d{3}$/).required(),
-        電子郵件: Joi.string().trim().empty().email().required(),
+        中文職稱: joi.string().trim().empty().required(),
+        中文姓名: joi.string().trim().empty().required(),
+        英文職稱: joi.string().trim().empty().required(),
+        英文姓名: joi.string().trim().empty().required(),
+        手機號碼: joi.string().trim().regex(/^\d{10}$/).required(),
+        分機: joi.string().trim().regex(/^\d{3}$/).required(),
+        電子郵件: joi.string().trim().empty().email().required(),
       })
       return value => schema.validateAsync(value, { stripUnknown: true })
     })()
