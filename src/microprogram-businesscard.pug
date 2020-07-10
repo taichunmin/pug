@@ -13,7 +13,7 @@ block content
   #app.container.my-4.text-monospace(v-cloak)
     #share(v-if="vcard")
       h1.my-3.text-center 微程式 LINE 名片
-      p 請按一下「選擇分享對象」來透過 LINE 分享你的名片吧！
+      p 請按一下「選擇分享對象」來透過 LINE 分享「{{ vcard.name_tw }}」的名片吧！
       button.btn.btn-lg.btn-success.btn-block(type="button", @click="btnShare") 選擇分享對象
 
 block script
