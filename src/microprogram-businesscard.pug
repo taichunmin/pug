@@ -251,7 +251,7 @@ block script
         },
         async btnShare () {
           try {
-            await liff.shareTargetPicker([])
+            await liff.shareTargetPicker([renderVcard(this.vcard)])
           } catch (err) {
             this.handleError(err)
           }
@@ -268,7 +268,7 @@ block script
         },
         async getCsv (url) {
           const csv = _.trim(_.get(await axios.get(url, {
-            params: { cachebust: new Date() / 3e4 },
+            params: { cachebust: _.floor(new Date() / 3e4) },
           }), 'data'))
           return _.get(Papa.parse(csv, {
             encoding: 'utf8',
@@ -277,6 +277,7 @@ block script
         },
         async getVcard (ext) {
           const vcard = _.find(await this.getCsv(this.csv), { '分機': ext })
+          if (!vcard) return null
           return {
             title_tw: vcard['中文職稱'],
             name_tw: vcard['中文姓名'],
