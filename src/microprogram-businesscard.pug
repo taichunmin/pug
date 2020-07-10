@@ -1,0 +1,291 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '微程式 LINE 名片'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    #share(v-if="vcard")
+      h1.my-3.text-center 微程式 LINE 名片
+      p 請按一下「選擇分享對象」來透過 LINE 分享你的名片吧！
+      button.btn.btn-lg.btn-success.btn-block(type="button", @click="btnShare") 選擇分享對象
+
+block script
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script.
+    const errorToJson = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'originalError.response.data',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.transform(ERROR_KEYS, (json, k) => {
+        if (_.hasIn(err, k)) _.set(json, k, _.get(err, k))
+      }, {})
+    })()
+    const renderVcard = vcard => ({
+      "type": "bubble",
+      "size": "giga",
+      "body": {
+        "layout": "horizontal",
+        "paddingAll": "20px",
+        "type": "box",
+        "contents": [
+          {
+            "flex": 314,
+            "layout": "vertical",
+            "type": "box",
+            "contents": [
+              {
+                "layout": "vertical",
+                "type": "box",
+                "contents": [
+                  {
+                    "aspectMode": "fit",
+                    "aspectRatio": "314:100",
+                    "size": "full",
+                    "type": "image",
+                    "url": "https://i.imgur.com/XYWFmRx.png"
+                  }
+                ]
+              },
+              {
+                "flex": 1,
+                "layout": "vertical",
+                "type": "box",
+                "contents": [
+                  {
+                    "type": "filler"
+                  }
+                ]
+              },
+              {
+                "margin": "xl",
+                "size": "xxs",
+                "text": `${vcard.title_tw}`,
+                "type": "text",
+                "wrap": true
+              },
+              {
+                "size": "lg",
+                "text": `${vcard.name_tw}`,
+                "type": "text",
+                "weight": "bold",
+                "wrap": true
+              },
+              {
+                "margin": "xl",
+                "size": "xxs",
+                "text": `${vcard.title_en}`,
+                "type": "text",
+                "wrap": true
+              },
+              {
+                "size": "lg",
+                "text": `${vcard.name_en}`,
+                "type": "text",
+                "weight": "bold",
+                "wrap": true
+              }
+            ]
+          },
+          {
+            "flex": 624,
+            "layout": "vertical",
+            "margin": "xl",
+            "spacing": "sm",
+            "type": "box",
+            "contents": [
+              {
+                "layout": "vertical",
+                "type": "box",
+                "contents": [
+                  {
+                    "aspectMode": "fit",
+                    "aspectRatio": "624:100",
+                    "size": "full",
+                    "type": "image",
+                    "url": "https://i.imgur.com/AkL7eqf.png"
+                  }
+                ]
+              },
+              {
+                "layout": "horizontal",
+                "margin": "lg",
+                "spacing": "md",
+                "type": "box",
+                "contents": [
+                  {
+                    "flex": 0,
+                    "layout": "vertical",
+                    "type": "box",
+                    "contents": [
+                      {
+                        "align": "center",
+                        "color": "#E2231A",
+                        "flex": 0,
+                        "size": "sm",
+                        "text": "M",
+                        "type": "text",
+                        "weight": "bold"
+                      },
+                      {
+                        "align": "center",
+                        "color": "#E2231A",
+                        "flex": 0,
+                        "size": "sm",
+                        "text": "T",
+                        "type": "text",
+                        "weight": "bold"
+                      },
+                      {
+                        "align": "center",
+                        "color": "#E2231A",
+                        "flex": 0,
+                        "size": "sm",
+                        "text": "F",
+                        "type": "text",
+                        "weight": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                      {
+                        "size": "sm",
+                        "text": `+886 ${vcard.mobile.slice(1)}`,
+                        "type": "text"
+                      },
+                      {
+                        "size": "sm",
+                        "text": `+886 4 2369 2699 #${vcard.ext}`,
+                        "type": "text"
+                      },
+                      {
+                        "size": "sm",
+                        "text": "+886 4 2258 8577",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "margin": "lg",
+                "text": `${vcard.email}`,
+                "type": "text",
+                "wrap": true
+              },
+              {
+                "margin": "lg",
+                "size": "xxs",
+                "text": "40757 台中市西屯區市政路402號7樓",
+                "type": "text"
+              },
+              {
+                "margin": "none",
+                "size": "xxs",
+                "text": "7F, No.402, Shizheng Rd., Xitun Dist., Taichung City 407, Taiwan",
+                "type": "text",
+                "wrap": true
+              },
+              {
+                "size": "xxs",
+                "text": "統一編號  89798198",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      }
+    })
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        csv: 'https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vSGQI88CcLpmk21Dv1Q56oOhhg7_3cVyM6HtPYWXm_ozdM2pZPTIpjy1AHtjSZa9rDbW1yaS74n6nHA/pub?gid=0&single=true&output=csv',
+        vcard: null,
+      },
+      async mounted () {
+        try {
+          await liff.init({ liffId: '1654437282-n2QwW3Nm' })
+          if (!liff.isLoggedIn()) {
+            liff.login({ redirectUri: location.href })
+            return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+          }
+          if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker')
+          this.vcard = await this.getVcard(this.param('ext'))
+          if (!this.vcard) throw new Error('無法取得名片資料')
+        } catch (err) {
+          this.handleError(err)
+        }
+      },
+      methods: {
+        param (key) {
+          const url = new URL(location)
+          return url.searchParams.get(key)
+        },
+        async btnShare () {
+          try {
+            await liff.shareTargetPicker([])
+          } catch (err) {
+            this.handleError(err)
+          }
+        },
+        handleError (err) {
+          this.page = 'error'
+          this.error = errorToJson(err)
+          console.error(err)
+          Swal.fire({
+            icon: 'error',
+            title: '發生錯誤',
+            text: err.message,
+          })
+        },
+        async getCsv (url) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: new Date() / 3e4 },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async getVcard (ext) {
+          const vcard = _.find(await this.getCsv(this.csv), { '分機': ext })
+          return {
+            title_tw: vcard['中文職稱'],
+            name_tw: vcard['中文姓名'],
+            title_en: vcard['英文職稱'],
+            name_en: vcard['英文姓名'],
+            mobile: vcard['手機號碼'],
+            ext: vcard['分機'],
+            email: vcard['電子郵件'],
+          }
+        },
+      },
+    })
