@@ -47,182 +47,186 @@ block script
       }, {})
     })()
     const renderVcard = vcard => ({
-      "type": "bubble",
-      "size": "giga",
-      "body": {
-        "layout": "horizontal",
-        "paddingAll": "20px",
-        "type": "box",
-        "contents": [
-          {
-            "flex": 314,
-            "layout": "vertical",
-            "type": "box",
-            "contents": [
-              {
-                "layout": "vertical",
-                "type": "box",
-                "contents": [
-                  {
-                    "aspectMode": "fit",
-                    "aspectRatio": "314:100",
-                    "size": "full",
-                    "type": "image",
-                    "url": "https://i.imgur.com/XYWFmRx.png"
-                  }
-                ]
-              },
-              {
-                "flex": 1,
-                "layout": "vertical",
-                "type": "box",
-                "contents": [
-                  {
-                    "type": "filler"
-                  }
-                ]
-              },
-              {
-                "margin": "xl",
-                "size": "xxs",
-                "text": `${vcard.title_tw}`,
-                "type": "text",
-                "wrap": true
-              },
-              {
-                "size": "lg",
-                "text": `${vcard.name_tw}`,
-                "type": "text",
-                "weight": "bold",
-                "wrap": true
-              },
-              {
-                "margin": "xl",
-                "size": "xxs",
-                "text": `${vcard.title_en}`,
-                "type": "text",
-                "wrap": true
-              },
-              {
-                "size": "lg",
-                "text": `${vcard.name_en}`,
-                "type": "text",
-                "weight": "bold",
-                "wrap": true
-              }
-            ]
-          },
-          {
-            "flex": 624,
-            "layout": "vertical",
-            "margin": "xl",
-            "spacing": "sm",
-            "type": "box",
-            "contents": [
-              {
-                "layout": "vertical",
-                "type": "box",
-                "contents": [
-                  {
-                    "aspectMode": "fit",
-                    "aspectRatio": "624:100",
-                    "size": "full",
-                    "type": "image",
-                    "url": "https://i.imgur.com/AkL7eqf.png"
-                  }
-                ]
-              },
-              {
-                "layout": "horizontal",
-                "margin": "lg",
-                "spacing": "md",
-                "type": "box",
-                "contents": [
-                  {
-                    "flex": 0,
-                    "layout": "vertical",
-                    "type": "box",
-                    "contents": [
-                      {
-                        "align": "center",
-                        "color": "#E2231A",
-                        "flex": 0,
-                        "size": "sm",
-                        "text": "M",
-                        "type": "text",
-                        "weight": "bold"
-                      },
-                      {
-                        "align": "center",
-                        "color": "#E2231A",
-                        "flex": 0,
-                        "size": "sm",
-                        "text": "T",
-                        "type": "text",
-                        "weight": "bold"
-                      },
-                      {
-                        "align": "center",
-                        "color": "#E2231A",
-                        "flex": 0,
-                        "size": "sm",
-                        "text": "F",
-                        "type": "text",
-                        "weight": "bold"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                      {
-                        "size": "sm",
-                        "text": `+886 ${vcard.mobile.slice(1)}`,
-                        "type": "text"
-                      },
-                      {
-                        "size": "sm",
-                        "text": `+886 4 2369 2699 #${vcard.ext}`,
-                        "type": "text"
-                      },
-                      {
-                        "size": "sm",
-                        "text": "+886 4 2258 8577",
-                        "type": "text"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "margin": "lg",
-                "text": `${vcard.email}`,
-                "type": "text",
-                "wrap": true
-              },
-              {
-                "margin": "lg",
-                "size": "xxs",
-                "text": "40757 台中市西屯區市政路402號7樓",
-                "type": "text"
-              },
-              {
-                "margin": "none",
-                "size": "xxs",
-                "text": "7F, No.402, Shizheng Rd., Xitun Dist., Taichung City 407, Taiwan",
-                "type": "text",
-                "wrap": true
-              },
-              {
-                "size": "xxs",
-                "text": "統一編號  89798198",
-                "type": "text"
-              }
-            ]
-          }
-        ]
-      }
+      type: 'flex',
+      altText: `請在手機上查看「${vcard.name_tw}」的名片。`,
+      contents: {
+        type: 'bubble',
+        size: 'giga',
+        body: {
+          layout: 'horizontal',
+          paddingAll: '20px',
+          type: 'box',
+          contents: [
+            {
+              flex: 314,
+              layout: 'vertical',
+              type: 'box',
+              contents: [
+                {
+                  layout: 'vertical',
+                  type: 'box',
+                  contents: [
+                    {
+                      aspectMode: 'fit',
+                      aspectRatio: '314:100',
+                      size: 'full',
+                      type: 'image',
+                      url: 'https://i.imgur.com/XYWFmRx.png',
+                    },
+                  ],
+                },
+                {
+                  flex: 1,
+                  layout: 'vertical',
+                  type: 'box',
+                  contents: [
+                    {
+                      type: 'filler',
+                    },
+                  ],
+                },
+                {
+                  margin: 'xl',
+                  size: 'xxs',
+                  text: `${vcard.title_tw}`,
+                  type: 'text',
+                  wrap: true,
+                },
+                {
+                  size: 'lg',
+                  text: `${vcard.name_tw}`,
+                  type: 'text',
+                  weight: 'bold',
+                  wrap: true,
+                },
+                {
+                  margin: 'xl',
+                  size: 'xxs',
+                  text: `${vcard.title_en}`,
+                  type: 'text',
+                  wrap: true,
+                },
+                {
+                  size: 'lg',
+                  text: `${vcard.name_en}`,
+                  type: 'text',
+                  weight: 'bold',
+                  wrap: true,
+                },
+              ],
+            },
+            {
+              flex: 624,
+              layout: 'vertical',
+              margin: 'xl',
+              spacing: 'sm',
+              type: 'box',
+              contents: [
+                {
+                  layout: 'vertical',
+                  type: 'box',
+                  contents: [
+                    {
+                      aspectMode: 'fit',
+                      aspectRatio: '624:100',
+                      size: 'full',
+                      type: 'image',
+                      url: 'https://i.imgur.com/AkL7eqf.png',
+                    },
+                  ],
+                },
+                {
+                  layout: 'horizontal',
+                  margin: 'lg',
+                  spacing: 'md',
+                  type: 'box',
+                  contents: [
+                    {
+                      flex: 0,
+                      layout: 'vertical',
+                      type: 'box',
+                      contents: [
+                        {
+                          align: 'center',
+                          color: '#E2231A',
+                          flex: 0,
+                          size: 'sm',
+                          text: 'M',
+                          type: 'text',
+                          weight: 'bold',
+                        },
+                        {
+                          align: 'center',
+                          color: '#E2231A',
+                          flex: 0,
+                          size: 'sm',
+                          text: 'T',
+                          type: 'text',
+                          weight: 'bold',
+                        },
+                        {
+                          align: 'center',
+                          color: '#E2231A',
+                          flex: 0,
+                          size: 'sm',
+                          text: 'F',
+                          type: 'text',
+                          weight: 'bold',
+                        },
+                      ],
+                    },
+                    {
+                      type: 'box',
+                      layout: 'vertical',
+                      contents: [
+                        {
+                          size: 'sm',
+                          text: `+886 ${vcard.mobile.slice(1)}`,
+                          type: 'text',
+                        },
+                        {
+                          size: 'sm',
+                          text: `+886 4 2369 2699 #${vcard.ext}`,
+                          type: 'text',
+                        },
+                        {
+                          size: 'sm',
+                          text: '+886 4 2258 8577',
+                          type: 'text',
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  margin: 'lg',
+                  text: `${vcard.email}`,
+                  type: 'text',
+                  wrap: true,
+                },
+                {
+                  margin: 'lg',
+                  size: 'xxs',
+                  text: '40757 台中市西屯區市政路402號7樓',
+                  type: 'text',
+                },
+                {
+                  margin: 'none',
+                  size: 'xxs',
+                  text: '7F, No.402, Shizheng Rd., Xitun Dist., Taichung City 407, Taiwan',
+                  type: 'text',
+                  wrap: true,
+                },
+                {
+                  size: 'xxs',
+                  text: '統一編號  89798198',
+                  type: 'text',
+                },
+              ],
+            },
+          ],
+        },
+      },
     })
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
@@ -276,7 +280,7 @@ block script
           }), 'data', [])
         },
         async getVcard (ext) {
-          const vcard = _.find(await this.getCsv(this.csv), { '分機': ext })
+          const vcard = _.find(await this.getCsv(this.csv), { 分機: ext })
           if (!vcard) return null
           return {
             title_tw: vcard['中文職稱'],

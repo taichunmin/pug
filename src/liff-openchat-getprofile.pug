@@ -40,6 +40,7 @@ block script
   script(src="https://cdn.jsdelivr.net/npm/vconsole/dist/vconsole.min.js")
   script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
+    /* global Prism */
     const vConsole = new VConsole() // eslint-disable-line
     const errorToJson = (() => {
       const ERROR_KEYS = [
@@ -165,7 +166,7 @@ block script
           })
         },
         prismjs (code, language = 'json') {
-          let dom = document.createElement('code')
+          const dom = document.createElement('code')
           dom.textContent = code
           dom.className = `language-${language}`
           Prism.highlightElement(dom)
