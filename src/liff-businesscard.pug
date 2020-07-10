@@ -83,9 +83,9 @@ block script
 
     const validateParams = (() => {
       const schema = joi.object({
-        csv: joi.string().empty().required(),
-        tpl: joi.string().empty().required(),
-        uuid: joi.string().empty().required(),
+        csv: joi.string().uri({ scheme: ['https'] }).empty().required(),
+        tpl: joi.string().uri({ scheme: ['https'] }).empty().required(),
+        uuid: joi.string().uuid().empty().required(),
       })
       return value => schema.validateAsync(value, { stripUnknown: true })
     })()
@@ -98,9 +98,9 @@ block script
         render: null,
         vcard: null,
         i: {
-          csv: 'https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.csv',
-          tpl: 'https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.txt',
-          uuid: '00000000-0000-0000-0000-00000000000',
+          csv: 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.csv',
+          tpl: 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.txt',
+          uuid: '00000000-0000-0000-0000-000000000000',
         },
       },
       async mounted () {
@@ -147,7 +147,7 @@ block script
         },
         handleError (err) {
           this.$set(this, 'error', errorToJson(err))
-          console.error(this.error)
+          console.error(err)
           Swal.fire({
             icon: 'error',
             title: '發生錯誤',
