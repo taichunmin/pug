@@ -59,15 +59,15 @@ block script
         if (_.hasIn(err, k)) _.set(json, k, _.get(err, k))
       }, {})
     })()
+    const h4 = () => _.padStart(_.random(65535).toString(16), 4, '0')
     const gaScreenView = vcard => {
       return `https://www.google-analytics.com/collect?${Qs.stringify({
         an: '微程式 LINE 名片',
         cd: `${vcard.name_tw}-${vcard.mobile}`, // 畫面名稱,
-        cid: `00000000-0000-0000-0000-00${vcard.mobile}`, // 手機號碼
+        cid: `${h4()}${h4()}-${h4()}-${h4()}-${h4()}-00${vcard.mobile}`, // uuid
         ds: 'app', // 資料來源，填寫為 app
         t: 'screenview',
         tid: 'UA-39556213-12', // GA 追蹤代碼
-        uid: `${vcard.mobile}`, // 手機號碼
         ul: 'zh-tw', // locale
         v: 1, // api version
         z: +new Date(),
