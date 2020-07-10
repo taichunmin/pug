@@ -98,8 +98,8 @@ block script
         render: null,
         vcard: null,
         i: {
-          csv: 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.csv',
-          tpl: 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/16c8c39fdd6dabb78b72f024c7f4d86860162fc2/microprogram.txt',
+          csv: 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/microprogram.csv',
+          tpl: 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/e6123d3ece7c8c88c6064fb9a69857bf/raw/microprogram.txt',
           uuid: '00000000-0000-0000-0000-000000000000',
         },
       },
@@ -188,11 +188,12 @@ block script
         async btnShare () {
           try {
             if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
-            let msg = this.render({ vcard: this.vcard, _, Qs })
+            let msg = JSON5.parse(this.render({ vcard: this.vcard, _, Qs }))
             if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
               msg = { type: 'flex', altText: '請在手機上查看電子名片。', contents: msg }
             }
             if (!_.isArray(msg)) msg = [msg]
+            console.log('msg =', JSON.stringify(msg))
             await liff.shareTargetPicker(msg)
             Swal.fire({
               icon: 'success',
