@@ -171,7 +171,7 @@ block script
                       layout: 'vertical',
                       type: 'box',
                       contents: [
-                        {
+                        ...(vcard.mobile !== '0000000000' ? [{
                           align: 'center',
                           color: '#E2231A',
                           flex: 0,
@@ -179,7 +179,7 @@ block script
                           text: 'M',
                           type: 'text',
                           weight: 'bold',
-                        },
+                        }] : []),
                         {
                           align: 'center',
                           color: '#E2231A',
