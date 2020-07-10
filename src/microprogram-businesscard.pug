@@ -339,6 +339,10 @@ block script
         async btnShare () {
           try {
             await liff.shareTargetPicker([renderVcard(this.vcard)])
+            Swal.fire({
+              icon: 'success',
+              title: '名片已送出',
+            })
           } catch (err) {
             this.handleError(err)
           }
