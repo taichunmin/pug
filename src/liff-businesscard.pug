@@ -161,7 +161,7 @@ block script
           try {
             this.render = _.template(_.get(await axios.get(this.params.tpl, {
               params: { cachebust: +new Date() },
-              responseType: 'text',
+              transformResponse: [],
             }), 'data'))
             if (!_.isFunction(this.render)) throw new Error('')
           } catch (err) {
