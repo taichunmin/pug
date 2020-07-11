@@ -219,12 +219,16 @@ block script
           }
         },
         async btnSend () {
-          if (!this.canSendMessages()) throw new Error('沒有傳訊訊息的權限，請在聊天視窗內開啟。')
-          await liff.sendMessages(this.getRenderedMsgs())
-          Swal.fire({
-            icon: 'success',
-            title: '名片已傳送',
-          })
+          try {
+            if (!this.canSendMessages()) throw new Error('沒有傳訊訊息的權限，請在聊天視窗內開啟。')
+            await liff.sendMessages(this.getRenderedMsgs())
+            Swal.fire({
+              icon: 'success',
+              title: '名片已傳送',
+            })
+          } catch (err) {
+            this.handleError(err)
+          }
         },
         async btnCopy () {
           const copyText = this.$refs.result
