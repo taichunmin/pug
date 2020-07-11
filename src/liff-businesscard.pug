@@ -107,6 +107,7 @@ block script
       async mounted () {
         try {
           await liff.init({ liffId: '1654437282-nLNm7LAz' })
+          if (this.param('liff.state')) return await new Promise(resolve => {}) // 永遠不會結束的 Promise
           const params = {
             csv: this.param('csv'),
             tpl: this.param('tpl'),
