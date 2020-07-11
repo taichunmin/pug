@@ -26,7 +26,8 @@ block content
     h1.my-3.text-center 數位版名片
     #share(v-if="page === 'share'")
       p 請按一下「選擇分享對象」來透過 LINE 分享名片吧！
-      button.btn.btn-lg.btn-success.btn-block(type="button", @click="btnShare") 選擇分享對象
+      button.btn.btn-lg.btn-success.btn-block.my-2(type="button", @click="btnShare") 選擇分享對象
+      button.btn.btn-lg.btn-info.btn-block.my-2(type="button", @click="btnSend") 傳送到目前聊天視窗
     #form(v-if="page === 'form'", method="get", target="_blank")
       .form-group.my-2
         label(for="i-csv") CSV 資料
@@ -128,7 +129,6 @@ block script
             liff.login({ redirectUri: location.href })
             return await new Promise(resolve => {}) // 永遠不會結束的 Promise
           }
-          if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker')
           await Promise.all([
             this.getTpl(),
             this.getVcard(),
@@ -157,6 +157,22 @@ block script
             title: '發生錯誤',
             text: err.message,
           })
+        },
+        canSendMessages () {
+          if (!liff.isInClient()) return false
+          const contextType = _.get(liff.getContext(), 'type')
+          if (!_.includes(['utou', 'room', 'group', 'square_chat'], contextType)) return false
+          return true
+        },
+        getRenderedMsgs () {
+          if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
+          let msg = JSON5.parse(this.render({ vcard: this.vcard, _, Qs }))
+          if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
+            msg = { type: 'flex', altText: '請在手機上查看數位版名片。', contents: msg }
+          }
+          if (!_.isArray(msg)) msg = [msg]
+          console.log('msg =', JSON.stringify(msg))
+          return msg
         },
         async getTpl () {
           try {
@@ -192,21 +208,23 @@ block script
         },
         async btnShare () {
           try {
-            if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
-            let msg = JSON5.parse(this.render({ vcard: this.vcard, _, Qs }))
-            if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
-              msg = { type: 'flex', altText: '請在手機上查看數位版名片。', contents: msg }
-            }
-            if (!_.isArray(msg)) msg = [msg]
-            console.log('msg =', JSON.stringify(msg))
-            await liff.shareTargetPicker(msg)
+            if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker，請嘗試更新應用程式版本。')
+            await liff.shareTargetPicker(this.getRenderedMsgs())
             Swal.fire({
               icon: 'success',
-              title: '名片已送出',
+              title: '名片已分享',
             })
           } catch (err) {
             this.handleError(err)
           }
+        },
+        async btnSend () {
+          if (!this.canSendMessages()) throw new Error('沒有傳訊訊息的權限，請在聊天視窗內開啟。')
+          await liff.sendMessages(this.getRenderedMsgs())
+          Swal.fire({
+            icon: 'success',
+            title: '名片已傳送',
+          })
         },
         async btnCopy () {
           const copyText = this.$refs.result
