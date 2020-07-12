@@ -80,8 +80,9 @@ block script
       return value => schema.validateAsync(value, { stripUnknown: true })
     })()
 
-    const TPL_URL = 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/4c3931a5ef5168b8ddab341c770b151e/raw/microprogram.txt'
+    const TPL_PREFIX = 'https://cors-anywhere.herokuapp.com/https://gist.github.com/taichunmin/4c3931a5ef5168b8ddab341c770b151e/raw/'
     const CSV_URL = 'https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vSGQI88CcLpmk21Dv1Q56oOhhg7_3cVyM6HtPYWXm_ozdM2pZPTIpjy1AHtjSZa9rDbW1yaS74n6nHA/pub?gid=0&single=true&output=csv'
+    const LIFF_ID = '1654437282-n2QwW3Nm'
 
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
@@ -89,15 +90,15 @@ block script
         error: null,
         page: 'loading',
         params: null,
-        render: null,
         vcard: null,
+        renders: {},
         i: {
           ext: 100,
         },
       },
       async mounted () {
         try {
-          await liff.init({ liffId: '1654437282-n2QwW3Nm' })
+          await liff.init({ liffId: LIFF_ID })
           if (this.param('liff.state')) return await new Promise(resolve => {}) // 永遠不會結束的 Promise
           const params = {
             ext: this.param('ext'),
@@ -118,7 +119,8 @@ block script
             return await new Promise(resolve => {}) // 永遠不會結束的 Promise
           }
           await Promise.all([
-            this.getTpl(),
+            this.getTpl('default', `${TPL_PREFIX}microprogram-default.txt`),
+            this.getTpl('no-mobile', `${TPL_PREFIX}microprogram-no-mobile.txt`),
             this.getVcard(),
           ])
           this.page = 'share'
@@ -129,7 +131,7 @@ block script
       computed: {
         shortcut () {
           if (!this.i.ext) return ''
-          return `https://liff.line.me/1654046335-BWEQYWM1/?${Qs.stringify(this.i)}`
+          return `https://liff.line.me/${LIFF_ID}/?${Qs.stringify(this.i)}`
         },
       },
       methods: {
@@ -153,8 +155,9 @@ block script
           return true
         },
         getRenderedMsgs () {
-          if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
-          let msg = JSON5.parse(this.render({ vcard: this.vcard, _, Qs }))
+          let render = 'default'
+          if (vcard.手機 === '0000000000') render = 'no-mobile'
+          let msg = JSON5.parse(this.renders[render]({ vcard: this.vcard, _, Qs }))
           if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
             msg = { type: 'flex', altText: '請在手機上查看數位版名片。', contents: msg }
           }
@@ -162,13 +165,14 @@ block script
           console.log('msg =', JSON.stringify(msg))
           return msg
         },
-        async getTpl () {
+        async getTpl (key, url) {
           try {
-            this.render = _.template(_.get(await axios.get(TPL_URL, {
+            let render = _.template(_.get(await axios.get(url, {
               params: { cachebust: +new Date() },
               transformResponse: [],
             }), 'data'))
-            if (!_.isFunction(this.render)) throw new Error('')
+            if (!_.isFunction(render)) throw new Error('')
+            this.renders[key] = render
           } catch (err) {
             err.message = err.message ? `名片樣板獲取失敗: ${err.message}` : '名片樣板獲取失敗'
             this.render = null
