@@ -34,9 +34,9 @@ block content
         textarea#i-csv.form-control.form-control-sm(type="url", name="csv", v-model="i.csv")
         small#help-label.form-text.text-muted 請填寫數位版名片的 CSV 資料網址。
       .form-group.my-2
-        label(for="i-tpl") JSON5 樣板
+        label(for="i-tpl") 名片樣板
         textarea#i-tpl.form-control.form-control-sm(type="url", name="tpl", v-model="i.tpl")
-        small#help-label.form-text.text-muted 請填寫數位版名片的 JSON5 樣板網址。
+        small#help-label.form-text.text-muted 請填寫數位版名片的名片樣板網址。
       .form-group.my-2
         label(for="i-uuid") UUID
         input#i-uuid.form-control.form-control-sm(type="text", name="uuid", v-model="i.uuid")
@@ -182,7 +182,7 @@ block script
             }), 'data'))
             if (!_.isFunction(this.render)) throw new Error('')
           } catch (err) {
-            err.message = err.message ? `樣板獲取失敗: ${err.message}` : '樣板獲取失敗'
+            err.message = err.message ? `名片樣板獲取失敗: ${err.message}` : '名片樣板獲取失敗'
             this.render = null
             throw err
           }
@@ -199,7 +199,7 @@ block script
         async getVcard () {
           try {
             this.vcard = _.find(await this.getCsv(this.params.csv), { uuid: this.params.uuid })
-            if (!this.vcard) throw new Error('找不到 uuid 相同的名片')
+            if (!this.vcard) throw new Error('找不到指定的名片資料')
           } catch (err) {
             err.message = err.message ? `名片資料獲取失敗: ${err.message}` : '名片資料獲取失敗'
             this.vcard = null
