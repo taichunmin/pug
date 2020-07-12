@@ -156,7 +156,7 @@ block script
         },
         getRenderedMsgs () {
           let render = 'default'
-          if (vcard.手機 === '0000000000') render = 'no-mobile'
+          if (this.vcard.手機 === '0000000000') render = 'no-mobile'
           let msg = JSON5.parse(this.renders[render]({ vcard: this.vcard, _, Qs }))
           if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
             msg = { type: 'flex', altText: '請在手機上查看數位版名片。', contents: msg }
