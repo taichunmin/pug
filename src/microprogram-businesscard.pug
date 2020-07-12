@@ -129,7 +129,7 @@ block script
       computed: {
         shortcut () {
           if (!this.i.ext) return ''
-          return `https://liff.line.me/1654437282-nLNm7LAz/?${Qs.stringify(this.i)}`
+          return `https://liff.line.me/1654046335-BWEQYWM1/?${Qs.stringify(this.i)}`
         },
       },
       methods: {
@@ -186,7 +186,7 @@ block script
         },
         async getVcard () {
           try {
-            this.vcard = _.find(await this.getCsv(CSV_URL), { uuid: this.params.ext })
+            this.vcard = _.find(await this.getCsv(CSV_URL), { uuid: `${this.params.ext}` })
             if (!this.vcard) throw new Error('找不到指定的名片資料')
           } catch (err) {
             err.message = err.message ? `名片資料獲取失敗: ${err.message}` : '名片資料獲取失敗'
