@@ -24,7 +24,7 @@ block content
   #app.container.my-4.text-monospace(v-cloak)
     h1.my-3.text-center 微程式 LINE 名片
     #share(v-if="page === 'share'")
-      p 請按一下「選擇分享對象」來透過 LINE 分享「{{ vcard.name_tw }}」的名片吧！
+      p 請按一下「選擇分享對象」來透過 LINE 分享「{{ vcard.中文姓名 }}」的名片吧！
       button.btn.btn-lg.btn-success.btn-block.my-2(type="button", @click="btnShare") 選擇分享對象
       button.btn.btn-lg.btn-info.btn-block.my-2(type="button", @click="btnSend") 傳送到目前聊天視窗
     #form(v-if="page === 'form'", method="get", target="_blank")
