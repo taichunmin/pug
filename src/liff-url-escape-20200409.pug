@@ -26,7 +26,7 @@ block content
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2.1/sdk.js")
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     const vConsole = new VConsole() // eslint-disable-line
     const genGoogleMapUrl = (query, queryPlaceId) => {
@@ -61,7 +61,7 @@ block script
           return new URL(url).searchParams.get(name)
         },
         genLiffUrl (u) {
-          const url = new URL('https://liff.line.me/1654046335-48OjmpAl/pug/liff-url-escape-20200409.html')
+          const url = new URL('https://liff.line.me/1654046335-48OjmpAl/')
           url.searchParams.set('u', u)
           return url.href
         },
