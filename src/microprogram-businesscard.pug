@@ -167,7 +167,7 @@ block script
         },
         async getTpl (key, url) {
           try {
-            let render = _.template(_.get(await axios.get(url, {
+            const render = _.template(_.get(await axios.get(url, {
               params: { cachebust: +new Date() },
               transformResponse: [],
             }), 'data'))

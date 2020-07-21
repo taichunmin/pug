@@ -126,7 +126,7 @@ block script
         yellow: 0,
         orange: 0,
         red: 0,
-      }
+      },
     }
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
@@ -134,12 +134,12 @@ block script
         const vueData = {
           i: _.cloneDeep(defaultInput),
           cars: [
-            { id: 'black', bg: '#D4DCE2', color: '#73797D', name: '黑色', },
-            { id: 'blue', bg: '#D0FBFB', color: '#36AFB6', name: '藍色', },
-            { id: 'green', bg: '#D3F4A0', color: '#439D3A', name: '綠色', },
-            { id: 'yellow', bg: '#F6FFA7', color: '#FCD508', name: '黃色', },
-            { id: 'orange', bg: '#FCE399', color: '#FD7719', name: '橘色', },
-            { id: 'red', bg: '#FDC092', color: '#F33E21', name: '紅色', },
+            { id: 'black', bg: '#D4DCE2', color: '#73797D', name: '黑色' },
+            { id: 'blue', bg: '#D0FBFB', color: '#36AFB6', name: '藍色' },
+            { id: 'green', bg: '#D3F4A0', color: '#439D3A', name: '綠色' },
+            { id: 'yellow', bg: '#F6FFA7', color: '#FCD508', name: '黃色' },
+            { id: 'orange', bg: '#FCE399', color: '#FD7719', name: '橘色' },
+            { id: 'red', bg: '#FDC092', color: '#F33E21', name: '紅色' },
           ],
         }
         // load i data from localStorage
@@ -170,6 +170,17 @@ block script
       },
       methods: {
         async btnReset () {
+          const result = await Swal.fire({
+            cancelButtonText: '取消',
+            confirmButtonText: '重設',
+            icon: 'question',
+            reverseButtons: true,
+            showCancelButton: true,
+            text: '請問你是否要把表單內的資料重設為預設資料？',
+            title: '重設為預設資料',
+          })
+          if (!result.isConfirmed) return
+    
           this.$set(this, 'i', _.cloneDeep(defaultInput))
         },
       },
