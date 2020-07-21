@@ -1,0 +1,176 @@
+extends /layouts/default
+
+block beforehtml
+  - var title = '玩命賽道 DOWNFORCE'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      tr.tr-cars
+        th, td
+          line-height: 2rem
+      tr.bet-prize
+        th, td
+          border: 1px solid lightgray
+          font-size: .8rem
+
+block content
+  #app.container.text-monospace(v-cloak)
+    img.my-3(src='https://i.imgur.com/NeeiNfS.jpg', style="width: 100%; display: block")
+    .input-group.mb-3
+      .input-group-prepend
+        span.input-group-text 駕駛員
+      input.form-control(type="text", v-model="i.name")
+    table.table.table-sm.table-borderless
+      thead.text-center
+        tr
+          th 賽車
+          th 競標金額
+          th 下注 1
+          th 下注 2
+          th 下注 3
+      tbody
+        tr.tr-cars(v-for="(car, carNo) in cars", :style="{'background-color': car.bg}", :key="car.id")
+          th #[i.fa.fa-car.fa-fw.ml-3.mr-1(:style="{color: car.color}")] {{ car.name }}
+          td
+            .input-group.input-group-sm
+              select.form-control(v-model.number="i.auction[car.id]")
+                option(value="0") &nbsp;
+                option(value="1") 1 百萬
+                option(value="2") 2 百萬
+                option(value="3") 3 百萬
+                option(value="4") 4 百萬
+                option(value="5") 5 百萬
+                option(value="6") 6 百萬
+              .input-group-append
+                span.input-group-text 百萬
+          td.text-center(@click="i.bet1=car.id")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.bet1 === car.id")
+            i.fa.fa-fw.fa-square-o(v-else)
+          td.text-center(@click="i.bet2=car.id")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.bet2 === car.id")
+            i.fa.fa-fw.fa-square-o(v-else)
+          td.text-center(@click="i.bet3=car.id")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.bet3 === car.id")
+            i.fa.fa-fw.fa-square-o(v-else)
+        tr
+          td(colspan="5", style="line-height: 1rem; padding: 0") &nbsp;
+        tr.bet-prize.text-center
+          th.text-center.align-middle(rowspan="3") 下注獎金
+          th.text-right 第 1 名
+          td(v-for="(payout, pid) in [9,6,3]", :key="`payout-${pid+1}-${payout}`", @click="$set(i.payouts, pid+1, (i.payouts[pid+1] === payout ? 0 : payout))")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[pid+1] === payout")
+            i.fa.fa-fw.fa-square-o(v-else)
+            |  {{ payout }} 百萬
+        tr.bet-prize.text-center
+          th.text-right 第 2 名
+          td(v-for="(payout, pid) in [6,4,2]", :key="`payout-${pid+1}-${payout}`", @click="$set(i.payouts, pid+1, (i.payouts[pid+1] === payout ? 0 : payout))")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[pid+1] === payout")
+            i.fa.fa-fw.fa-square-o(v-else)
+            |  {{ payout }} 百萬
+        tr.bet-prize.text-center
+          th.text-right 第 3 名
+          td(v-for="(payout, pid) in [3,2,1]", :key="`payout-${pid+1}-${payout}`", @click="$set(i.payouts, pid+1, (i.payouts[pid+1] === payout ? 0 : payout))")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[pid+1] === payout")
+            i.fa.fa-fw.fa-square-o(v-else)
+            |  {{ payout }} 百萬
+    
+    table.table.table-sm.table-bordered.text-center
+      thead
+        tr
+          th(colspan="6") 賽車獎金
+        tr
+          th(v-for="i in 6") 第 {{ i }} 名
+      tbody
+        tr
+          td(v-for="payout in [12, 9, 6, 4, 2, 0]", :key="`payout-0-${payout}`", @click="$set(i.payouts, 0, (i.payouts[0] === payout ? 0 : payout))")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[0] === payout")
+            i.fa.fa-fw.fa-square-o(v-else)
+            |  {{ payout }} 百萬
+    
+    table.table.table-sm.table-borderless.text-center
+      tr
+        th 得分
+        td
+          input.form-control.form-control-sm.text-center(readonly, :value="score.racing")
+          small 賽車獎金
+        td +
+        td
+          input.form-control.form-control-sm.text-center(readonly, :value="score.betting")
+          small 下注獎金
+        td.text-danger -
+        td.text-danger
+          input.form-control.form-control-sm.text-center(readonly, :value="score.auction", style="border-color: #dc3545; color: #dc3545")
+          small 競標金額
+        td =
+        td
+          input.form-control.form-control-sm.text-center(readonly, :value="score.score")
+          small 總獎金
+    button.btn.btn-danger.btn-block.my-3(type="button", @click="btnReset") 清除資料
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
+  script.
+    const defaultInput = {
+      name: '',
+      bet1: '',
+      bet2: '',
+      bet3: '',
+      payouts: [0, 0, 0, 0],
+      auction: {
+        black: 0,
+        blue: 0,
+        green: 0,
+        yellow: 0,
+        orange: 0,
+        red: 0,
+      }
+    }
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: () => {
+        const vueData = {
+          i: _.cloneDeep(defaultInput),
+          cars: [
+            { id: 'black', bg: '#D4DCE2', color: '#73797D', name: '黑色', },
+            { id: 'blue', bg: '#D0FBFB', color: '#36AFB6', name: '藍色', },
+            { id: 'green', bg: '#D3F4A0', color: '#439D3A', name: '綠色', },
+            { id: 'yellow', bg: '#F6FFA7', color: '#FCD508', name: '黃色', },
+            { id: 'orange', bg: '#FCE399', color: '#FD7719', name: '橘色', },
+            { id: 'red', bg: '#FDC092', color: '#F33E21', name: '紅色', },
+          ],
+        }
+        // load i data from localStorage
+        try {
+          const saved = JSON.parse(localStorage.getItem(location.pathname))
+          vueData.i = { ...vueData.i, ...saved }
+        } catch (err) {}
+        return vueData
+      },
+      async mounted () {
+        // save i to localStorage
+        this.$watch('i', (newVal, oldVal) => {
+          localStorage.setItem(location.pathname, JSON.stringify(newVal))
+        }, { deep: true })
+      },
+      computed: {
+        score () {
+          const racing = this.i.payouts[0]
+          const betting = this.i.payouts[1] + this.i.payouts[2] + this.i.payouts[3]
+          const auction = _.sum(_.values(this.i.auction))
+          return {
+            racing,
+            betting,
+            auction,
+            score: racing + betting + auction,
+          }
+        },
+      },
+      methods: {
+        async btnReset () {
+          this.$set(this, 'i', _.cloneDeep(defaultInput))
+        },
+      },
+    })
