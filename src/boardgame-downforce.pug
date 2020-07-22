@@ -23,6 +23,8 @@ block style
           line-height: 2rem
       select
         min-width: 100px
+      .my-btn-outline-gray
+        border-color: gray
 
 block content
   #app.container.text-monospace(v-cloak)
@@ -39,7 +41,7 @@ block content
         th.text-nowrap #[i.fa.fa-car.fa-fw(:style="{color: car.color}")] {{ car.name }}
         td
           .dropdown
-            button.btn.btn-sm.btn-block.btn-outline-dark.dropdown-toggle(type="button", data-toggle="dropdown") {{ i.auction[car.id] }} M
+            button.btn.btn-sm.btn-block.my-btn-outline-gray.dropdown-toggle(type="button", data-toggle="dropdown") {{ i.auction[car.id] }} M
             .dropdown-menu
               button.dropdown-item(type="button", v-for="payout in [0,1,2,3,4,5,6]", href="#", @click="$set(i.auction, car.id, payout)") {{ payout }} M
     table.table.table-sm.table-bordered.text-center
@@ -50,7 +52,7 @@ block content
           th.align-middle(rowspan="2") {{ '①②③'[bid] }}
           td(colspan="3")
             .dropdown
-              button.btn.btn-sm.btn-block.btn-outline-dark.dropdown-toggle(v-for="car in [_.find(cars, {id: i.betting[bid]})]", :style="{'background-color': _.get(car, 'bg', '#fff')}", type="button", data-toggle="dropdown")
+              button.btn.btn-sm.btn-block.my-btn-outline-gray.dropdown-toggle(v-for="car in [_.find(cars, {id: i.betting[bid]})]", :style="{'background-color': _.get(car, 'bg', '#fff')}", type="button", data-toggle="dropdown")
                 template(v-if="!car")
                   i.fa.fa-question.fa-fw
                   | 請點此下注
