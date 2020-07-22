@@ -4,6 +4,16 @@ block beforehtml
   - var title = '玩命賽道 DOWNFORCE'
 
 block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="這是「玩命賽道 DOWNFORCE」的電子計分紙。")
+  meta(property="og:image:height", content="640")
+  meta(property="og:image:width", content="1280")
+  meta(property="og:image", content="https://i.imgur.com/bg0DXnF.png")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content=baseUrl)
   style
     :sass
       [v-cloak]
@@ -16,7 +26,7 @@ block style
 
 block content
   #app.container.text-monospace(v-cloak)
-    img.my-3(src='https://i.imgur.com/NeeiNfS.jpg', style="width: 100%; display: block")
+    img.my-3.mx-auto(src='https://i.imgur.com/NeeiNfS.jpg', style="max-width: 915px; display: block")
     .input-group.mb-3
       .input-group-prepend
         span.input-group-text 駕駛員
@@ -50,7 +60,7 @@ block content
               .dropdown-menu
                 button.dropdown-item(type="button", href="#", @click="$set(i.betting, bid, '')")
                   i.fa.fa-question.fa-fw
-                  | 尚未下注
+                  |  尚未下注
                 button.dropdown-item(type="button", v-for="car in cars", href="#", :style="{'background-color': car.bg}", @click="$set(i.betting, bid, car.id)")
                   i.fa.fa-car.fa-fw(:style="{color: car.color}")
                   |  {{ car.name }}
@@ -65,7 +75,7 @@ block content
         tr
           th(colspan="6") 賽車獎金
         tr
-          th(v-for="i in 6") {{ ' ①②③④⑤⑥'[i] }}
+          th(v-for="i in 6") {{ ' ①②③④⑤ '[i] }}
       tbody
         tr
           td(v-for="payout in [12, 9, 6, 4, 2, 0]", :key="`payout-0-${payout}`", @click="$set(i.payouts, 0, (i.payouts[0] === payout ? 0 : payout))")
