@@ -5,7 +5,7 @@ block beforehtml
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
-  meta(property="og:description", content="這是「玩命賽道 DOWNFORCE」的電子計分紙。")
+  meta(property="og:description", content="「玩命賽道 DOWNFORCE」的電子計分紙。")
   meta(property="og:image:height", content="640")
   meta(property="og:image:width", content="1280")
   meta(property="og:image", content="https://i.imgur.com/bg0DXnF.png")
@@ -26,8 +26,8 @@ block style
 
 block content
   #app.container.text-monospace(v-cloak)
-    img.my-3.mx-auto(src='https://i.imgur.com/NeeiNfS.jpg', style="max-width: 915px; display: block")
-    .input-group.mb-3
+    img.my-3.mx-auto(src='https://i.imgur.com/NeeiNfS.jpg', style="max-width: 915px; width: 100%; display: block")
+    .input-group.input-group-sm.mb-3
       .input-group-prepend
         span.input-group-text 駕駛員
       input.form-control(type="text", v-model="i.name")
