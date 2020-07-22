@@ -91,15 +91,15 @@ block content
         td
           input.form-control.form-control-sm.text-center(readonly, :value="score.racing + 'M'")
           small 賽車獎金
-        td +
+        td.align-middle +
         td
           input.form-control.form-control-sm.text-center(readonly, :value="score.betting + 'M'")
           small 下注獎金
-        td.text-danger -
+        td.align-middle.text-danger -
         td.text-danger
           input.form-control.form-control-sm.text-center(readonly, :value="score.auction + 'M'", style="border-color: #dc3545; color: #dc3545")
           small 競標金額
-        td =
+        td.align-middle =
         td
           input.form-control.form-control-sm.text-center(readonly, :value="score.score + 'M'")
           small 總獎金
