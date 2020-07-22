@@ -18,15 +18,17 @@ block style
     :sass
       [v-cloak]
         display: none
-      tr.tr-cars
-        th, td
-          line-height: 2rem
-      .my-btn-outline-gray
-        border-color: gray
-      .dropdown-menu
-        padding: 0
       #app
         font-size: .8rem
+        tr.tr-cars
+          th, td
+            line-height: 2rem
+        .my-btn-outline-gray
+          border-color: gray
+        .form-control-sm.p-0
+          height: calc(1.5em + 2px)
+        .dropdown-menu
+          padding: 0
 
 block content
   #app.container.text-monospace(v-cloak)
@@ -43,10 +45,10 @@ block content
           i.fa.fa-car.fa-fw.mr-1(:style="{color: car.color}")
           | {{ car.name }}
       tr
-        td(v-for="car in cars", :style="{'background-color': car.bg}")
+        td(v-for="(car, cid) in cars", :style="{'background-color': car.bg}")
           .dropdown
-            button.btn.btn-sm.btn-block.my-btn-outline-gray.dropdown-toggle(type="button", data-toggle="dropdown") {{ i.auction[car.id] }}M
-            .dropdown-menu
+            button.btn.btn-sm.btn-block.my-btn-outline-gray.dropdown-toggle.p-0(type="button", data-toggle="dropdown") {{ i.auction[car.id] }}M
+            .dropdown-menu(:class="{'dropdown-menu-right': cid >= 3}")
               button.dropdown-item(type="button", v-for="payout in [0,1,2,3,4,5,6]", href="#", @click="$set(i.auction, car.id, payout)") {{ payout }}M
     table.table.table-sm.table-bordered.text-center
       tr
@@ -58,7 +60,6 @@ block content
             .dropdown
               button.btn.btn-sm.btn-block.my-btn-outline-gray.dropdown-toggle(v-for="car in [_.find(cars, {id: i.betting[bid]})]", :style="{'background-color': _.get(car, 'bg', '#fff')}", type="button", data-toggle="dropdown")
                 template(v-if="!car")
-                  i.fa.fa-question.fa-fw
                   | 請點此下注
                 template(v-else)
                   i.fa.fa-car.fa-fw(:style="{color: car.color}")
@@ -66,42 +67,42 @@ block content
               .dropdown-menu
                 button.dropdown-item(type="button", href="#", @click="$set(i.betting, bid, '')")
                   i.fa.fa-question.fa-fw
-                  |  尚未下注
+                  |  無
                 button.dropdown-item(type="button", v-for="car in cars", href="#", :style="{'background-color': car.bg}", @click="$set(i.betting, bid, car.id)")
                   i.fa.fa-car.fa-fw(:style="{color: car.color}")
                   |  {{ car.name }}
         tr
-          td.text-center(v-for="(payout, pid) in betting", @click="$set(i.payouts, bid+1, (i.payouts[bid+1] === payout ? 0 : payout))")
+          td.text-center(v-for="(payout, pid) in betting", :class="{'table-active': i.payouts[bid+1] === payout}", @click="$set(i.payouts, bid+1, (i.payouts[bid+1] === payout ? 0 : payout))")
             i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[bid+1] === payout")
             i.fa.fa-fw.fa-square-o(v-else)
             | {{ payout }}M
     table.table.table-sm.table-bordered.text-center
       tr
-        th(colspan="6") 賽車獎金
+        th(colspan="5") 賽車獎金
       tr
-        th(v-for="(payout, pid) in [12, 9, 6, 4, 2, 0]", @click="$set(i.payouts, 0, (i.payouts[0] === payout ? 0 : payout))") {{ '①②③④⑤ '[pid] }}
+        th(v-for="(rv, rk) in i.racing", :class="{'table-active': rv}", @click="$set(i.racing, rk, 1-rv)") {{ '①②③④⑤'[rk] }}
       tr
-        td(v-for="payout in [12, 9, 6, 4, 2, 0]", @click="$set(i.payouts, 0, (i.payouts[0] === payout ? 0 : payout))")
-          i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[0] === payout")
+        td(v-for="(rv, rk) in i.racing", :class="{'table-active': rv}", @click="$set(i.racing, rk, 1-rv)")
+          i.fa.fa-fw.fa-check-square-o(v-if="rv")
           i.fa.fa-fw.fa-square-o(v-else)
-          | {{ payout }}M
+          | {{ racingPayouts[rk] }}M
     table.table.table-sm.table-borderless.text-center
       tr
         th.align-middle 得#[br]分
         td
-          input.form-control.form-control-sm.text-center(readonly, :value="score.racing + 'M'")
+          input.form-control.form-control-sm.text-center.p-0(readonly, :value="score.racing + 'M'")
           small 賽車獎金
         td.align-middle +
         td
-          input.form-control.form-control-sm.text-center(readonly, :value="score.betting + 'M'")
+          input.form-control.form-control-sm.text-center.p-0(readonly, :value="score.betting + 'M'")
           small 下注獎金
         td.align-middle.text-danger -
         td.text-danger
-          input.form-control.form-control-sm.text-center(readonly, :value="score.auction + 'M'", style="border-color: #dc3545; color: #dc3545")
+          input.form-control.form-control-sm.text-center.p-0(readonly, :value="score.auction + 'M'", style="border-color: #dc3545; color: #dc3545")
           small 競標金額
         td.align-middle =
         td
-          input.form-control.form-control-sm.text-center(readonly, :value="score.score + 'M'")
+          input.form-control.form-control-sm.text-center.p-0(readonly, :value="score.score + 'M'")
           small 總獎金
     button.btn.btn-danger.btn-block.my-3(type="button", @click="btnReset") 清除資料
 
@@ -109,9 +110,10 @@ block script
   script(src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
   script.
     const defaultInput = {
-      name: '',
       betting: ['', '', ''],
+      name: '',
       payouts: [0, 0, 0, 0],
+      racing: [0, 0, 0, 0, 0],
       auction: {
         black: 0,
         blue: 0,
@@ -134,6 +136,7 @@ block script
             { id: 'orange', bg: '#FCE399', color: '#FD7719', name: '橘' },
             { id: 'red', bg: '#FDC092', color: '#F33E21', name: '紅' },
           ],
+          racingPayouts: [12, 9, 6, 4, 2],
         }
         // load i data from localStorage
         try {
@@ -150,7 +153,7 @@ block script
       },
       computed: {
         score () {
-          const racing = this.i.payouts[0]
+          const racing = _.sumBy(_.toPairs(this.i.racing), p => (p[1] ? this.racingPayouts[p[0]] : 0))
           const betting = this.i.payouts[1] + this.i.payouts[2] + this.i.payouts[3]
           const auction = _.sum(_.values(this.i.auction))
           return {
