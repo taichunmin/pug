@@ -11,10 +11,8 @@ block style
       tr.tr-cars
         th, td
           line-height: 2rem
-      tr.bet-prize
-        th, td
-          border: 1px solid lightgray
-          font-size: .8rem
+      select
+        min-width: 100px
 
 block content
   #app.container.text-monospace(v-cloak)
@@ -23,90 +21,75 @@ block content
       .input-group-prepend
         span.input-group-text 駕駛員
       input.form-control(type="text", v-model="i.name")
-    table.table.table-sm.table-borderless
-      thead.text-center
+    table.table.table-sm.table-borderless.text-center
+      tr
+        th.text-nowrap 賽車
+        th 競標金額
+      tr.tr-cars(v-for="(car, carNo) in cars", :style="{'background-color': car.bg}", :key="car.id")
+        th.text-nowrap #[i.fa.fa-car.fa-fw(:style="{color: car.color}")] {{ car.name }}
+        td
+          .dropdown
+            button.btn.btn-sm.btn-block.btn-outline-dark.dropdown-toggle(type="button", data-toggle="dropdown") {{ i.auction[car.id] }} M
+            .dropdown-menu
+              button.dropdown-item(type="button", v-for="payout in [0,1,2,3,4,5,6]", href="#", @click="$set(i.auction, car.id, payout)") {{ payout }} M
+    table.table.table-sm.table-bordered.text-center
+      tr
+        th.align-middle(colspan="4") 下注獎金
+      template(v-for="(betting, bid) in [[9, 6, 3], [6, 4, 2], [3, 2, 1]]", :key="`betting-${bid}`")
         tr
-          th 賽車
-          th 競標金額
-          th 下注 1
-          th 下注 2
-          th 下注 3
-      tbody
-        tr.tr-cars(v-for="(car, carNo) in cars", :style="{'background-color': car.bg}", :key="car.id")
-          th #[i.fa.fa-car.fa-fw.ml-3.mr-1(:style="{color: car.color}")] {{ car.name }}
-          td
-            .input-group.input-group-sm
-              select.form-control(v-model.number="i.auction[car.id]")
-                option(value="0") &nbsp;
-                option(value="1") 1 百萬
-                option(value="2") 2 百萬
-                option(value="3") 3 百萬
-                option(value="4") 4 百萬
-                option(value="5") 5 百萬
-                option(value="6") 6 百萬
-              .input-group-append
-                span.input-group-text 百萬
-          td.text-center(@click="i.bet1=car.id")
-            i.fa.fa-fw.fa-check-square-o(v-if="i.bet1 === car.id")
-            i.fa.fa-fw.fa-square-o(v-else)
-          td.text-center(@click="i.bet2=car.id")
-            i.fa.fa-fw.fa-check-square-o(v-if="i.bet2 === car.id")
-            i.fa.fa-fw.fa-square-o(v-else)
-          td.text-center(@click="i.bet3=car.id")
-            i.fa.fa-fw.fa-check-square-o(v-if="i.bet3 === car.id")
-            i.fa.fa-fw.fa-square-o(v-else)
+          th.align-middle(rowspan="2") {{ '①②③'[bid] }}
+          td(colspan="3")
+            .dropdown
+              button.btn.btn-sm.btn-block.btn-outline-dark.dropdown-toggle(v-for="car in [_.find(cars, {id: i.betting[bid]})]", :style="{'background-color': _.get(car, 'bg', '#fff')}", type="button", data-toggle="dropdown")
+                template(v-if="!car")
+                  i.fa.fa-question.fa-fw
+                  | 請點此下注
+                template(v-else)
+                  i.fa.fa-car.fa-fw(:style="{color: car.color}")
+                  |  {{ car.name }}
+              .dropdown-menu
+                button.dropdown-item(type="button", href="#", @click="$set(i.betting, bid, '')")
+                  i.fa.fa-question.fa-fw
+                  | 尚未下注
+                button.dropdown-item(type="button", v-for="car in cars", href="#", :style="{'background-color': car.bg}", @click="$set(i.betting, bid, car.id)")
+                  i.fa.fa-car.fa-fw(:style="{color: car.color}")
+                  |  {{ car.name }}
         tr
-          td(colspan="5", style="line-height: 1rem; padding: 0") &nbsp;
-        tr.bet-prize.text-center
-          th.text-center.align-middle(rowspan="3") 下注獎金
-          th.text-right 第 1 名
-          td(v-for="(payout, pid) in [9,6,3]", :key="`payout-${pid+1}-${payout}`", @click="$set(i.payouts, pid+1, (i.payouts[pid+1] === payout ? 0 : payout))")
-            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[pid+1] === payout")
+          td.text-center(v-for="(payout, pid) in betting", :key="`payout-${bid}-${pid}`", @click="$set(i.payouts, bid+1, (i.payouts[bid+1] === payout ? 0 : payout))")
+            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[bid+1] === payout")
             i.fa.fa-fw.fa-square-o(v-else)
-            |  {{ payout }} 百萬
-        tr.bet-prize.text-center
-          th.text-right 第 2 名
-          td(v-for="(payout, pid) in [6,4,2]", :key="`payout-${pid+1}-${payout}`", @click="$set(i.payouts, pid+1, (i.payouts[pid+1] === payout ? 0 : payout))")
-            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[pid+1] === payout")
-            i.fa.fa-fw.fa-square-o(v-else)
-            |  {{ payout }} 百萬
-        tr.bet-prize.text-center
-          th.text-right 第 3 名
-          td(v-for="(payout, pid) in [3,2,1]", :key="`payout-${pid+1}-${payout}`", @click="$set(i.payouts, pid+1, (i.payouts[pid+1] === payout ? 0 : payout))")
-            i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[pid+1] === payout")
-            i.fa.fa-fw.fa-square-o(v-else)
-            |  {{ payout }} 百萬
+            | {{ payout }}M
     
     table.table.table-sm.table-bordered.text-center
       thead
         tr
           th(colspan="6") 賽車獎金
         tr
-          th(v-for="i in 6") 第 {{ i }} 名
+          th(v-for="i in 6") {{ ' ①②③④⑤⑥'[i] }}
       tbody
         tr
           td(v-for="payout in [12, 9, 6, 4, 2, 0]", :key="`payout-0-${payout}`", @click="$set(i.payouts, 0, (i.payouts[0] === payout ? 0 : payout))")
             i.fa.fa-fw.fa-check-square-o(v-if="i.payouts[0] === payout")
             i.fa.fa-fw.fa-square-o(v-else)
-            |  {{ payout }} 百萬
+            | {{ payout }}M
     
     table.table.table-sm.table-borderless.text-center
       tr
-        th 得分
+        th.align-middle 得#[br]分
         td
-          input.form-control.form-control-sm.text-center(readonly, :value="score.racing")
+          input.form-control.form-control-sm.text-center(readonly, :value="score.racing + 'M'")
           small 賽車獎金
         td +
         td
-          input.form-control.form-control-sm.text-center(readonly, :value="score.betting")
+          input.form-control.form-control-sm.text-center(readonly, :value="score.betting + 'M'")
           small 下注獎金
         td.text-danger -
         td.text-danger
-          input.form-control.form-control-sm.text-center(readonly, :value="score.auction", style="border-color: #dc3545; color: #dc3545")
+          input.form-control.form-control-sm.text-center(readonly, :value="score.auction + 'M'", style="border-color: #dc3545; color: #dc3545")
           small 競標金額
         td =
         td
-          input.form-control.form-control-sm.text-center(readonly, :value="score.score")
+          input.form-control.form-control-sm.text-center(readonly, :value="score.score + 'M'")
           small 總獎金
     button.btn.btn-danger.btn-block.my-3(type="button", @click="btnReset") 清除資料
 
@@ -115,9 +98,7 @@ block script
   script.
     const defaultInput = {
       name: '',
-      bet1: '',
-      bet2: '',
-      bet3: '',
+      betting: ['', '', ''],
       payouts: [0, 0, 0, 0],
       auction: {
         black: 0,
