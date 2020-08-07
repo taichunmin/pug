@@ -122,8 +122,8 @@ block script
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: () => ({
-        //- src: 'https://storage-taichunmin.taichunmin.idv.tw/ncov-mask-map/maskdata.csv',
-        src: 'https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vT4tWc7zUcHQQ8LC_0276aOZNcIBu544YB9XrSRz7oq66q5lE3RHN5Ix2-4S3NL4bL-0zi5nKzE13eX/pub?gid=1109820539&single=true&output=csv',
+        src: 'https://storage-taichunmin.taichunmin.idv.tw/ncov-mask-map/maskdata.csv',
+        //- src: 'https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vT4tWc7zUcHQQ8LC_0276aOZNcIBu544YB9XrSRz7oq66q5lE3RHN5Ix2-4S3NL4bL-0zi5nKzE13eX/pub?gid=1109820539&single=true&output=csv',
       }),
       async mounted () {
         await this.init()
@@ -136,7 +136,7 @@ block script
         },
         async showNews () {
           const STORAGE_KEY = 'ncov-mask-map-news-timestamp'
-          const NEWS_TIMESTAMP = +new Date(2020, 6, 14, 0, 0, 0)
+          const NEWS_TIMESTAMP = +new Date(2020, 8, 7, 0, 0, 0)
           const read = _.parseInt(localStorage.getItem(STORAGE_KEY))
           if (read >= NEWS_TIMESTAMP) return
           const result = await Swal.fire({
@@ -146,7 +146,7 @@ block script
             reverseButtons: true,
             showCancelButton: true,
             html: `<div style="font-size: .9rem">
-            <p>ℹ️ 因為口罩即時資料已停止更新，本地圖已經調整為展示模式。</p>
+            <p>ℹ️&nbsp;&nbsp;8/7 由於口罩搶購人潮再現，故口罩地圖重新開放。</p>
             </div>`,
           })
           localStorage.setItem(STORAGE_KEY, NEWS_TIMESTAMP)
