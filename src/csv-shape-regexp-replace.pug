@@ -1,0 +1,222 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = 'CSV 欄位資料文字形狀取代程式'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      #app .input-group-text
+        width: 90px
+      #unmatch-shapes
+        font-size: 12px
+
+block content
+  #app.container.text-monospace(v-cloak)
+    h2.my-3= title
+    .input-group.input-group-sm.mb-3
+      .input-group-prepend
+        span.input-group-text.justify-content-center 匯入資料
+      textarea.form-control(type="url", v-model="i.csvImport")
+    .input-group.input-group-sm.mb-3
+      .input-group-prepend
+        span.input-group-text.justify-content-center 處理規則
+      select.form-control(v-model="i.csvRules")
+        option(value="https://docs.google.com/spreadsheets/d/e/2PACX-1vT8hVRMRBaRrSIoJrnGdh9X1OS28cWzRhAFuZfgUY-OWCDf_tv6U9i64Dt0HYiHbsVAyRneAfC2M4dB/pub?gid=0&single=true&output=csv") 平日第一小時臨停費用
+        option(value="https://docs.google.com/spreadsheets/d/e/2PACX-1vT8hVRMRBaRrSIoJrnGdh9X1OS28cWzRhAFuZfgUY-OWCDf_tv6U9i64Dt0HYiHbsVAyRneAfC2M4dB/pub?gid=778840937&single=true&output=csv") 市話手機免付費電話
+    .row
+      .col.input-group.input-group-sm.mb-3
+        .input-group-prepend
+          span.input-group-text.justify-content-center 匯入欄位
+        input.form-control(type="text", v-model="i.from")
+      .col.input-group.input-group-sm.mb-3
+        .input-group-prepend
+          span.input-group-text.justify-content-center 匯出欄位
+        input.form-control(type="text", v-model="i.to")
+    button.btn.btn-sm.btn-outline-primary.mb-3(type="button", @click="btnUnmatch") 步驟 1: 尋找還沒有寫規則的文字形狀
+    button.btn.btn-sm.btn-outline-success.mb-3.ml-2(type="button", @click="btnExport") 步驟 2: 匯出處理過的 CSV
+
+block script
+  script.
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        parkings: [],
+        ready: false,
+        rules: {},
+        i: {
+          csvImport: '',
+          csvRules: '',
+          from: '',
+          to: '',
+        },
+      },
+      async mounted () {
+        try {
+          const saved = JSON.parse(localStorage.getItem('csv-shape-regexp-replace'))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', (newVal, oldVal) => {
+          localStorage.setItem('csv-shape-regexp-replace', JSON.stringify(this.i))
+        }, { deep: true })
+        this.ready = true
+      },
+      computed: {
+        allUnmatchShapes () {
+          let shapes = _.groupBy(_.map(this.parkings, parking => {
+            const from = this.strNormalize(_.get(parking, this.i.from))
+            const shape = this.strShape(from)
+            return { shape, from }
+          }), 'shape')
+          shapes = _.mapValues(shapes, rows => _.uniqBy(rows, 'from'))
+          return _.omit(shapes, _.keys(this.rules))
+        },
+      },
+      methods: {
+        async btnUnmatch () {
+          try {
+            this.showLoading('載入中…', '正在尋找還沒有寫規則的文字形狀')
+            this.validateInput()
+            // 抓取資料
+            await Promise.all([
+              this.getCsvImport(),
+              this.getCsvRules(),
+            ])
+            const shapes = _.groupBy(_.map(this.parkings, parking => {
+              const from = this.strNormalize(_.get(parking, this.i.from))
+              const shape = this.strShape(from)
+              return { shape, from }
+            }), 'shape')
+            const rows = _.map(_.omit(shapes, _.keys(this.rules)), (row, shape) => ({
+              shape,
+              count: row.length,
+              sample: _.first(row).from,
+            }))
+            if (!rows.length) {
+              return Swal.fire({ icon: 'success', title: '全部規則都建立過囉！' })
+            }
+            // 轉成 csv
+            const csv = Papa.unparse(rows, { header: true })
+            const blobUrl = this.strToBlobUrl(csv, 'text/csv')
+            // 顯示下載網址
+            await this.showCsvUrl(`CSV 檔案中有 ${rows.length} 筆紀錄`, blobUrl)
+          } catch (err) {
+            console.error(err)
+            Swal.fire({ icon: 'error', text: err.message, title: '發生錯誤' })
+          }
+        },
+        async btnExport () {
+          try {
+            this.showLoading('載入中…', '正在產生 CSV')
+            this.validateInput()
+            // 抓取資料
+            await Promise.all([
+              this.getCsvImport(),
+              this.getCsvRules(),
+            ])
+            // 取代資料
+            const rows = _.map(this.parkings, row => {
+              const from = this.strNormalize(_.get(row, this.i.from))
+              const rule = _.get(this.rules, this.strShape(from))
+              return {
+                ...row,
+                [this.i.to]: this.strRuleReplace(from, rule),
+              }
+            })
+            // 轉成 csv
+            const csv = Papa.unparse(rows, { header: true })
+            const blobUrl = this.strToBlobUrl(csv, 'text/csv')
+            // 顯示下載網址
+            await this.showCsvUrl(`CSV 檔案中有 ${rows.length} 筆紀錄`, blobUrl)
+          } catch (err) {
+            console.error(err)
+            Swal.fire({ icon: 'error', text: err.message, title: '發生錯誤' })
+          }
+        },
+        async getCsvImport () {
+          this.parkings = await this.getCsv(`https://cors-anywhere.herokuapp.com/${this.i.csvImport}`)
+        },
+        async getCsvRules () {
+          let rules = await this.getCsv(`https://cors-anywhere.herokuapp.com/${this.i.csvRules}`)
+          rules = _.filter(rules, rule => rule.shape.length && rule.pattern.length)
+          rules = _.map(rules, rule => ({
+            ...rule,
+            pattern: new RegExp(rule.pattern),
+          }))
+          this.rules = _.keyBy(rules, 'shape')
+        },
+        async getCsv (url) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: new Date() / 3e4 },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async showCsvUrl (title, url) {
+          await Swal.fire({
+            allowOutsideClick: false,
+            focusConfirm: false,
+            html: `<a class="btn btn-success" href="${url}" target="_blank">請點此下載 CSV 檔案</a>`,
+            icon: 'success',
+            title,
+          })
+        },
+        strToBlobUrl (str, type) {
+          const blob = new Blob([str], { type })
+          return URL.createObjectURL(blob)
+        },
+        validateInput () {
+          _.each({ // 資料檢查
+            csvImport: '匯入資料',
+            csvRules: '處理規則',
+            from: '匯入欄位',
+            to: '匯出欄位',
+          }, (v, k) => {
+            if (!_.get(this.i, k)) throw new Error(`「${v}」是必填欄位`)
+          })
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            onBeforeOpen: () => { Swal.showLoading() },
+          })
+        },
+        hideLoading () {
+          Swal.close()
+        },
+        strNormalize: (() => {
+          const CHAR_MAP = _.zipObject('０１２３４５６７８９：；（）\n'.split(''), '0123456789:;();'.split(''))
+          const strtr = (str, charmap) => _.map(str, c => _.get(charmap, [c], c)).join('')
+          return str => {
+            if (!_.isString(str)) return ''
+            str = _.trim(str) // 移除前後空格
+            str = strtr(str, CHAR_MAP) // 字元對應
+            str = str.replace(/,(\d{3})/g, '$1')// 移除數字的千位逗號
+            str = str.replace(/(?<=\d)\s+(?=\d)/g, ';') // 如果空格前後是數字就換成分號
+            str = str.replace(/\s+/g, '') // 移除空格
+            return str
+          }
+        })(),
+        strShape (str) {
+          if (!_.isString(str)) return ''
+          str = str.replace(/\d+/g, '0')
+          return str
+        },
+        strRuleReplace (str, rule) {
+          try {
+            if (!_.isString(str) || !rule) return ''
+            return str.replace(rule.pattern, rule.replacement)
+          } catch (err) {
+            console.log({ str, rule, err })
+            return ''
+          }
+        },
+      },
+    })
