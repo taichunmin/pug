@@ -39,7 +39,10 @@ block content
     button.btn.btn-sm.btn-outline-success.mb-3.ml-2(type="button", @click="btnExport") 步驟 2: 匯出處理過的 CSV
 
 block script
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script.
+    /* global moment */
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
@@ -54,6 +57,7 @@ block script
         },
       },
       async mounted () {
+        // load localStorage
         try {
           const saved = JSON.parse(localStorage.getItem('csv-shape-regexp-replace'))
           if (saved) this.$set(this, 'i', { ...this.i, ...saved })
@@ -61,6 +65,8 @@ block script
         this.$watch('i', (newVal, oldVal) => {
           localStorage.setItem('csv-shape-regexp-replace', JSON.stringify(this.i))
         }, { deep: true })
+
+        moment.locale('zh-tw')
         this.ready = true
       },
       computed: {
@@ -160,7 +166,7 @@ block script
           await Swal.fire({
             allowOutsideClick: false,
             focusConfirm: false,
-            html: `<a class="btn btn-success" target="_blank" href="${url}" download="${moment().format('YYYY-MM-DD HHMM')}.csv">請點此下載 CSV 檔案</a>`,
+            html: `<a class="btn btn-success" target="_blank" href="${url}" download="${moment().format('YYYY-MM-DD HHmmss')}.csv">請點此下載 CSV 檔案</a>`,
             icon: 'success',
             title,
           })
