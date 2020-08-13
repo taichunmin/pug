@@ -206,9 +206,9 @@ block script
             str = strtr(str, CHAR_MAP) // 字元對應
             str = str.replace(/,(\d{3})/g, '$1') // 移除數字的千位逗號
             str = str.replace(/(?<=\d)\s+(?=\d)/g, ';') // 如果空格前後是數字就換成分號
+            str = str.replace(/\s+/g, '') // 移除空格
             str = str.replace(/;+/g, ';') // 移除重複的分號
             str = str.replace(/;$/g, '') // 移除尾端的分號
-            str = str.replace(/\s+/g, '') // 移除空格
             return str
           }
         })(),
