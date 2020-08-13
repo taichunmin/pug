@@ -160,7 +160,7 @@ block script
           await Swal.fire({
             allowOutsideClick: false,
             focusConfirm: false,
-            html: `<a class="btn btn-success" href="${url}" target="_blank">請點此下載 CSV 檔案</a>`,
+            html: `<a class="btn btn-success" target="_blank" href="${url}" download="${moment().format('YYYY-MM-DD HHMM')}.csv">請點此下載 CSV 檔案</a>`,
             icon: 'success',
             title,
           })
