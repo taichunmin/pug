@@ -192,16 +192,16 @@ block script
           Swal.close()
         },
         strNormalize: (() => {
-          const CHAR_MAP = _.zipObject('０１２３４５６７８９：；（）\n'.split(''), '0123456789:;();'.split(''))
+          const CHAR_MAP = _.zipObject('０１２３４５６７８９：；（）～〜。\n'.split(''), '0123456789:;()~~;;'.split(''))
           const strtr = (str, charmap) => _.map(str, c => _.get(charmap, [c], c)).join('')
           return str => {
             if (!_.isString(str)) return ''
             str = _.trim(str) // 移除前後空格
             str = strtr(str, CHAR_MAP) // 字元對應
             str = str.replace(/,(\d{3})/g, '$1') // 移除數字的千位逗號
-            str = str.replace(/。;/g, ';') // 移除分號前的句號
-            str = str.replace(/;+/g, ';') // 移除重複的分號
             str = str.replace(/(?<=\d)\s+(?=\d)/g, ';') // 如果空格前後是數字就換成分號
+            str = str.replace(/;+/g, ';') // 移除重複的分號
+            str = str.replace(/;$/g, '') // 移除尾端的分號
             str = str.replace(/\s+/g, '') // 移除空格
             return str
           }
