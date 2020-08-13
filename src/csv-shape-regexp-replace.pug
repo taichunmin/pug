@@ -206,7 +206,7 @@ block script
         })(),
         strShape (str) {
           if (!_.isString(str)) return ''
-          str = str.replace(/\d+/g, '0')
+          str = str.replace(/\d/g, '0')
           return str
         },
         strRuleReplace (str, rule) {
