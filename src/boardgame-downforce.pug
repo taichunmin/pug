@@ -1,7 +1,7 @@
 extends /layouts/default
 
 block beforehtml
-  - var title = '玩命賽道 DOWNFORCE'
+  - const title = '玩命賽道 DOWNFORCE'
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
@@ -49,7 +49,7 @@ block content
           .dropdown
             button.btn.btn-sm.btn-block.my-btn-outline-gray.dropdown-toggle.p-0(type="button", data-toggle="dropdown") {{ i.auction[car.id] }}M
             .dropdown-menu(:class="{'dropdown-menu-right': cid >= 3}")
-              button.dropdown-item(type="button", v-for="payout in [0,1,2,3,4,5,6]", href="#", @click="$set(i.auction, car.id, payout)") {{ payout }}M
+              button.dropdown-item(type="button", v-for="payout in [0,1,2,3,4,5,6]", @click="$set(i.auction, car.id, payout)") {{ payout }}M
     table.table.table-sm.table-bordered.text-center
       tr
         th.align-middle(colspan="4") 下注獎金
@@ -65,10 +65,10 @@ block content
                   i.fa.fa-car.fa-fw(:style="{color: car.color}")
                   |  {{ car.name }}
               .dropdown-menu
-                button.dropdown-item(type="button", href="#", @click="$set(i.betting, bid, '')")
+                button.dropdown-item(type="button", @click="$set(i.betting, bid, '')")
                   i.fa.fa-question.fa-fw
                   |  無
-                button.dropdown-item(type="button", v-for="car in cars", href="#", :style="{'background-color': car.bg}", @click="$set(i.betting, bid, car.id)")
+                button.dropdown-item(type="button", v-for="car in cars", :style="{'background-color': car.bg}", @click="$set(i.betting, bid, car.id)")
                   i.fa.fa-car.fa-fw(:style="{color: car.color}")
                   |  {{ car.name }}
         tr
@@ -107,7 +107,6 @@ block content
     button.btn.btn-danger.btn-block.my-3(type="button", @click="btnReset") 清除資料
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
   script.
     const defaultInput = {
       betting: ['', '', ''],
