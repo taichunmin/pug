@@ -1,0 +1,174 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = '猜數字 Bulls And Cows'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      #possibilities
+        code
+          font-size: 9pt
+
+block content
+  #app.container(v-cloak)
+    h1.text-center.my-3= title
+    .row
+      .col-sm
+        .card
+          h5.card-header 猜數字遊戲
+          .card-body
+            .form-group
+              label(for="i-guess") 請輸入四位數不重複 0 到 9 的數字
+              .input-group.input-group-sm.mb-2
+                .input-group-prepend
+                  span.input-group-text {{ i.guesses.length + 1 }}
+                input.form-control#i-guess(type="text", inputmode="numeric", maxlength="4", v-model="i.guess")
+                .input-group-append
+                  button.btn.btn-success(type="button", @click="btnPushGuess") 送出
+            table.table.table-sm.table-bordered.text-center.mb-0(v-if="i.guesses.length")
+              thead: tr
+                th #
+                th 猜測數字
+                th(colspan="2") 結果
+              tbody.text-monospace
+                tr(v-for="(guess, guessId) in i.guesses")
+                  th {{ guessId + 1 }}
+                  td {{ guess }}
+                  td {{ calcGuessResult(guess, i.answer) }}
+                  td: a.badge.badge-info.mr-1(@click="btnPushSolver(guess, calcGuessResult(guess, i.answer))", href="#") 求解
+          .card-footer.text-right
+            button.btn.btn-danger(type="button", @click="btnNewGame(false)") #[span.fa.fa-fw.fa-trash-o] 開新遊戲
+      .col-sm
+        .card
+          h5.card-header 猜數字求解程式
+          .card-body
+            .form-group
+              label(for="i-guess") 請輸入猜測數字與結果
+              .input-group.input-group-sm.mb-2(v-for="(solver, solverId) in i.solvers")
+                .input-group-prepend
+                  span.input-group-text {{ solverId + 1 }}
+                input.form-control(type="text", inputmode="numeric", maxlength="4", v-model="solver.guess")
+                .input-group-append
+                  button.btn.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown") {{ solver.result }}
+                  .dropdown-menu.dropdown-menu-right
+                    button.dropdown-item(type="button", v-for="result in results", @click="solver.result = result") {{ result }}
+            .form-group.mb-0
+              label 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibilities.length }}]
+              small.form-text.text-muted(v-if="!possibilities.length") 請輸入猜測數字與結果來顯示可能的謎底
+              small.form-text.text-muted(v-if="possibilities.length > 100") 僅顯示前 100 筆可能的謎底
+              #possibilities
+                a.badge.badge-info.mr-1(v-for="possible in possibilities.slice(0, 100)", @click="i.guess = possible", href="#") {{ possible }}
+          .card-footer.text-right
+            button.btn.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
+
+block script
+  script.
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        i: {
+          answer: '',
+          guess: '',
+          guesses: [],
+          solvers: [],
+        },
+        results: ['0A0B', '0A1B', '0A2B', '0A3B', '0A4B', '1A0B', '1A1B', '1A2B', '1A3B', '2A0B', '2A1B', '2A2B', '3A0B', '4A0B'],
+      },
+      mounted () {
+        try {
+          const saved = JSON.parse(localStorage.getItem('bulls-and-cows'))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', (newVal, oldVal) => {
+          localStorage.setItem('bulls-and-cows', JSON.stringify(this.i))
+        }, { deep: true })
+
+        // 初始化
+        if (!this.verifyGuess(this.i.answer)) this.btnNewGame(true)
+        if (!this.i.solvers.length) this.btnNewSolver(true)
+      },
+      computed: {
+        possibilities () {
+          const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.includes(this.results, solver.result))
+          if (!solvers.length) return []
+          const possibilities = []
+          for (let g1=0; g1<10; g1++)
+            for (let g2=0; g2<10; g2++) {
+              if (g1 === g2) continue
+              for (let g3=0; g3<10; g3++) {
+                if (g3 === g1 || g3 === g2) continue
+                for (let g4=0; g4<10; g4++) {
+                  if (g4 === g1 || g4 === g2 || g4 === g3) continue
+                  let isPossible = true
+                  const possible = `${g1}${g2}${g3}${g4}`
+                  for (const solver of solvers)
+                    if (isPossible && this.calcGuessResult(possible, solver.guess) !== solver.result) isPossible = false
+                  if (isPossible) possibilities.push(possible)
+                }
+              }
+            }
+          return possibilities
+        },
+      },
+      methods: {
+        verifyGuess (guess) {
+          // 確認是四位數不重複的數字
+          if (!_.isString(guess) || !/^\d{4}$/.test(guess)) return false
+          // 確認不重複
+          for(let i=0; i<4; i++)
+            for(let j=i+1; j<4; j++)
+              if (guess[i] === guess[j]) return false
+          return true
+        },
+        calcGuessResult(guess, answer) {
+          const res = { a: 0, b: 0 }
+          for(let i=0; i<4; i++)
+            for(let j=0; j<4; j++)
+              if (guess[i] === answer[j]) res[i===j ? 'a' : 'b']++
+          return `${res.a}A${res.b}B`
+        },
+        btnPushGuess () {
+          const guess = this.i.guess
+          if (!this.verifyGuess(guess)) return
+          if (_.includes(this.i.guesses, guess)) return
+          this.i.guesses.push(guess)
+          this.i.guess = ''
+        },
+        async btnNewGame (force = false) {
+          if (!force && !await this.confirm('是否開始新的猜數字遊戲？')) return
+          this.i.answer = _.sampleSize('0123456789', 4).join('')
+          this.i.guess = ''
+          this.i.guesses = []
+        },
+        async btnNewSolver (force = false) {
+          if (!force && !await this.confirm('是否清空求解資料？')) return
+          this.$set(this.i, 'solvers', _.times(8, i => ({
+            guess: '',
+            result: '0A0B',
+          })))
+        },
+        async btnPushSolver (guess, result) {
+          const solver = _.find(this.i.solvers, solver => !this.verifyGuess(solver.guess))
+          if (!solver) return
+          solver.guess = guess
+          solver.result = result
+        },
+        async confirm (message, yes = '是', no = '否') {
+          const confirm = await Swal.fire({
+            cancelButtonColor: '#3085d6',
+            cancelButtonText: no,
+            confirmButtonColor: '#d33',
+            confirmButtonText: yes,
+            icon: 'question',
+            showCancelButton: true,
+            text: message,
+          })
+          return !!confirm.value
+        },
+      },
+    })
