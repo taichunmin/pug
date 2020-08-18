@@ -34,10 +34,11 @@ block content
                 th(colspan="2") 結果
               tbody.text-monospace
                 tr(v-for="(guess, guessId) in i.guesses")
-                  th {{ guessId + 1 }}
-                  td {{ guess }}
-                  td {{ calcGuessResult(guess, i.answer) }}
-                  td: a.badge.badge-info.mr-1(@click="btnPushSolver(guess, calcGuessResult(guess, i.answer))", href="#") 求解
+                  template(v-for="simi in [calcSimilarity(guess, i.answer)]")
+                    th {{ guessId + 1 }}
+                    td {{ guess }}
+                    td {{ similarity.toStr[simi] }}
+                    td: a.badge.badge-info.mr-1(@click="btnPushSolver(guess, simi)", href="#") 求解
           .card-footer.text-right
             button.btn.btn-danger(type="button", @click="btnNewGame(false)") #[span.fa.fa-fw.fa-trash-o] 開新遊戲
       .col-sm
@@ -51,9 +52,9 @@ block content
                   span.input-group-text {{ solverId + 1 }}
                 input.form-control(type="text", inputmode="numeric", maxlength="4", v-model="solver.guess")
                 .input-group-append
-                  button.btn.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown") {{ solver.result }}
+                  button.btn.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown") {{ similarity.toStr[solver.simi] }}
                   .dropdown-menu.dropdown-menu-right
-                    button.dropdown-item(type="button", v-for="result in results", @click="solver.result = result") {{ result }}
+                    button.dropdown-item(type="button", v-for="(simi, simiStr) in similarity.toInt", @click="solver.simi = simi") {{ simiStr }}
             .form-group.mb-0
               label 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibilities.length }}]
               small.form-text.text-muted(v-if="!possibilities.length") 請輸入猜測數字與結果來顯示可能的謎底
@@ -65,6 +66,22 @@ block content
 
 block script
   script.
+    const SIMILARITY = {
+      '0A0B': 0,
+      '0A1B': 1,
+      '0A2B': 2,
+      '0A3B': 3,
+      '0A4B': 4,
+      '1A0B': 10,
+      '1A1B': 11,
+      '1A2B': 12,
+      '1A3B': 13,
+      '2A0B': 20,
+      '2A1B': 21,
+      '2A2B': 22,
+      '3A0B': 30,
+      '4A0B': 40,
+    }
     const vm = new Vue({ // eslint-disable-line
       el: '#app',
       data: {
@@ -74,7 +91,7 @@ block script
           guesses: [],
           solvers: [],
         },
-        results: ['0A0B', '0A1B', '0A2B', '0A3B', '0A4B', '1A0B', '1A1B', '1A2B', '1A3B', '2A0B', '2A1B', '2A2B', '3A0B', '4A0B'],
+        similarity: null,
       },
       mounted () {
         try {
@@ -85,13 +102,19 @@ block script
           localStorage.setItem('bulls-and-cows', JSON.stringify(this.i))
         }, { deep: true })
 
+        // 處理 similarity
+        this.similarity = {
+          toInt: SIMILARITY,
+          toStr: _.fromPairs(_.map(SIMILARITY, (v, k) => [v, k])),
+        }
+
         // 初始化
         if (!this.verifyGuess(this.i.answer)) this.btnNewGame(true)
         if (!this.i.solvers.length) this.btnNewSolver(true)
       },
       computed: {
         possibilities () {
-          const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.includes(this.results, solver.result))
+          const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.hasIn(this.similarity.toStr, solver.simi))
           if (!solvers.length) return []
           const possibilities = []
           for (let g1=0; g1<10; g1++)
@@ -104,7 +127,7 @@ block script
                   let isPossible = true
                   const possible = `${g1}${g2}${g3}${g4}`
                   for (const solver of solvers)
-                    if (isPossible && this.calcGuessResult(possible, solver.guess) !== solver.result) isPossible = false
+                    if (isPossible && this.calcSimilarity(possible, solver.guess) !== solver.simi) isPossible = false
                   if (isPossible) possibilities.push(possible)
                 }
               }
@@ -122,12 +145,12 @@ block script
               if (guess[i] === guess[j]) return false
           return true
         },
-        calcGuessResult(guess, answer) {
-          const res = { a: 0, b: 0 }
+        calcSimilarity(guess, answer) {
+          let similarity = 0
           for(let i=0; i<4; i++)
             for(let j=0; j<4; j++)
-              if (guess[i] === answer[j]) res[i===j ? 'a' : 'b']++
-          return `${res.a}A${res.b}B`
+              if (guess[i] === answer[j]) similarity += i===j ? 10 : 1
+          return similarity
         },
         btnPushGuess () {
           const guess = this.i.guess
@@ -146,14 +169,14 @@ block script
           if (!force && !await this.confirm('是否清空求解資料？')) return
           this.$set(this.i, 'solvers', _.times(8, i => ({
             guess: '',
-            result: '0A0B',
+            simi: 0,
           })))
         },
-        async btnPushSolver (guess, result) {
+        async btnPushSolver (guess, simi) {
           const solver = _.find(this.i.solvers, solver => !this.verifyGuess(solver.guess))
           if (!solver) return
           solver.guess = guess
-          solver.result = result
+          solver.simi = simi
         },
         async confirm (message, yes = '是', no = '否') {
           const confirm = await Swal.fire({
