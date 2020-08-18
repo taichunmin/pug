@@ -18,12 +18,14 @@ block style
     :sass
       [v-cloak]
         display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
       #app
         .dropdown-menu
           padding: 0
 
 block content
-  #app.container-fluid.text-monospace(v-cloak)
+  #app.container-fluid(v-cloak)
     h1.text-center.my-3= title
     .card.mb-3
       //- 頁面選單
@@ -46,18 +48,18 @@ block content
             .input-group-text 玩家 {{ playerId + 1 }} 暱稱
           input.form-control.form-control-sm(type="text", v-model="player.name")
           .input-group-append(v-if="playerId > 0")
-            button.btn.btn-outline-secondary(type="button", @click="playerSwapWithNext(playerId-1)")
+            button.btn.btn-outline-secondary(type="button", tabindex="-1", @click="playerSwapWithNext(playerId-1)")
               i.fa.fa-fw.fa-arrow-up
       //- 紀錄頁面
       table.table.table-bordered.text-nowrap.text-center.mb-0(v-if="i.page == 'input' && !!roundMax")
         tr
           th.p-1(colspan="2") {{ i.roundCur + 1 }}/{{ roundMax }}
           th.p-1
-            span.pr-2.align-middle 預測
+            span.pr-2 預測
             span.badge.badge-info {{ predictsSum[i.roundCur] }}
           th.p-1
-            span.pr-2.align-middle 結果
-            span.badge(:class="(resultsSum[i.roundCur] === i.roundCur + 1) ? 'badge-success' : 'badge-danger'") {{ resultsSum[i.roundCur] }}
+            span.pr-2 結果
+            span.badge(:class="`badge-${roundsEnable[i.roundCur] ? 'success' : 'danger'}`") {{ resultsSum[i.roundCur] }}
         tr(v-for="player, playerId in i.players")
           td.p-2(:class="playerId === dealer ? 'bg-success text-white' : ''") {{ player.name }}
           td.p-2 {{ playersScore[playerId] }}
@@ -69,15 +71,15 @@ block content
                   button.btn-sm.dropdown-item(type="button", v-for="n in _.range(i.roundCur + 2)", :class="{ active: n === round.predict }", @click="round.predict = n") 預測 {{ n }} 墩
             td.p-1
               .dropdown
-                button.btn.btn-sm.btn-block.btn-outline-success.dropdown-toggle(type="button", data-toggle="dropdown") 吃到 {{ round.result }} 墩
+                button.btn.btn-sm.btn-block.btn-outline-success.dropdown-toggle(type="button", data-toggle="dropdown") 贏得 {{ round.result }} 墩
                 .dropdown-menu.dropdown-menu-right
-                  button.btn-sm.dropdown-item(type="button", v-for="n in _.range(i.roundCur + 2)", :class="{ active: n === round.result }", @click="round.result = n") 吃到 {{ n }} 墩
+                  button.btn-sm.dropdown-item(type="button", v-for="n in _.range(i.roundCur + 2)", :class="{ active: n === round.result }", @click="round.result = n") 贏得 {{ n }} 墩
       .card-body.py-2.px-3(v-if="i.page == 'input'")
         .row.px-2
           .col.px-0.mx-2
-            button.btn.btn-block.btn-outline-secondary(type="button", :disabled="i.roundCur <= 0", @click="i.roundCur--") #[span.fa.fa-arrow-left] 上一輪
+            button.btn.btn-block.btn-outline-secondary(type="button", v-if="i.roundCur > 0", @click="i.roundCur--") #[span.fa.fa-arrow-left] 上一輪
           .col.px-0.mx-2
-            button.btn.btn-block(type="button", :disabled="i.roundCur >= roundMax - 1", @click="i.roundCur++", :class="'btn-outline' + inputResultColor") #[span.fa.fa-arrow-right] 下一輪
+            button.btn.btn-block(type="button", v-if="i.roundCur + 1 < roundMax", @click="i.roundCur++", :class="`btn-outline-${roundsEnable[i.roundCur] ? 'success' : 'danger'}`") #[span.fa.fa-arrow-right] 下一輪
       //- 得分頁面
       .table-responsive(v-if="i.page == 'scores' && !!roundMax")
         table.table.table-bordered.table-sm.mb-0.text-center.text-nowrap#result-table
@@ -90,45 +92,54 @@ block content
           tr(v-for="roundId in roundMax", :key="roundId")
             th {{ roundId }}
             td(v-for="player in i.players")
-              template(v-if="roundsEnable[roundId-1]", v-for="round in [_.get(player, ['rounds', roundId-1])]")
-                span.round-score.align-middle(v-for="score in [calculatePlayerRoundScore(round)]", :class="score > 0 ? 'text-success' : 'text-danger'") {{ score }}
+              template(v-for="score in [calcPlayerRoundScore(player.rounds[roundId-1], roundId-1)]")
+                span.round-score.text-success(v-if="score > 0") +{{ score }}
+                span.round-score.text-danger(v-if="score < 0") {{ score }}
       //- 規則頁面
       .card-body.p-2.border-0(v-if="i.page == 'rule'")
         img.mb-3.d-block.mx-auto.img-fluid(src="https://i.imgur.com/70Y0eOD.jpg")
         h3 遊戲背景
-        p 很久很久以前，在巨石陣裡還有知名魔法學院的時代，魔法學徒們從事許多活動來訓練和琢磨他們的魔力。其中一個活動就是玩這個叫做「神機妙算」的紙牌遊戲，來發展和強化他們的預知天賦。
+        p 很久很久以前，在巨石陣裡還有知名魔法學院的時代，魔法學徒（玩家）們從事許多活動來訓練和琢磨他們的魔力。其中一個活動就是玩這個叫做「神機妙算」的紙牌遊戲，來發展和強化他們的預知天賦。
         p 在數千年後，這些訓練巫師的方法已經失傳。直到知名的德國考古學家 Horold Eitel 博士從巨石陣的石柱下挖掘出地窖，在裡面發現古老羊皮紙卷軸後，才讓「神機妙算」這個紙牌遊戲，重見天日。雖然紙牌中更深層更奧秘的意義可能已經失傳，但藉由重繪這些古老的圖像，及重述那古老卷軸上的規則，在此為您呈現這個充滿挑戰性的遊戲。
         h3 遊戲配件
         p 60 張角色牌，1 本真實之書（計分表），1 張羊皮紙（規則）。
         h3 遊戲目標
-        p 學徒們必須正確地預測他們每輪遊戲將贏到的墩數，如果預測正確的話，就能得到經驗分數。在一回合中，每位玩家輪流出一張牌，正面朝上地置於桌面中央，這些牌稱為一墩。在遊戲結束時，得到最多經驗總分的人贏得遊戲，並且升級為智者巫師。
+        p 玩家們必須正確地預測他們每輪遊戲將贏到的墩數，如果預測正確的話，就能得到經驗分數。在一回合中，每位玩家輪流出一張牌，正面朝上地置於桌面中央，這些牌稱為一墩。在遊戲結束時，得到最多經驗總分的人贏得遊戲，並且升級為智者巫師。
+        h3 遊戲準備
+        p 從玩家中選擇一位擔任理事，由他掌管「真實之書」，並在上面填寫玩家們的姓名，確實的紀錄每個人獲得的經驗分數。
         h3 發牌階段
         p {{ i.players.length }} 人遊戲共有 {{ _.inRange(i.players.length, 3, 7) ? (60 / i.players.length) : 0 }} 輪。 每輪由一個人順時針輪流作為發牌玩家，第 1 輪每人 1 張牌、第 2 輪每人 2 張牌…依此類推，發牌玩家需要先把牌發給自己。
         h3 王牌花色
         p 沒發完的牌正面朝下放置於桌面中央，翻開最上面的一張牌，這張牌的花色就是這輪的王牌花色。 若最上面的牌為 Z，則由發牌玩家決定本輪的王牌花色，若最上面的牌為 N 或是最後一輪時，以「沒有王牌花色」進行。
         h3 開始預言
-        p 在所有玩家看過自己的牌後，由發牌玩家開始，所有玩家依照順時針預測本輪會贏得幾墩，需要有人將所有玩家的預測紀錄於本記分板。
+        p 在所有玩家看過自己的牌後，由發牌玩家開始，所有玩家依照順時針預測本輪會贏得幾墩，並且讓理事把所有玩家的預測紀錄於本記分板。
         h3 爭奪吃墩
-        p 所有人都預測完後，就進入出牌階段，每次由本輪吃到上一墩的玩家先發，若是本輪第一次出牌則由發牌者先發。
+        p 所有人都預測完後，就進入出牌階段，每次由本輪贏得上一墩的玩家先發，若是本輪第一次出牌則由發牌者先發。
         p 其他玩家必須順時針依序打出一張與先發者同花色的牌（本墩的花色），如果沒有同花色的牌，才能夠打出王牌花色（切牌）或其他花色的牌（墊牌）。
         p 注意：玩家隨時可以打出特殊牌 Z 或 N，不論其手上有沒有跟本墩花色一樣的牌。
         p 注意：若先發者打出巫師牌 Z，則其他人可以不受限制打出任何一張牌（包括 Z 和 N）。
         p 注意：若先發者打出小丑牌 N，則由下一家出牌決定本墩的花色。 若下一家又打出小丑牌 N，則再由下一家出牌決定。
         p
-          | 在所有玩家都出一張牌以後，牌最大的玩家吃到這一墩，並且把這一墩的牌收好放到自己面前，牌的大小為：
+          | 在所有玩家都出一張牌以後，牌最大的玩家贏得這一墩，並且把這一墩的牌收好放到自己面前，牌的大小為：
           ol
             li 若有人出巫師牌 Z，則第一個出 Z 的人贏得此墩。
             li 若沒人出 Z，則打出王牌花色且點數最大的玩家贏得此墩（1 最小 13 最大）。
             li 若沒人出王牌花色，則打出本墩的花色且點數最大的玩家贏得此墩（1 最小 13 最大）。
             li 若所有人都出小丑牌 N，則第一個出 N 的人贏得此墩。
         h3 獲得分數
-        p 當本輪的手牌全部打完後，本輪結束，並且將本輪每個人所吃到的墩數紀錄於本記分板。
+        p 當本輪的手牌全部打完後，本輪結束，並且將本輪每個人所贏得的墩數紀錄於本記分板。
         p
           | 遊戲計分的方式為：
           ul
             li 若該輪預測正確的玩家，贏得的每一墩都會得到 10 分，並且再額外獲得 20 分。
             li 若該輪預測錯誤的玩家，每多（少）贏到一墩，就扣除 10 分。
         p 玩家每輪所獲得的分數加總即為總分，總分最多的人獲勝。
+        h3 變化玩法
+        p #[strong 【加減 1 墩】]每次預測時，玩家們預測的墩數總和不能等於這輪的發牌張數。例如：這輪遊戲發了 5 張牌，玩家們預測的墩數必須大於 5 墩或小於 5 墩。
+        p #[strong 【隱藏預言】]每次預測時，玩家們必須偷偷把自己的預測告訴理事，並且讓理事記錄在計分板上，使用此規則時，玩家的預測就不會受到其他玩家影響。
+        p #[strong 【秘密預言】]每次預測時，玩家要把自己的預測寫在自己的紙張上，在該輪遊戲結束後，才能公布自己的預測墩數。
+        p #[strong 【深思熟慮】]第 1 輪時，玩家不能看自己的牌，所有玩家要把牌放在自己的額頭前面，讓其他玩家能夠看到紙牌內容，在所有玩家都看完別人的紙牌後（不能看自己的牌），才開始第一輪的預測，這規則不影響其他規則或其他輪遊戲。
+        p #[strong 【單色玩法】]當玩家人數為 3 或 4 人時，每位玩家選擇一個花色的牌，並且各拿一張 Z 和 N，在 3 人遊戲時，將多餘的花色放回盒子中。在這規則中，沒有王牌花色，玩家們把各自的牌堆洗勻後，覆蓋放在自己前面，第一輪抽 4 張牌。然後玩家們按照事先約定好的方式公開或秘密地預測自己將會贏得的墩數。之後，每 1 輪多抽 1 張牌（第 2 輪 5 張牌、第 3 輪 6 張牌…依此類推）。在這規則中，不會比較牌的花色，由數字最大的玩家贏得此墩，當數字最大的牌不止 1 張時，由先出牌的玩家贏得此墩。每輪遊戲結束後，將紙牌根據花色歸還給該玩家，所有玩家需要把自己的牌堆洗勻，然後才能進行下 1 輪遊戲，總共進行 12 輪。
         h3 自製桌遊
         p 材料：兩副一樣的撲克牌及筆。
         p.mb-0 做法：為了講解方便，在此將撲克牌分別以 A 和 B 表示。從撲克牌 B 中挑出 2 的牌，於牌的左上、中間及右下寫上 N，然後從撲克牌 B 中挑出 4 的牌，於牌的左上、中間及右下寫上 Z，然後把撲克牌 A 的鬼牌移除。將撲克牌 A 的 52 張牌加上撲克牌 B 的 Z 和 N 就製作完成啦。
@@ -152,6 +163,7 @@ block script
         this.$watch('i', (newVal, oldVal) => {
           localStorage.setItem('boardgame-wizard', JSON.stringify(this.i))
         }, { deep: true })
+        if (!this.roundMax) await this.setPlayers(3, true)
       },
       computed: {
         roundMax () {
@@ -159,68 +171,51 @@ block script
           return 60 / this.i.players.length
         },
         predictsSum () {
-          let sum = []
-          for (let i=0; i<this.roundMax; i++) {
-            sum[i] = _.sumBy(this.i.players, player => _.get(player, ['rounds', i, 'predict'], 0))
-          }
-          return sum
+          return _.times(this.roundMax, i => _.sumBy(this.i.players, player => _.get(player, `rounds.${i}.predict`, 0)))
         },
         resultsSum () {
-          let sum = []
-          for (let i=0; i<this.roundMax; i++) {
-            sum[i] = _.sumBy(this.i.players, player => _.get(player, ['rounds', i, 'result'], 0))
-          }
-          return sum
+          return _.times(this.roundMax, i => _.sumBy(this.i.players, player => _.get(player, `rounds.${i}.result`, 0)))
         },
         roundsEnable () {
-          let ret = []
-          for (let i=0; i<this.roundMax; i++) {
-            ret[i] = (this.predictsSum[i] + this.resultsSum[i]) > 0
-          }
-          return ret
+          return _.times(this.roundMax, i => this.resultsSum[i] === i+1)
         },
         playersScore () {
           return _.map(this.i.players, this.playerScore)
-        },
-        inputResultColor () {
-          return (this.resultsSum[this.i.roundCur] === this.i.roundCur + 1) ? '-success' : '-danger'
         },
         dealer () {
           return this.i.roundCur % this.i.players.length
         },
       },
       methods: {
-        async setPlayers (n) {
+        async setPlayers (n, slient = false) {
           if (!_.inRange(n, 3, 7)) return
-          const confirm = await Swal.fire({
-            cancelButtonColor: '#3085d6',
-            cancelButtonText: '保持原樣',
-            confirmButtonColor: '#d33',
-            confirmButtonText: '開啟新局',
-            icon: 'warning',
-            showCancelButton: true,
-            text: `是否開始一個全新的 ${n} 人遊戲？`,
-          })
-          if (!confirm.value) return
+          if (!slient) {
+            const confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '開啟新局',
+              icon: 'warning',
+              showCancelButton: true,
+              text: `是否開始一個全新的 ${n} 人遊戲？`,
+            })
+            if (!confirm.value) return
+          }
           this.$set(this.i, 'players', _.times(n, i => ({
             name: _.get(this, `i.players.${i}.name`, `${i+1}P`),
             rounds: _.times(60 / n, () => ({ predict: 0, result: 0 })),
           })))
           this.i.roundCur = 0
         },
-        calculatePlayerRoundScore (round) {
-          let predict = _.get(round, 'predict', 0)
-          let result = _.get(round, 'result', 0)
+        calcPlayerRoundScore (round, roundId) {
+          if (!this.roundsEnable[roundId]) return 0
+          const predict = _.get(round, 'predict', 0)
+          const result = _.get(round, 'result', 0)
           if (predict === result) return result * 10 + 20
           return Math.abs(result - predict) * -10
         },
         playerScore (player) {
-          let sum = 0
-          _.each(player.rounds, (round, i) => {
-            if (this.resultsSum[i] <= 0) return
-            sum += this.calculatePlayerRoundScore(round)
-          })
-          return sum
+          return _.sum(_.map(player.rounds, this.calcPlayerRoundScore))
         },
         playerSwapWithNext(playerId) {
           const players = this.i.players
