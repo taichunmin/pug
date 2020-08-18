@@ -146,7 +146,7 @@ block script
         },
         async getCsvRules () {
           let rules = await this.getCsv(`https://cors-anywhere.herokuapp.com/${this.i.csvRules}`)
-          rules = _.filter(rules, rule => rule.shape.length && rule.pattern.length)
+          rules = _.filter(rules, rule => rule.pattern.length)
           rules = _.map(rules, rule => ({
             ...rule,
             pattern: new RegExp(rule.pattern),
