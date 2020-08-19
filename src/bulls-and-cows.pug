@@ -13,18 +13,18 @@ block style
 
 block content
   #app.container(v-cloak)
-    h1.text-center.my-3= title
+    h3.text-center.my-3= title
     .row
       .col-sm
         .card.mb-3
-          h5.card-header 猜數字遊戲
+          h5.card-header #[i.fa.fa-fw.fa-gamepad] 猜數字遊戲
           .card-body
             .form-group
               label(for="i-guess") 請輸入四位數不重複 0 到 9 的數字
               .input-group.input-group-sm.mb-2
                 .input-group-prepend
                   span.input-group-text {{ i.guesses.length + 1 }}
-                input.form-control#i-guess(type="text", inputmode="numeric", maxlength="4", v-model="i.guess")
+                input.form-control#i-guess(type="text", inputmode="numeric", maxlength="4", v-model="i.guess", @keyup.enter="btnPushGuess")
                 .input-group-append
                   button.btn.btn-success(type="button", @click="btnPushGuess") 送出
             table.table.table-sm.table-bordered.text-center.mb-0(v-if="i.guesses.length")
@@ -40,13 +40,13 @@ block content
                     td {{ similarity.toStr[simi] }}
                     td: a.badge.badge-info.mr-1(@click="btnPushSolver(guess, simi)", href="#") 求解
           .card-footer.text-right
-            button.btn.btn-danger(type="button", @click="btnNewGame(false)") #[span.fa.fa-fw.fa-trash-o] 開新遊戲
+            button.btn.btn-sm.btn-danger(type="button", @click="btnNewGame(false)") #[span.fa.fa-fw.fa-trash-o] 開新遊戲
       .col-sm
         .card.mb-3
-          h5.card-header 猜數字求解程式
+          h5.card-header #[i.fa.fa-fw.fa-graduation-cap] 猜數字求解程式
           .card-body
             .form-group
-              label(for="i-guess") 請輸入猜測數字與結果
+              label 請輸入猜測數字與結果
               .input-group.input-group-sm.mb-2(v-for="(solver, solverId) in i.solvers")
                 .input-group-prepend
                   span.input-group-text {{ solverId + 1 }}
@@ -62,7 +62,7 @@ block content
               #possibilities
                 a.badge.badge-info.mr-1(v-for="possible in possibilities.slice(0, 100)", @click="i.guess = possible", href="#") {{ possible }}
           .card-footer.text-right
-            button.btn.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
+            button.btn.btn-sm.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
 
 block script
   script.
@@ -91,7 +91,10 @@ block script
           guesses: [],
           solvers: [],
         },
-        similarity: null,
+        similarity: {
+          toInt: SIMILARITY,
+          toStr: _.invert(SIMILARITY),
+        },
       },
       mounted () {
         try {
@@ -101,12 +104,6 @@ block script
         this.$watch('i', (newVal, oldVal) => {
           localStorage.setItem('bulls-and-cows', JSON.stringify(this.i))
         }, { deep: true })
-
-        // 處理 similarity
-        this.similarity = {
-          toInt: SIMILARITY,
-          toStr: _.fromPairs(_.map(SIMILARITY, (v, k) => [v, k])),
-        }
 
         // 初始化
         if (!this.verifyGuess(this.i.answer)) this.btnNewGame(true)
