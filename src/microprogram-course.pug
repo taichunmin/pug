@@ -32,7 +32,7 @@ block content
         button.btn.btn-success.mr-2(v-else-if="loading", type="button", disabled) #[span.spinner-border.spinner-border-sm(role="status")] 正在簽到中
         button.btn.btn-success.mr-2(v-else-if="isCheckIn", type="button", disabled) 已簽到
         button.btn.btn-success.mr-2(v-else, type="button", @click="btnCheckIn") 課程簽到
-        a.btn.btn-outline-primary(type="button", :href="course.url", target="_blank") 相關連結
+        a.btn.btn-outline-primary(:href="course.url", target="_blank") 相關連結
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
