@@ -1,0 +1,122 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = '掃描附近的 LINE Beacon'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      .beacon
+        font-size: .75rem
+        th
+          width: 1px
+
+block content
+  #app.container.text-monospace(v-cloak)
+    h3.text-center.my-3= title
+    .row.my-3.mx-n2
+      .col.px-0.mx-2
+        button.btn.btn-block.btn-danger(type="button", @click="btnClear") 清空資料
+      .col.px-0.mx-2
+        button.btn.btn-block.btn-success(v-if="!scanning", type="button", @click="btnToggleScan") 開始掃描
+        button.btn.btn-block.btn-warning(v-else, type="button", @click="btnToggleScan") 停止掃描
+    template(v-if="!_.keys(beacons).length")
+      .input-group.input-group-sm
+        input.form-control(type="url", ref="liff", value="chrome://flags/#enable-experimental-web-platform-features", readonly)
+        .input-group-append
+          button.btn.btn-outline-success(type="button", @click="btnCopy") 複製網址
+      small.text-muted 如果無法掃描，請嘗試使用 macOS 和 Android 系統的 Google Chrome（版本大於 79）開啟，並且前往上方網址啟用 Experimental Web Platform features 功能。
+    .row
+      .col-12.col-sm-6.col-md-4.my-2(v-for="beacon of beacons", :key="beacon.id")
+        table.table.table-dark.table-bordered.table-sm.mb-0.text-right.beacon
+          tr(v-for="k in ['id', 'rssi', 'hwid', 'dm', 'authenticationCode', 'maskedTimestamp', 'batteryLevel', 'scannedAt']")
+            th {{ k }}
+            td {{ _.get(beacon, k, '無資料') }}
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script.
+    const bluetooth = _.get(navigator, 'bluetooth')
+    const vm = new Vue({ // eslint-disable-line no-unused-vars
+      el: '#app',
+      data: {
+        beacons: {},
+        scan: null,
+        scanning: false,
+      },
+      mounted () {
+        moment.locale('zh-tw')
+        // 綁定掃描事件
+        bluetooth.addEventListener('advertisementreceived', event => { this.onAdvertisementReceived(event) })
+        window.setInterval(() => { this.updateScanning() }, 1000)
+      },
+      methods: {
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability') === true
+        },
+        async btnToggleScan () {
+          try {
+            this.updateScanning()
+            if (!this.scanning) { // 開始掃描
+              if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
+              this.scan = await bluetooth.requestLEScan({ acceptAllAdvertisements: true })
+            } else { // 停止掃描
+              this.scan.stop()
+              this.scan = null
+            }
+          } catch (err) {
+            Swal.fire({
+              icon: 'error',
+              text: err.message,
+              title: '藍芽掃描切換失敗',
+            })
+          }
+        },
+        async onAdvertisementReceived (event) {
+          const beacon = {
+            id: _.trim(_.get(event, 'device.id'), '='),
+            manufacturerData: _.map([...event.manufacturerData], v => [v[0], this.dataViewStringify(v[1])]),
+            name: _.get(event, 'device.name'),
+            rssi: _.get(event, 'rssi'),
+            serviceData: _.map([...event.serviceData], v => [v[0], this.dataViewStringify(v[1])]),
+            txPower: _.get(event, 'txPower'),
+            uuids: _.get(event, 'uuids'),
+          }
+          if (!_.includes(beacon.uuids, '0000fe6f-0000-1000-8000-00805f9b34fb')) return
+          const payload = _.get(_.find(beacon.serviceData, d => d[0] === '0000fe6f-0000-1000-8000-00805f9b34fb'), 1)
+          if (!_.isArray(payload) || payload.length < 6) return
+          beacon.frameType = _.parseInt(payload[0], 16)
+          beacon.hwid = payload.slice(1, 6).join('')
+          beacon.dm = payload.slice(7).join('')
+          beacon.scannedAt = moment().format('HH:mm:ss')
+          if (payload.length === 14) {
+            beacon.authenticationCode = payload.slice(7, 11).join('')
+            beacon.maskedTimestamp = payload.slice(11, 13).join('')
+            beacon.batteryLevel = payload[13]
+          }
+          this.$set(this.beacons, beacon.id, beacon)
+        },
+        async btnCopy () {
+          const copyText = this.$refs.liff
+          copyText.select()
+          copyText.setSelectionRange(0, 99999) // For mobile devices
+          document.execCommand('copy')
+          await Swal.fire({
+            icon: 'success',
+            title: '複製成功',
+          })
+        },
+        updateScanning () {
+          this.scanning = _.get(this, 'scan.active', false)
+        },
+        btnClear () {
+          this.$set(this, 'beacons', {})
+        },
+        dataViewStringify (valueDataView) {
+          return _.map([...new Uint8Array(valueDataView.buffer)], b => _.padStart(b.toString(16), 2, '0'))
+        },
+      },
+    })

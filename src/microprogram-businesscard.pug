@@ -73,13 +73,6 @@ block script
       }, {})
     })()
 
-    const validateParams = (() => {
-      const schema = joi.object({
-        ext: joi.number().integer().min(100).required(),
-      })
-      return value => schema.validateAsync(value, { stripUnknown: true })
-    })()
-
     const TPL_PREFIX = 'https://gist.githubusercontent.com/taichunmin/4c3931a5ef5168b8ddab341c770b151e/raw/'
     const CSV_URL = 'https://gist.githubusercontent.com/taichunmin/4c3931a5ef5168b8ddab341c770b151e/raw/microprogram.csv'
     const LIFF_ID = '1654437282-n2QwW3Nm'

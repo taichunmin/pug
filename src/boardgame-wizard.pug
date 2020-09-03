@@ -177,7 +177,7 @@ block script
           return _.times(this.roundMax, i => _.sumBy(this.i.players, player => _.get(player, `rounds.${i}.result`, 0)))
         },
         roundsEnable () {
-          return _.times(this.roundMax, i => this.resultsSum[i] === i+1)
+          return _.times(this.roundMax, i => this.resultsSum[i] === i + 1)
         },
         playersScore () {
           return _.map(this.i.players, this.playerScore)
@@ -202,7 +202,7 @@ block script
             if (!confirm.value) return
           }
           this.$set(this.i, 'players', _.times(n, i => ({
-            name: _.get(this, `i.players.${i}.name`, `${i+1}P`),
+            name: _.get(this, `i.players.${i}.name`, `${i + 1}P`),
             rounds: _.times(60 / n, () => ({ predict: 0, result: 0 })),
           })))
           this.i.roundCur = 0
@@ -217,10 +217,10 @@ block script
         playerScore (player) {
           return _.sum(_.map(player.rounds, this.calcPlayerRoundScore))
         },
-        playerSwapWithNext(playerId) {
+        playerSwapWithNext (playerId) {
           const players = this.i.players
           if (playerId < 0 || playerId > players.length - 2) return
-          players.splice(playerId, 2, players[playerId+1], players[playerId])
+          players.splice(playerId, 2, players[playerId + 1], players[playerId])
         },
       },
     })
