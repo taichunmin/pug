@@ -14,10 +14,10 @@ block content
     h3.text-center.my-3= title
     h4.text-center Enviorment
     ul
-      li is in client: {{ isInClient }}
-      li LINE version: {{ lineVersion }}
-      li OS: {{ os }}
-      li version: {{ version }}
+      li getLineVersion: {{ getLineVersion }}
+      li getOS: {{ getOS }}
+      li getVersion: {{ getVersion }}
+      li isInClient: {{ isInClient }}
     button.btn.btn-block.btn-primary.my-3(type="button", @click="btnGmap(false)") external: false
     button.btn.btn-block.btn-primary.my-3(type="button", @click="btnGmap(true)") external: true
 
@@ -36,17 +36,18 @@ block script
     window.vm = new Vue({
       el: '#app',
       data: {
+        getLineVersion: '?',
+        getOS: '?',
+        getVersion: '?',
         isInClient: '?',
-        lineVersion: '?',
-        os: '?',
-        version: '?',
       },
       async mounted () {
         await liff.init({ liffId: '1654046335-kWvqeyYW' })
-        this.isInClient = liff.isInClient() || '?'
-        this.lineVersion = liff.getLineVersion() || '?'
-        this.os = liff.getOS() || '?'
-        this.version = liff.getVersion() || '?'
+        _.each(['getLineVersion', 'getOS', 'getVersion', 'isInClient'], k => {
+          const tmp = _.invoke(liff, k)
+          if (_.isNil(tmp)) return
+          this.$set(this, k, tmp)
+        })
       },
       methods: {
         async btnGmap (external = false) {
