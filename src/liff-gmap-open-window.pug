@@ -1,0 +1,57 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = 'Open google maps url with liff.openWindow()'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.container.my-3(v-cloak)
+    h3.text-center.my-3= title
+    h4.text-center Enviorment
+    ul
+      li is in client: {{ isInClient }}
+      li LINE version: {{ lineVersion }}
+      li OS: {{ os }}
+      li version: {{ version }}
+    button.btn.btn-block.btn-primary.my-3(type="button", @click="btnGmap(false)") external: false
+    button.btn.btn-block.btn-primary.my-3(type="button", @click="btnGmap(true)") external: true
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script.
+    window.vConsole = new VConsole()
+    const genGoogleMapUrl = (query, queryPlaceId) => {
+      const gmap = new URL('https://www.google.com/maps/search/')
+      gmap.searchParams.set('api', '1')
+      gmap.searchParams.set('query', query)
+      if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
+      return gmap.href
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        isInClient: '?',
+        lineVersion: '?',
+        os: '?',
+        version: '?',
+      },
+      async mounted () {
+        await liff.init({ liffId: '1654046335-kWvqeyYW' })
+        this.isInClient = liff.isInClient()
+        this.lineVersion = liff.getLineVersion()
+        this.os = liff.getOS()
+        this.version = liff.getVersion()
+      },
+      async btnGmap (external = false) {
+        liff.openWindow({
+          url: genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY'),
+          external,
+        })
+      },
+    })
