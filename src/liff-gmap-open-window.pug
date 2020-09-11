@@ -43,15 +43,17 @@ block script
       },
       async mounted () {
         await liff.init({ liffId: '1654046335-kWvqeyYW' })
-        this.isInClient = liff.isInClient()
-        this.lineVersion = liff.getLineVersion()
-        this.os = liff.getOS()
-        this.version = liff.getVersion()
+        this.isInClient = liff.isInClient() || '?'
+        this.lineVersion = liff.getLineVersion() || '?'
+        this.os = liff.getOS() || '?'
+        this.version = liff.getVersion() || '?'
       },
-      async btnGmap (external = false) {
-        liff.openWindow({
-          url: genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY'),
-          external,
-        })
+      methods: {
+        async btnGmap (external = false) {
+          liff.openWindow({
+            url: genGoogleMapUrl('24.959276,121.419008', 'ChIJ40_T2-scaDQRF36Y2c_qORY'),
+            external,
+          })
+        },
       },
     })
