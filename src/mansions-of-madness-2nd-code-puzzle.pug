@@ -1,0 +1,208 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = '瘋狂詭宅第二版 代碼謎題'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.container(v-cloak)
+    h3.text-center.my-3= title
+    .row
+      .col-sm
+        .card.mb-3
+          h5.card-header #[i.fa.fa-fw.fa-gamepad] 代碼謎題
+          .card-body
+            .form-group
+              label(for="i-num") 調整代碼謎題的數字位數
+              .dropdown
+                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-key] {{ i.num }} 位數字&nbsp;
+                .dropdown-menu
+                  button.dropdown-item(type="button", v-for="n in [2,3,4,5]", :class="{active: n === i.num}", @click="n !== i.num && btnSetNum(n)") {{ n }} 位數字
+            .form-group
+              label(for="i-guess") 請輸入 {{ i.num }} 位數 1 到 5 的數字
+              .input-group.input-group-sm.mb-2
+                .input-group-prepend
+                  span.input-group-text {{ i.guesses.length + 1 }}
+                input.form-control#i-guess(type="text", inputmode="numeric", :maxlength="i.num", v-model="i.guess", @keyup.enter="btnPushGuess")
+                .input-group-append
+                  button.btn.btn-success(type="button", @click="btnPushGuess") 送出
+            table.table.table-sm.table-bordered.text-center.mb-0(v-if="i.guesses.length")
+              thead: tr
+                th #
+                th 猜測數字
+                th(colspan="2") 結果
+              tbody.text-monospace
+                tr(v-for="(guess, guessId) in i.guesses")
+                  template(v-for="simi in [calcSimilarity(guess, i.answer)]")
+                    th {{ guessId + 1 }}
+                    td {{ guess }}
+                    td {{ similarityToStr[simi] }}
+                    td: a.badge.badge-info.mr-1(@click="btnPushSolver(guess, simi)", href="#") 求解
+          .card-footer.text-right
+            button.btn.btn-sm.btn-danger(type="button", @click="btnNewGame(false)") #[span.fa.fa-fw.fa-trash-o] 開新遊戲
+      .col-sm
+        .card.mb-3
+          h5.card-header #[i.fa.fa-fw.fa-graduation-cap] 代碼謎題求解程式
+          .card-body
+            .form-group
+              label 請輸入猜測數字與結果
+              .input-group.input-group-sm.mb-2(v-for="(solver, solverId) in i.solvers")
+                .input-group-prepend
+                  span.input-group-text {{ solverId + 1 }}
+                input.form-control(type="text", inputmode="numeric", :maxlength="i.num", v-model="solver.guess")
+                .input-group-append
+                  button.btn.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown") {{ similarityToStr[solver.simi] }}
+                  .dropdown-menu.dropdown-menu-right
+                    button.dropdown-item(type="button", v-for="simi in similarity", :class="{active: simi === solver.simi}", @click="solver.simi = simi") {{ similarityToStr[simi] }}
+            .form-group.mb-0
+              label 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibilities.length }}]
+              small.form-text.text-muted(v-if="!possibilities.length") 請輸入猜測數字與結果來顯示可能的謎底
+              small.form-text.text-muted(v-if="possibilities.length > 100") 僅顯示前 100 筆可能的謎底
+              #possibilities
+                a.badge.badge-info.mr-1(v-for="possible in possibilities.slice(0, 100)", @click="i.guess = possible", href="#") {{ possible }}
+          .card-footer.text-right
+            button.btn.btn-sm.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
+
+block script
+  script.
+    const SIMILARITY = {
+      2: [0, 1, 2, 10, 20],
+      3: [0, 1, 2, 3, 10, 11, 12, 20, 30],
+      4: [0, 1, 2, 3, 4, 10, 11, 12, 13, 20, 21, 22, 30, 40],
+      5: [0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 20, 21, 22, 23, 30, 31, 32, 40, 50],
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        i: {
+          answer: '',
+          guess: '',
+          guesses: [],
+          num: 3,
+          solvers: [],
+        },
+        similarityToStr: {
+          0: '0A0B',
+          1: '0A1B',
+          2: '0A2B',
+          3: '0A3B',
+          4: '0A4B',
+          5: '0A5B',
+          10: '1A0B',
+          11: '1A1B',
+          12: '1A2B',
+          13: '1A3B',
+          14: '1A4B',
+          20: '2A0B',
+          21: '2A1B',
+          22: '2A2B',
+          23: '2A3B',
+          30: '3A0B',
+          31: '3A1B',
+          32: '3A2B',
+          40: '4A0B',
+          50: '5A0B',
+        },
+      },
+      mounted () {
+        try {
+          const saved = JSON.parse(localStorage.getItem('mansions-of-madness-2nd-code-puzzle'))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', (newVal, oldVal) => {
+          localStorage.setItem('mansions-of-madness-2nd-code-puzzle', JSON.stringify(this.i))
+        }, { deep: true })
+
+        // 初始化
+        if (!this.verifyGuess(this.i.answer)) this.btnNewGame(true)
+        if (!this.i.solvers.length) this.btnNewSolver(true)
+      },
+      computed: {
+        similarity () {
+          return SIMILARITY[this.i.num]
+        },
+        possibilities () {
+          const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.hasIn(this.similarityToStr, solver.simi))
+          if (!solvers.length) return []
+          const possibilities = []
+          const genPossibilities = (prefix = '', size = 0) => {
+            if (size < this.i.num) return _.each(_.range(5), i => genPossibilities(prefix + (i + 1), size + 1))
+            let isPossible = true
+            for (const solver of solvers) {
+              if (this.calcSimilarity(prefix, solver.guess) === solver.simi) continue
+              isPossible = false
+              break
+            }
+            if (isPossible) possibilities.push(prefix)
+          }
+          genPossibilities()
+          return possibilities
+        },
+      },
+      methods: {
+        verifyGuess (guess) {
+          return _.isString(guess) && guess.length === this.i.num && /^\d+$/.test(guess)
+        },
+        calcSimilarity (guess, answer) {
+          let a = 0
+          const digits = _.times(5, () => [0, 0])
+          for (let i = 0; i < guess.length; i++) {
+            if (guess[i] === answer[i]) a++
+            digits[guess[i] - 1][0]++
+            digits[answer[i] - 1][1]++
+          }
+          return _.sumBy(digits, digit => _.min(digit)) + 9 * a
+        },
+        btnPushGuess () {
+          const guess = this.i.guess
+          if (!this.verifyGuess(guess)) return
+          if (_.includes(this.i.guesses, guess)) return
+          this.i.guesses.push(guess)
+          this.i.guess = ''
+        },
+        async btnSetNum (num, force = false) {
+          if (!force && !await this.confirm(`是否開始新的 ${num} 位數代碼謎題？`)) return
+          this.i.num = num
+          this.btnNewGame(true)
+          this.btnNewSolver(true)
+        },
+        async btnNewGame (force = false) {
+          if (!force && !await this.confirm('是否開始新的代碼謎題？')) return
+          this.i.answer = _.times(this.i.num, () => _.sample('12345')).join('')
+          this.i.guess = ''
+          this.i.guesses = []
+        },
+        async btnNewSolver (force = false) {
+          if (!force && !await this.confirm('是否清空求解資料？')) return
+          this.$set(this.i, 'solvers', _.times(8, i => ({
+            guess: '',
+            simi: 0,
+          })))
+        },
+        async btnPushSolver (guess, simi) {
+          const solver = _.find(this.i.solvers, solver => !this.verifyGuess(solver.guess))
+          if (!solver) return
+          solver.guess = guess
+          solver.simi = simi
+        },
+        async confirm (message, yes = '是', no = '否') {
+          const confirm = await Swal.fire({
+            cancelButtonColor: '#3085d6',
+            cancelButtonText: no,
+            confirmButtonColor: '#d33',
+            confirmButtonText: yes,
+            icon: 'question',
+            showCancelButton: true,
+            text: message,
+          })
+          return !!confirm.value
+        },
+      },
+    })

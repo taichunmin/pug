@@ -54,7 +54,7 @@ block content
                 .input-group-append
                   button.btn.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown") {{ similarity.toStr[solver.simi] }}
                   .dropdown-menu.dropdown-menu-right
-                    button.dropdown-item(type="button", v-for="(simi, simiStr) in similarity.toInt", @click="solver.simi = simi") {{ simiStr }}
+                    button.dropdown-item(type="button", v-for="(simi, simiStr) in similarity.toInt", :class="{active: simi === solver.simi}", @click="solver.simi = simi") {{ simiStr }}
             .form-group.mb-0
               label 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibilities.length }}]
               small.form-text.text-muted(v-if="!possibilities.length") 請輸入猜測數字與結果來顯示可能的謎底
