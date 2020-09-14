@@ -20,17 +20,23 @@ block content
           h5.card-header #[i.fa.fa-fw.fa-gamepad] 代碼謎題
           .card-body
             .form-group
-              label(for="i-num") 調整代碼謎題的數字位數
+              label(for="i-num") 有幾種數字可以填到格子？
               .dropdown
-                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-key] {{ i.num }} 位數字&nbsp;
+                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-key] {{ i.num }} 種數字&nbsp;
                 .dropdown-menu
-                  button.dropdown-item(type="button", v-for="n in [2,3,4,5]", :class="{active: n === i.num}", @click="n !== i.num && btnSetNum(n)") {{ n }} 位數字
+                  button.dropdown-item(type="button", v-for="n in [3,4,5]", :class="{active: n === i.num}", @click="n !== i.num && btnSetNumSlot(n, i.slot)") {{ n }} 位數字
             .form-group
-              label(for="i-guess") 請輸入 {{ i.num }} 位數 1 到 5 的數字
+              label(for="i-slot") 有幾個格子？
+              .dropdown
+                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-pencil-square-o] {{ i.slot }} 個格子&nbsp;
+                .dropdown-menu
+                  button.dropdown-item(type="button", v-for="n in [3,4,5]", :class="{active: n === i.slot}", @click="n !== i.slot && btnSetNumSlot(i.num, n)") {{ n }} 位數字
+            .form-group
+              label(for="i-guess") 請輸入 {{ i.slot }} 位數 1 到 {{ i.num }} 的數字 (可重複)
               .input-group.input-group-sm.mb-2
                 .input-group-prepend
                   span.input-group-text {{ i.guesses.length + 1 }}
-                input.form-control#i-guess(type="text", inputmode="numeric", :maxlength="i.num", v-model="i.guess", @keyup.enter="btnPushGuess")
+                input.form-control#i-guess(type="text", inputmode="numeric", :maxlength="i.slot", v-model="i.guess", @keyup.enter="btnPushGuess")
                 .input-group-append
                   button.btn.btn-success(type="button", @click="btnPushGuess") 送出
             table.table.table-sm.table-bordered.text-center.mb-0(v-if="i.guesses.length")
@@ -56,7 +62,7 @@ block content
               .input-group.input-group-sm.mb-2(v-for="(solver, solverId) in i.solvers")
                 .input-group-prepend
                   span.input-group-text {{ solverId + 1 }}
-                input.form-control(type="text", inputmode="numeric", :maxlength="i.num", v-model="solver.guess")
+                input.form-control(type="text", inputmode="numeric", :maxlength="i.slot", v-model="solver.guess")
                 .input-group-append
                   button.btn.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown") {{ similarityToStr[solver.simi] }}
                   .dropdown-menu.dropdown-menu-right
@@ -85,7 +91,7 @@ block script
           answer: '',
           guess: '',
           guesses: [],
-          num: 3,
+          slot: 3,
           solvers: [],
         },
         similarityToStr: {
@@ -125,15 +131,18 @@ block script
         if (!this.i.solvers.length) this.btnNewSolver(true)
       },
       computed: {
+        digits () {
+          return '12345'.slice(0, this.i.num)
+        },
         similarity () {
-          return SIMILARITY[this.i.num]
+          return SIMILARITY[this.i.slot]
         },
         possibilities () {
           const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.hasIn(this.similarityToStr, solver.simi))
           if (!solvers.length) return []
           const possibilities = []
           const genPossibilities = (prefix = '', size = 0) => {
-            if (size < this.i.num) return _.each(_.range(5), i => genPossibilities(prefix + (i + 1), size + 1))
+            if (size < this.i.slot) return _.each(this.digits, (c, i) => genPossibilities(prefix + c, size + 1))
             let isPossible = true
             for (const solver of solvers) {
               if (this.calcSimilarity(prefix, solver.guess) === solver.simi) continue
@@ -148,7 +157,10 @@ block script
       },
       methods: {
         verifyGuess (guess) {
-          return _.isString(guess) && guess.length === this.i.num && /^[1-5]+$/.test(guess)
+          if (!_.isString(guess) || guess.length !== this.i.slot) return false
+          for (let i = 0; i<guess.length; i++)
+            if (!_.inRange(guess[i], 1, this.i.num + 1)) return false
+          return true
         },
         calcSimilarity (guess, answer) {
           let a = 0
@@ -167,21 +179,22 @@ block script
           this.i.guesses.push(guess)
           this.i.guess = ''
         },
-        async btnSetNum (num, force = false) {
-          if (!force && !await this.confirm(`是否開始新的 ${num} 位數代碼謎題？`)) return
+        async btnSetNumSlot (num, slot, force = false) {
+          if (!force && !await this.confirm(`是否開始新的 ${slot} 位數 1 ~ ${num} 代碼謎題？`)) return
           this.i.num = num
+          this.i.slot = slot
           this.btnNewGame(true)
           this.btnNewSolver(true)
         },
         async btnNewGame (force = false) {
           if (!force && !await this.confirm('是否開始新的代碼謎題？')) return
-          this.i.answer = _.times(this.i.num, () => _.sample('12345')).join('')
+          this.i.answer = _.times(this.i.slot, () => _.sample(this.digits)).join('')
           this.i.guess = ''
           this.i.guesses = []
         },
         async btnNewSolver (force = false) {
           if (!force && !await this.confirm('是否清空求解資料？')) return
-          this.$set(this.i, 'solvers', _.times(8, i => ({
+          this.$set(this.i, 'solvers', _.times(9, i => ({
             guess: '',
             simi: 0,
           })))
