@@ -148,7 +148,7 @@ block script
       },
       methods: {
         verifyGuess (guess) {
-          return _.isString(guess) && guess.length === this.i.num && /^\d+$/.test(guess)
+          return _.isString(guess) && guess.length === this.i.num && /^[1-5]+$/.test(guess)
         },
         calcSimilarity (guess, answer) {
           let a = 0
