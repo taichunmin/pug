@@ -20,17 +20,12 @@ block content
           h5.card-header #[i.fa.fa-fw.fa-gamepad] 代碼謎題
           .card-body
             .form-group
-              label(for="i-num") 有幾種數字可以填到格子？
+              label(for="i-num") 有幾個數字、幾個格子？
               .dropdown
-                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-key] {{ i.num }} 種數字&nbsp;
+                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-key] {{ i.num }} 種數字 {{ i.slot }} 個格子&nbsp;
                 .dropdown-menu
-                  button.dropdown-item(type="button", v-for="n in [3,4,5]", :class="{active: n === i.num}", @click="n !== i.num && btnSetNumSlot(n, i.slot)") {{ n }} 位數字
-            .form-group
-              label(for="i-slot") 有幾個格子？
-              .dropdown
-                button.btn.btn-block.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") #[span.fa.fa-fw.fa-pencil-square-o] {{ i.slot }} 個格子&nbsp;
-                .dropdown-menu
-                  button.dropdown-item(type="button", v-for="n in [3,4,5]", :class="{active: n === i.slot}", @click="n !== i.slot && btnSetNumSlot(i.num, n)") {{ n }} 位數字
+                  template(v-for="n in [3,4,5]")
+                    button.dropdown-item(type="button", v-for="s in [3,4,5]", :class="{active: (n === i.num && s === i.slot)}", @click="(n !== i.num || s !== i.slot) && btnSetNumSlot(n, s)") {{ n }} 種數字 {{ s }} 個格子
             .form-group
               label(for="i-guess") 請輸入 {{ i.slot }} 位數 1 到 {{ i.num }} 的數字 (可重複)
               .input-group.input-group-sm.mb-2
@@ -180,7 +175,7 @@ block script
           this.i.guess = ''
         },
         async btnSetNumSlot (num, slot, force = false) {
-          if (!force && !await this.confirm(`是否開始新的 ${slot} 位數 1 ~ ${num} 代碼謎題？`)) return
+          if (!force && !await this.confirm(`將代碼謎題調整為「${num} 種數字 ${slot} 個格子」嗎？`)) return
           this.i.num = num
           this.i.slot = slot
           this.btnNewGame(true)
