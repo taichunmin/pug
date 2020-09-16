@@ -1,4 +1,4 @@
-const { build } = require('./index')
+const { build } = require('./build')
 const finalhandler = require('finalhandler')
 const http = require('http')
 const livereload = require('livereload')

@@ -162,8 +162,7 @@ block script
       methods: {
         verifyGuess (guess) {
           if (!_.isString(guess) || guess.length !== this.i.slot) return false
-          for (let i = 0; i<guess.length; i++)
-            if (!_.inRange(guess[i], 1, this.i.num + 1)) return false
+          for (let i = 0; i < guess.length; i++) { if (!_.inRange(guess[i], 1, this.i.num + 1)) return false }
           return true
         },
         getGuessClass (guess) {

@@ -6,13 +6,14 @@
   "author": "taichunmin <taichunmin@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "cross-env DEBUG=app:* node ./build.js",
+    "build": "cross-env DEBUG=app:* node ./index.js",
     "dev": "cross-env DEBUG=app:* node ./dev.js",
     "lint": "eslint --ext .js,.pug --fix ."
   },
   "dependencies": {
     "cross-env": "^7.0.2",
     "debug": "^4.1.1",
+    "fast-glob": "^3.2.4",
     "finalhandler": "^1.1.2",
     "jstransformer-sass": "^1.0.0",
     "pug": "^3.0.0",
