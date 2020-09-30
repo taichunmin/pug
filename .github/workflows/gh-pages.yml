@@ -1,0 +1,30 @@
+name: github pages
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout 原始碼
+      uses: actions/checkout@v2
+
+    - name: 安裝相依性套件
+      uses: borales/actions-yarn@v2.0.0
+      with:
+        cmd: install
+
+    - name: 編譯 github pages
+      uses: borales/actions-yarn@v2.0.0
+      with:
+        cmd: build
+
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist
+        force_orphan: true
