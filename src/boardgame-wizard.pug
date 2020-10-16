@@ -156,12 +156,13 @@ block script
         },
       },
       async mounted () {
+        // 自動儲存功能
         try {
-          const saved = JSON.parse(localStorage.getItem('boardgame-wizard'))
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
           if (saved) this.$set(this, 'i', { ...this.i, ...saved })
         } catch (err) {}
-        this.$watch('i', (newVal, oldVal) => {
-          localStorage.setItem('boardgame-wizard', JSON.stringify(this.i))
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
         }, { deep: true })
         if (!this.roundMax) await this.setPlayers(3, true)
       },

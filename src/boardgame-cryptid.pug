@@ -1,0 +1,156 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = '詭影尋蹤線索紙'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="桌遊「詭影尋蹤」的線索紙")
+  meta(property="og:image:height", content="640")
+  meta(property="og:image:width", content="1280")
+  meta(property="og:image", content="https://i.imgur.com/OxTy7GL.png")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/boardgame-cryptid.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      #app
+        table.table-cryptid
+          user-select: none
+          line-height: 1
+          th, td
+            width: calc(100% / 3)
+            padding-top: 6px
+            padding-bottom: 6px
+          .img-icon
+            width: 20px
+            height: 20px
+      .bg-player1, .bg-player1:disabled
+        background-color: #FEBAAD
+      .bg-player2, .bg-player2:disabled
+        background-color: #B6F4DF
+      .bg-player3, .bg-player3:disabled
+        background-color: #ABDCFD
+      .bg-player4, .bg-player4:disabled
+        background-color: #F8CAA9
+      .bg-player5, .bg-player5:disabled
+        background-color: #E4D5FE
+
+block content
+  #app.my-3.container(v-cloak)
+    h2.mb-3.text-center 詭影尋蹤線索紙
+    .row.mb-2.mx-n1
+      .col-4.mb-2.px-1
+        button.btn.btn-block.btn-outline-danger(type="button", @click="btnReset()") #[span.fa.fa-fw.fa-trash-o] 清空
+      .col-4.mb-2.px-1(v-for="player in [0,1,2,3,4]")
+        button.btn.btn-block.btn-outline-dark(type="button", @click="i.player = player", :class="`bg-player${ player + 1 }`", :disabled="i.player === player") #[span.fa.fa-fw.fa-user] {{ PLAYERS[player] }}
+    table.mb-3.table.table-sm.table-bordered.table-cryptid(v-for="(table, tno) in CRYPTID_TABLES")
+      thead.thead-dark: tr: th.text-center(colspan="3") {{ table.thead }}
+      tbody.text-center: tr(v-for="(row, rno) in table.rows")
+        th.px-0
+          .d-flex.justify-content-center.align-items-center
+            img.img-icon.mr-2(:src="`https://i.imgur.com/${row.imgur}.png`")
+            img.img-icon.mr-2(v-if="row.imgur2", :src="`https://i.imgur.com/${row.imgur2}.png`")
+            | {{ row.name }}
+        template(v-for="yn in [0, 1]")
+          td.px-0(:class="ceil(tno, rno, yn) ? `bg-player${ i.player + 1 }` : ''", @click="ceil(tno, rno, yn, 1)")
+            .d-flex.justify-content-center.align-items-center
+              img.img-icon.mr-2(v-show="ceil(tno, rno, yn)", src="https://i.imgur.com/iPzOPad.png")
+              img.img-icon.mr-2(v-show="!ceil(tno, rno, yn)", src="https://i.imgur.com/Vnb12l9.png")
+              | {{ ['Yes', 'No'][yn] }}
+
+block script
+  script.
+    const CRYPTID_TABLES = [
+      {
+        thead: '某種地形之中',
+        rows: [
+          { name: '海洋', imgur: 'nOYNYRv' },
+          { name: '山地', imgur: 'oHUGMJV' },
+          { name: '森林', imgur: '4DFKxgZ' },
+          { name: '沼澤', imgur: 'MhJRI1z' },
+          { name: '沙漠', imgur: 'E8YBubU' },
+        ],
+      },
+      {
+        thead: '距離 1 格內',
+        rows: [
+          { name: '海洋', imgur: 'nOYNYRv' },
+          { name: '山地', imgur: 'oHUGMJV' },
+          { name: '森林', imgur: '4DFKxgZ' },
+          { name: '沼澤', imgur: 'MhJRI1z' },
+          { name: '沙漠', imgur: 'E8YBubU' },
+          { name: '動物', imgur: 'yqy7QTJ', imgur2: 'XIaghuL' },
+        ],
+      },
+      {
+        thead: '距離 2 格內',
+        rows: [
+          { name: '石柱', imgur: 'tWRZXxC' },
+          { name: '小屋', imgur: '5BSsBIQ' },
+          { name: '狐狸', imgur: 'yqy7QTJ' },
+          { name: '黑熊', imgur: 'XIaghuL' },
+        ],
+      },
+      {
+        thead: '距離某顏色建築 3 格內',
+        rows: [
+          { name: '綠色', imgur: 'TFH19zA' },
+          { name: '白色', imgur: 'ZTzaTpc' },
+          { name: '藍色', imgur: 'sJjZjAZ' },
+          { name: '黑色', imgur: 'byWjTZn' },
+        ],
+      },
+    ]
+    const PLAYERS = ['1 α', '2 β', '3 γ', '4 δ', '5 ε']
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        CRYPTID_TABLES,
+        PLAYERS,
+        i: {
+          player: 0,
+          clues: null,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
+        }, { deep: true })
+
+        if (!this.i.clues) await this.btnReset(true)
+      },
+      methods: {
+        async btnReset (slient = false) {
+          if (!slient) {
+            const confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設紀錄',
+              icon: 'warning',
+              showCancelButton: true,
+              text: `是否開始 1 個全新的紀錄？`,
+            })
+            if (!confirm.value) return
+          }
+          this.i.clues = _.times(5, () => _.map(CRYPTID_TABLES, table => _.map(table.rows, row => [1, 1])))
+        },
+        ceil (tno, rno, yn, not) {
+          const oldVal = _.get(this.i.clues, [this.i.player, tno, rno, yn])
+          if (!not) return oldVal
+          this.$set(_.get(this, ['i', 'clues', this.i.player, tno, rno]), yn, oldVal ? 0 : 1)
+        },
+      },
+    })

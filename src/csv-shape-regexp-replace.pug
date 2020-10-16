@@ -57,13 +57,13 @@ block script
         },
       },
       async mounted () {
-        // load localStorage
+        // 自動儲存功能
         try {
-          const saved = JSON.parse(localStorage.getItem('csv-shape-regexp-replace'))
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
           if (saved) this.$set(this, 'i', { ...this.i, ...saved })
         } catch (err) {}
-        this.$watch('i', (newVal, oldVal) => {
-          localStorage.setItem('csv-shape-regexp-replace', JSON.stringify(this.i))
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
         }, { deep: true })
 
         moment.locale('zh-tw')

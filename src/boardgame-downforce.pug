@@ -139,7 +139,7 @@ block script
         }
         // load i data from localStorage
         try {
-          const saved = JSON.parse(localStorage.getItem(location.pathname))
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
           vueData.i = { ...vueData.i, ...saved }
         } catch (err) {}
         return vueData
@@ -175,7 +175,7 @@ block script
             title: '重設為預設資料',
           })
           if (!result.isConfirmed) return
-    
+
           this.$set(this, 'i', _.cloneDeep(defaultInput))
         },
       },

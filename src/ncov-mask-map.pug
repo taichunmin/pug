@@ -136,7 +136,7 @@ block script
         },
         async showNews () {
           const STORAGE_KEY = 'ncov-mask-map-news-timestamp'
-          const NEWS_TIMESTAMP = +new Date(2020, 10-1, 15, 0, 0, 0)
+          const NEWS_TIMESTAMP = +new Date(2020, 10 - 1, 15, 0, 0, 0)
           const read = _.parseInt(localStorage.getItem(STORAGE_KEY))
           if (read >= NEWS_TIMESTAMP) return
           const result = await Swal.fire({

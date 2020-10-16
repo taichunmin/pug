@@ -68,12 +68,13 @@ block script
         status: '',
       },
       async mounted () {
+        // 自動儲存功能
         try {
-          const saved = JSON.parse(sessionStorage.getItem('line-push-template'))
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
           if (saved) this.$set(this, 'i', { ...this.i, ...saved })
         } catch (err) {}
-        this.$watch('i', (newVal, oldVal) => {
-          sessionStorage.setItem('line-push-template', JSON.stringify(this.i))
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
         }, { deep: true })
         this.ready = true
       },
@@ -96,7 +97,7 @@ block script
             this.status = '正在解析訊息內容 JSON'
             const tplTo = _.template(this.i.to)
             const tplMsg = _.template(this.i.msg)
-    
+
             let sendCnt = 0
             for (const item of rows) {
               try {

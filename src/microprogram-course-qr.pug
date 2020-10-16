@@ -45,7 +45,6 @@ block script
   script(src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
   script.
     /* global gapi */
-    const LOCAL_STORAGE_KEY = 'microprogram-course-qr'
     const SPREADSHEET_ID = '1dJhB5_auh5Fzqy7VfUnmFPpiT7OYF5BvpZ6nmrV9RJo'
     const GAPI_INIT_ARGS = 'eyJhcGlLZXkiOiJBSXphU3lCc1A0ekhCWnREU2NKMV81b3FZZlM1OWZiTnNPXzN4V0UiLCJjbGllbnRJZCI6IjQxNzk1NDIwMjc0Ny02MmEwcG4yYW5rcnNjbzc5MGpyMWgyOW45dm5mOTJsbS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9'
     let sheetsAPI = null
@@ -72,12 +71,13 @@ block script
         },
       },
       async mounted () {
+        // 自動儲存功能
         try {
-          const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
           if (saved) this.$set(this, 'i', { ...this.i, ...saved })
         } catch (err) {}
-        this.$watch('i', (newVal, oldVal) => {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.i))
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
         }, { deep: true })
       },
       watch: {

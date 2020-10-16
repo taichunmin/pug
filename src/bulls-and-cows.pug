@@ -97,12 +97,13 @@ block script
        },
      },
      mounted () {
+       // 自動儲存功能
        try {
-         const saved = JSON.parse(localStorage.getItem('bulls-and-cows'))
+         const saved = JSON5.parse(localStorage.getItem(location.pathname))
          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
        } catch (err) {}
-       this.$watch('i', (newVal, oldVal) => {
-         localStorage.setItem('bulls-and-cows', JSON.stringify(this.i))
+       this.$watch('i', () => {
+         localStorage.setItem(location.pathname, JSON5.stringify(this.i))
        }, { deep: true })
 
        // 初始化
