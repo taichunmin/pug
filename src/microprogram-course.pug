@@ -162,7 +162,7 @@ block script
           }), 'data', [])
         },
         async getAttends () {
-          this.attends = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTDyD-tW4bDQ-7NILOhpBPRrskDpQZvaQw9_my-Mbd8TJ7j_xRlBxSUdYtNSfeNhF-gzALuNHia8f36/pub?gid=1069299348&single=true&output=csv')
+          this.attends = await this.getCsv('https://cors-anywhere.herokuapp.com/https://docs.google.com/spreadsheets/d/e/2PACX-1vTDyD-tW4bDQ-7NILOhpBPRrskDpQZvaQw9_my-Mbd8TJ7j_xRlBxSUdYtNSfeNhF-gzALuNHia8f36/pub?gid=1069299348&single=true&output=csv')
         },
       },
     })
