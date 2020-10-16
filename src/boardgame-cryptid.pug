@@ -26,21 +26,21 @@ block style
           line-height: 1
           th, td
             width: calc(100% / 3)
-            padding-top: 6px
-            padding-bottom: 6px
+            padding-top: 5px
+            padding-bottom: 5px
           .img-icon
             width: 20px
             height: 20px
       .bg-player1, .bg-player1:disabled
-        background-color: #FEBAAD
+        background-color: #f5c6cb
       .bg-player2, .bg-player2:disabled
-        background-color: #B6F4DF
+        background-color: #c3e6cb
       .bg-player3, .bg-player3:disabled
-        background-color: #ABDCFD
+        background-color: #b8daff
       .bg-player4, .bg-player4:disabled
-        background-color: #F8CAA9
+        background-color: #ffeeba
       .bg-player5, .bg-player5:disabled
-        background-color: #E4D5FE
+        background-color: #e4d5fe
 
 block content
   #app.my-3.container(v-cloak)
@@ -55,8 +55,8 @@ block content
       tbody.text-center: tr(v-for="(row, rno) in table.rows")
         th.px-0
           .d-flex.justify-content-center.align-items-center
+            img.img-icon.mr-1(v-if="row.imgur2", :src="`https://i.imgur.com/${row.imgur2}.png`")
             img.img-icon.mr-2(:src="`https://i.imgur.com/${row.imgur}.png`")
-            img.img-icon.mr-2(v-if="row.imgur2", :src="`https://i.imgur.com/${row.imgur2}.png`")
             | {{ row.name }}
         template(v-for="yn in [0, 1]")
           td.px-0(:class="ceil(tno, rno, yn) ? `bg-player${ i.player + 1 }` : ''", @click="ceil(tno, rno, yn, 1)")
@@ -86,7 +86,7 @@ block script
           { name: '森林', imgur: '4DFKxgZ' },
           { name: '沼澤', imgur: 'MhJRI1z' },
           { name: '沙漠', imgur: 'E8YBubU' },
-          { name: '動物', imgur: 'yqy7QTJ', imgur2: 'XIaghuL' },
+          { name: '動物', imgur: 'XIaghuL', imgur2: 'yqy7QTJ' },
         ],
       },
       {
@@ -108,7 +108,7 @@ block script
         ],
       },
     ]
-    const PLAYERS = ['1 α', '2 β', '3 γ', '4 δ', '5 ε']
+    const PLAYERS = ['α 紅', 'β 綠', 'γ 藍', 'δ 黃', 'ε 紫']
     window.vm = new Vue({
       el: '#app',
       data: {
