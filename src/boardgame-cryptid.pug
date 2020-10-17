@@ -49,8 +49,9 @@ block content
       .col-4.mb-2.px-1
         button.btn.btn-block.btn-outline-danger(type="button", @click="btnReset()") #[span.fa.fa-fw.fa-trash-o] 清空
       .col-4.mb-2.px-1(v-for="player in [0,1,2,3,4]")
-        button.btn.btn-block.btn-outline-dark(type="button", @click="i.player = player", :class="`bg-player${ player + 1 }`", :disabled="i.player === player") #[span.fa.fa-fw.fa-user] {{ PLAYERS[player] }}
-    table.mb-3.table.table-sm.table-bordered.table-cryptid(v-for="(table, tno) in CRYPTID_TABLES")
+        button.btn.btn-block.btn-outline-dark(type="button", v-if="i.player === player", :class="`bg-player${ player + 1 }`", disabled) #[span.fa.fa-fw.fa-check] {{ PLAYERS[player] }}
+        button.btn.btn-block.btn-outline-dark(type="button", v-else, @click="i.player = player", :class="`bg-player${ player + 1 }`") #[span.fa.fa-fw.fa-user] {{ PLAYERS[player] }}
+    table.mb-2.table.table-sm.table-bordered.table-cryptid(v-for="(table, tno) in CRYPTID_TABLES")
       thead.thead-dark: tr: th.text-center(colspan="3") {{ table.thead }}
       tbody.text-center: tr(v-for="(row, rno) in table.rows")
         th.px-0
@@ -60,10 +61,8 @@ block content
             | {{ row.name }}
         template(v-for="yn in [0, 1]")
           td.px-0(:class="ceil(tno, rno, yn) ? `bg-player${ i.player + 1 }` : ''", @click="ceil(tno, rno, yn, 1)")
-            .d-flex.justify-content-center.align-items-center
-              img.img-icon.mr-2(v-show="ceil(tno, rno, yn)", src="https://i.imgur.com/iPzOPad.png")
-              img.img-icon.mr-2(v-show="!ceil(tno, rno, yn)", src="https://i.imgur.com/Vnb12l9.png")
-              | {{ ['Yes', 'No'][yn] }}
+            span.fa.fa-fw.fa-check.mr-1(v-if="", :class="ceil(tno, rno, yn) ? 'fa-check' : 'fa-times'")
+            | {{ ['On', 'Not On'][yn] }}
 
 block script
   script.
@@ -108,7 +107,7 @@ block script
         ],
       },
     ]
-    const PLAYERS = ['α 紅', 'β 綠', 'γ 藍', 'δ 黃', 'ε 紫']
+    const PLAYERS = ['紅色', '綠色', '藍色', '黃色', '紫色']
     window.vm = new Vue({
       el: '#app',
       data: {
@@ -135,11 +134,12 @@ block script
         async btnReset (slient = false) {
           if (!slient) {
             const confirm = await Swal.fire({
-              cancelButtonColor: '#3085d6',
-              cancelButtonText: '保持原樣',
-              confirmButtonColor: '#d33',
-              confirmButtonText: '重設紀錄',
+              cancelButtonColor: '#d33',
+              cancelButtonText: '重設紀錄',
+              confirmButtonColor: '#3085d6',
+              confirmButtonText: '保持原樣',
               icon: 'warning',
+              reverseButtons: true,
               showCancelButton: true,
               text: `是否開始 1 個全新的紀錄？`,
             })
