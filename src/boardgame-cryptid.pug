@@ -23,12 +23,12 @@ block style
       #app
         table.table-cryptid
           user-select: none
-          line-height: 1
           th, td
             width: calc(100% / 3)
-          .img-icon
-            width: 16px
-            height: 16px
+            .img-icon
+              background-size: 16px 16px
+              background-repeat: no-repeat
+              background-position: center
       .bg-player1, .bg-player1:disabled
         background-color: #f5c6cb
       .bg-player2, .bg-player2:disabled
@@ -53,19 +53,19 @@ block content
       thead.thead-dark: tr: th.text-center(colspan="3") {{ table.thead }}
       tbody.text-center: tr(v-for="(row, rno) in table.rows")
         th
-          img.img-icon.align-top.mr-1(v-if="row.imgur2", :src="`https://i.imgur.com/${row.imgur2}.png`")
-          img.img-icon.align-top.mr-2(:src="`https://i.imgur.com/${row.imgur}.png`")
+          span.fa.fa-fw.img-icon(v-if="row.imgur2", :style="{backgroundImage: `url(https://i.imgur.com/${row.imgur2}.png)`}") &nbsp;
+          span.fa.fa-fw.mr-1.img-icon(:style="{backgroundImage: `url(https://i.imgur.com/${row.imgur}.png)`}") &nbsp;
           | {{ row.name }}
         template(v-for="yn in [0, 1]")
           td.px-0(:class="ceil(tno, rno, yn) ? `bg-player${ i.player + 1 }` : ''", @click="ceil(tno, rno, yn, 1)")
-            span.fa.fa-fw.fa-check.mr-1(v-if="", :class="ceil(tno, rno, yn) ? 'fa-check' : 'fa-times'")
+            span.fa.fa-fw.mr-1(v-if="", :class="ceil(tno, rno, yn) ? 'fa-check' : 'fa-times'")
             | {{ ['位於', '不在'][yn] }}
 
 block script
   script.
     const CRYPTID_TABLES = [
       {
-        thead: '某種地形之中',
+        thead: '某種地形',
         rows: [
           { name: '海洋', imgur: 'nOYNYRv' },
           { name: '山地', imgur: 'oHUGMJV' },
@@ -95,7 +95,7 @@ block script
         ],
       },
       {
-        thead: '距離某顏色建築 3 格內',
+        thead: '距離建築 3 格內',
         rows: [
           { name: '綠色', imgur: 'TFH19zA' },
           { name: '白色', imgur: 'ZTzaTpc' },
