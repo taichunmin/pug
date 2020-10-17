@@ -62,7 +62,7 @@ block content
         template(v-for="yn in [0, 1]")
           td.px-0(:class="ceil(tno, rno, yn) ? `bg-player${ i.player + 1 }` : ''", @click="ceil(tno, rno, yn, 1)")
             span.fa.fa-fw.fa-check.mr-1(v-if="", :class="ceil(tno, rno, yn) ? 'fa-check' : 'fa-times'")
-            | {{ ['On', 'Not On'][yn] }}
+            | {{ ['位於', '不在'][yn] }}
 
 block script
   script.
