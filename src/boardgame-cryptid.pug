@@ -26,11 +26,9 @@ block style
           line-height: 1
           th, td
             width: calc(100% / 3)
-            padding-top: 5px
-            padding-bottom: 5px
           .img-icon
-            width: 20px
-            height: 20px
+            width: 16px
+            height: 16px
       .bg-player1, .bg-player1:disabled
         background-color: #f5c6cb
       .bg-player2, .bg-player2:disabled
@@ -54,11 +52,10 @@ block content
     table.mb-2.table.table-sm.table-bordered.table-cryptid(v-for="(table, tno) in CRYPTID_TABLES")
       thead.thead-dark: tr: th.text-center(colspan="3") {{ table.thead }}
       tbody.text-center: tr(v-for="(row, rno) in table.rows")
-        th.px-0
-          .d-flex.justify-content-center.align-items-center
-            img.img-icon.mr-1(v-if="row.imgur2", :src="`https://i.imgur.com/${row.imgur2}.png`")
-            img.img-icon.mr-2(:src="`https://i.imgur.com/${row.imgur}.png`")
-            | {{ row.name }}
+        th
+          img.img-icon.align-top.mr-1(v-if="row.imgur2", :src="`https://i.imgur.com/${row.imgur2}.png`")
+          img.img-icon.align-top.mr-2(:src="`https://i.imgur.com/${row.imgur}.png`")
+          | {{ row.name }}
         template(v-for="yn in [0, 1]")
           td.px-0(:class="ceil(tno, rno, yn) ? `bg-player${ i.player + 1 }` : ''", @click="ceil(tno, rno, yn, 1)")
             span.fa.fa-fw.fa-check.mr-1(v-if="", :class="ceil(tno, rno, yn) ? 'fa-check' : 'fa-times'")
