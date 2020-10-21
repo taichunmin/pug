@@ -165,16 +165,17 @@ block script
       },
       methods: {
         async btnReset () {
-          const result = await Swal.fire({
-            cancelButtonText: '取消',
-            confirmButtonText: '重設',
-            icon: 'question',
-            reverseButtons: true,
+          const confirm = await Swal.fire({
+            cancelButtonColor: '#3085d6',
+            cancelButtonText: '保持原樣',
+            confirmButtonColor: '#d33',
+            confirmButtonText: '重設紀錄',
+            focusCancel: true,
+            icon: 'warning',
             showCancelButton: true,
-            text: '請問你是否要把表單內的資料重設為預設資料？',
-            title: '重設為預設資料',
+            text: '是否開始 1 個全新的紀錄？',
           })
-          if (!result.isConfirmed) return
+          if (!confirm.value) return
 
           this.$set(this, 'i', _.cloneDeep(defaultInput))
         },

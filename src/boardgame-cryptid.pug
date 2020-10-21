@@ -131,12 +131,12 @@ block script
         async btnReset (slient = false) {
           if (!slient) {
             const confirm = await Swal.fire({
-              cancelButtonColor: '#d33',
-              cancelButtonText: '重設紀錄',
-              confirmButtonColor: '#3085d6',
-              confirmButtonText: '保持原樣',
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設紀錄',
+              focusCancel: true,
               icon: 'warning',
-              reverseButtons: true,
               showCancelButton: true,
               text: '是否開始 1 個全新的紀錄？',
             })
