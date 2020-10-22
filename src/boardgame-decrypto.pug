@@ -34,11 +34,11 @@ block content
   #app.my-3.container(v-cloak)
     h2.mb-3.text-center 截碼戰記錄紙
     .form-group
-      label 選擇回合 ({{ '白黑'[wb] }} {{ i.cur % 8 + 1 }})
+      label 選擇回合 (目前：{{ '白黑'[wb] }} {{ i.cur % 8 + 1 }})
       .btn-group.d-flex.mb-1
-        button.btn.btn-outline-dark(type="button", v-for="round in 8", @click="i.cur = round - 1", :disabled="i.cur === round - 1") {{ round }}
+        button.btn.btn-outline-dark(type="button", v-for="round in 8", @click="i.cur = round - 1", :disabled="i.cur === round - 1", tabindex="-1") {{ round }}
       .btn-group.d-flex
-        button.btn.btn-dark(type="button", v-for="round in 8", @click="i.cur = round + 7", :disabled="i.cur === round + 7") {{ round }}
+        button.btn.btn-dark(type="button", v-for="round in 8", @click="i.cur = round + 7", :disabled="i.cur === round + 7", tabindex="-1") {{ round }}
     .form-group
       label 線索 / 猜測密碼 / 正確密碼
       .input-group.mb-1(v-for="clue, clueId in round")
@@ -47,20 +47,20 @@ block content
         input.form-control(type="text", placeholder="請輸入線索", v-model="clue[0]")
         .input-group-append.text-monospace
           .dropdown
-            button.btn.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown") {{ clue[1] > 0 ? clue[1] : '?' }}
+            button.btn.btn-primary.dropdown-toggle(type="button", data-toggle="dropdown", tabindex="-1") {{ clue[1] > 0 ? clue[1] : '?' }}
             .dropdown-menu.dropdown-menu-right
-              button.dropdown-item.btn-primary(type="button", v-for="guess in 4", @click="$set(clue, 1, guess)") 猜測密碼為 {{ guess }}
+              button.dropdown-item.btn-primary(type="button", v-for="guess in 4", @click="$set(clue, 1, guess)", tabindex="-1") 猜測密碼為 {{ guess }}
           .dropdown
-            button.btn.btn-success.dropdown-toggle(type="button", data-toggle="dropdown") {{ clue[2] > 0 ? clue[2] : '?' }}
+            button.btn.btn-success.dropdown-toggle(type="button", data-toggle="dropdown", tabindex="-1") {{ clue[2] > 0 ? clue[2] : '?' }}
             .dropdown-menu.dropdown-menu-right
-              button.dropdown-item.btn-primary(type="button", v-for="code in 4", @click="$set(clue, 2, code)") 正確密碼為 {{ code }}
+              button.dropdown-item.btn-primary(type="button", v-for="code in 4", @click="$set(clue, 2, code)", tabindex="-1") 正確密碼為 {{ code }}
     .card.mb-3(v-for="hints, code in hintsByCode")
       .card-header(:class="wb ? 'text-white bg-dark' : 'bg-light'") #[i.fa.fa-info-circle.mr-1] 關鍵字 {{ code + 1 }} 線索
       ul.list-group.list-group-flush(v-if="hints.length")
         li.list-group-item(v-for="hint in hints") {{ hint }}
       .card-body(v-else)
         p.card-text.text-muted 無線索
-    button.btn.btn-block.btn-outline-danger(type="button", @click="btnReset()") #[span.fa.fa-fw.fa-trash-o] 清空資料
+    button.btn.btn-block.btn-outline-danger(type="button", @click="btnReset()", tabindex="-1") #[span.fa.fa-fw.fa-trash-o] 清空資料
 
 block script
   script.
@@ -94,11 +94,12 @@ block script
         hintsByCode () {
           const hints = _.times(4, () => [])
           if (this.i.rounds) {
-            _.each(_.flatten(this.i.rounds.slice(this.wb * 8, 8)), clue => {
-              const [hint, , code] = clue
-              if (!hint || code === 0) return
-              hints[code - 1].push(hint)
-            })
+            for (let i = 0; i < 8; i++) {
+              for (const clue of this.i.rounds[this.wb * 8 + i]) {
+                if (!clue[0] || clue[2] === 0) continue
+                hints[clue[2] - 1].push(clue[0])
+              }
+            }
           }
           return hints
         },
