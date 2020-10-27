@@ -1,0 +1,59 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = '2364x4626 犀牛盾 Pixel 5 個人化訂製手機殼'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      #phone
+        width: 2334px // 233.29 777.28
+        height: 4596px // 459.6 1531.31
+        background-color: #313031
+        position: relative
+      #draw
+        width: 2334px // 212.51
+        height: 2870px // 277.03
+        position: absolute
+        left: 0
+        bottom: 0
+      .section
+        height: 50%
+        width: 100%
+        padding: 14rem
+        //- border: 5px solid black
+      #avatar
+        border-radius: 50%
+        border: 20px solid #1877f2
+        height: 768px
+        padding: 15px
+        width: 768px
+        >img
+          border-radius: 50%
+      #einvoice
+        background-color: #eee
+
+block content
+  #app.my-3.container-fluid(v-cloak)
+    #phone.text-monospace
+      #draw.d-block
+        #about-me.text-white.section.d-flex.justify-content-around.align-items-center
+          #avatar
+            img.w-100(src="https://www.gravatar.com/avatar/8d9b432d861e4ac0e40954a800ae90a1?s=2048")
+          .d-inline-block.text-center
+            div(style="font-size: 250px; font-weight: bold") 戴均民
+            div(style="font-size: 125px") taichunmin
+        #einvoice.section.d-flex.flex-column.justify-content-around.align-items-center
+          img.d-block.flex-grow-1.w-100(src="https://i.imgur.com/MdGiUOy.png")
+          .d-block(style="font-size: 180px") 手機載具 /4ALH+JQ
+          .d-block(style="font-size: 180px") 統一編號 84699515
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+    })
