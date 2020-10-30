@@ -72,7 +72,7 @@ html
       })()
 
       const domById = k => window.document.getElementById(k)
-      const encodeBase64url = str => Base64.encode(str).replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_', '=': '' }, c)) // eslint-disable-line
+      const encodeBase64url = str => Base64.encode(str).replaceAll(/[+/=]/g, c => _.get({ '+': '-', '/': '_', '=': '' }, c)) // eslint-disable-line
       const joiFn = (schema, options) => value => schema.validateAsync(value, options)
       const pad0 = (v, n) => _.padStart(v, n, '0')
 

@@ -136,10 +136,10 @@ block script
         atob (str) {
           if (_.isString(str)) str = CryptoJS.enc.Utf8.parse(str)
           return CryptoJS.enc.Base64.stringify(str)
-            .replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_' }, c, ''))
+            .replaceAll(/[+/=]/g, c => _.get({ '+': '-', '/': '_' }, c, ''))
         },
         btoa (str) {
-          str = str.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
+          str = str.replaceAll(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
           return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str))
         },
         randomBase64 (len) {

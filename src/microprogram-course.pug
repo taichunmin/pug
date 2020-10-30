@@ -117,7 +117,7 @@ block script
           gapi.auth2.getAuthInstance().signIn()
         },
         btoa (str) {
-          str = str.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
+          str = str.replaceAll(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
           return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str))
         },
         async btnCheckIn () {
