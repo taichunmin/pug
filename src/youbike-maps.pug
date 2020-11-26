@@ -51,8 +51,6 @@ block style
             white-space: nowrap
           td
             text-align: right
-        .table-time th
-          background-color: #d6d8db
 
 block content
   #app(v-cloak)
@@ -237,7 +235,7 @@ block script
         },
         async getCsv (url) {
           const csv = _.trim(_.get(await axios.get(url, {
-            params: { cachebust: new Date() / 3e4 },
+            params: { cachebust: _.floor(new Date() / 3e4) },
           }), 'data'))
           return _.get(Papa.parse(csv, {
             encoding: 'utf8',
