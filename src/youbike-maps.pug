@@ -184,7 +184,6 @@ block script
               return L.marker([s.lat, s.lng], { icon: stationToIcon(s) })
                 .bindPopup(stationToPopup(s), { minWidth: 200 })
             }))
-            // TODO: localStorage load
             this.$set(this.visible, type, false)
             this.$watch(`visible.${type}`, (newVal, oldVal) => {
               const hasLayer = map.hasLayer(cluster)
@@ -197,7 +196,6 @@ block script
           })
         },
         async initMap () {
-          if (map) return
           const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>',
           })
