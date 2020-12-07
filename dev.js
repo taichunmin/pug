@@ -28,7 +28,7 @@ async function main () {
   watch('./src', { recursive: true }, async (e, name) => {
     const match = name.match(/src[\\/](.+)\.pug/)
     if (!match) log(`"${name}" changed.`)
-    else log(`http://localhost:3000/${match[1].replaceAll('\\', '/')}.html`)
+    else log(`http://localhost:3000/${match[1].replace(/\\/g, '/')}.html`)
     await build(true)
   })
 }

@@ -1,0 +1,212 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = 'YBCR HEX Viewer'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container(v-cloak)
+    h2.mb-3.text-center YBCR HEX Viewer
+    .input-group.mb-3
+      .input-group-prepend: span.input-group-text Fieldset
+      select.form-control(v-model="i.fieldset")
+        option(v-for="v, k in fieldsetConfig", :value="k") {{ k }} ({{ _.sum(_.map(v, '1')) }})
+    .input-group.mb-3
+      .input-group-prepend: span.input-group-text For Copy
+      input.form-control(type="text", :value="copyText", ref="result", readonly)
+    .form-group
+      label HEX #[span.badge.badge-pill.badge-secondary {{ i.hex.length / 2 }}]
+      textarea.form-control.text-monospace(v-model="i.hex", style="height: 300px")
+    .d-flex.align-items-center.w-100(v-for="row in datatable")
+      .text-right(style="width: 25%") #[span.badge.badge-pill.badge-secondary {{ row.len }}] {{ row.name }}
+      .flex-grow-1.text-monospace.pr-2.pb-2
+        button.btn.btn-sm.mt-2.ml-2(v-for="btn in row.btns", :class="btn.class1", @click="btnCopy(btn.code)")
+          | {{ btn.name }}
+          span.badge.ml-1.text-left(:class="btn.class2", v-html="btn.code")
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script.
+    window.sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        copyText: '',
+        fieldsetConfig: {
+          ecc: [
+            ['卡號', 8],
+            ['卡號長度', 1],
+            ['票卡版號 PurseVer', 1],
+            ['外觀卡號 PID', 8],
+            ['卡交易號 CTC', 3],
+            ['卡別 CardType', 1],
+            ['身份別 PersonalProfile', 1],
+            ['舊設備編號 Device ID', 4],
+            ['新設備編號 NewDeviceID', 6],
+            ['舊服務業者代碼', 1],
+            ['新服務業者代碼', 3],
+            ['舊場站代碼', 1],
+            ['新場站代碼', 2],
+            ['IssuerCode', 1],
+            ['票卡簽章金鑰號 signature KVN', 1],
+            ['交易種類 TM', 1],
+            ['交易屬性 TQ', 1],
+            ['子區碼 SubAreaCode', 2],
+            ['交易前票卡餘額', 3],
+            ['交易前票卡交易序號', 3],
+            ['區碼 AreaCode', 1],
+            ['交易金額 TXNAMT', 3],
+            ['銀行代碼 BankCode', 1],
+            ['二代卡防虛擬碼 CPD', 2],
+            ['票卡最後一筆加值記錄 LastCreditLogp', 33],
+            ['SubType', 1],
+            ['TSQN', 3],
+            ['票卡餘額 PurseBalance', 3],
+            ['SIGN', 16],
+            ['SID SAM ID', 8],
+            ['MAC', 16],
+            ['hash type', 1],
+            ['host admin key kvn', 1],
+            ['TXDDateTime', 4],
+            ['扣款種類', 1],
+            ['腳踏車編號 BikeNo', 5],
+            ['票卡另一個錢包餘額 Another EV', 3],
+            ['MifareSettingParameter', 1],
+            ['CPU SettingParameter', 1],
+            ['還車車柱編號 PartNo', 5],
+            ['前筆轉乘交易序號 TSQN of URT', 3],
+            ['前筆轉乘交易時間 TXN Date Time of URT', 4],
+            ['特種票到期日 Fare Product Expire Date', 2],
+            ['特種票票種 Fare Product Type', 1],
+            ['換乘代碼 Transfer Group Code', 1],
+            ['新換乘代碼 New Transfer Group Code', 2],
+            ['換乘優惠金額 Transfer Discount', 2],
+            ['社福優惠金額 Personal Discount', 2],
+            ['社福卡免費搭乘累積點數 Accumulated Free Rides', 2],
+            ['借車車柱編號 rent_PartNo', 5],
+            ['Personal Profile Authorization', 1],
+          ],
+          ipass: [
+            ['卡號 CSN', 4],
+            ['廠商批號', 12],
+            ['交易讀寫器編號', 4],
+            ['電子票值 EVVALUE', 4],
+            ['備份電子票值 BEVVALUE', 4],
+            ['同步後電子票值 SYNCVALUE', 4],
+            ['優惠記名卡身份證字型大小 PERSONALID', 6],
+            ['前筆交易日期 PREGENTIME', 4],
+            ['前筆交易類別 PREGENCLASS', 1],
+            ['前筆交易票值 PREGENDEDUCTEVALUE', 2],
+            ['前筆交易後票值 PREGENBALANCEEVALUE', 2],
+            ['前筆交易系統編號 PREGENSYSTEM', 1],
+            ['前筆交易地點或業者 PREGENLOCATIONCOMPID', 1],
+            ['前筆交易設備編號 PREGENTERMINALID', 4],
+            ['同步狀態 SYNCSTATUS', 1],
+            ['換乘識別群組#1-交易時間 TRFTXNTIME', 4],
+            ['換乘識別群組#2-本次交通系統代碼 TrfCurrentSystemID', 1],
+            ['換乘識別群組#3 TRFPREVIOUSSYSTEMID', 1],
+            ['換乘識別群組#4-交易類別 TRFTXNCLASS', 1],
+            ['換乘識別群組#5-交易運輸業者(全域業者代碼) TRFTXNCOMPID', 1],
+            ['轉乘識別群組#6-交易運輸地點、站號或段號 TRFTXNLOCATIONID', 1],
+            ['換乘識別群組#7-交易端未設備編號 TRFTXNTERMINALID', 4],
+            ['個人身分別 PERSONALTYPE', 1],
+            ['發卡單位 ISSUECODE', 1],
+            ['交易金額 TXNSVALUE', 2],
+            ['交易時間 TXNSTIME', 4],
+            ['交易類別', 1],
+            ['租賃應付金額 TXNSPAYAMOUNT', 2],
+            ['租賃應付金額 TXNSPAYAMOUNT2', 2],
+            ['換乘優惠金額 TXNSTRANSAMOUNT', 2],
+            ['項目優惠金額 TXNSPORJECTAMOUNT', 2],
+            ['項目優惠旗標 TXNSPROJECTFLAG', 1],
+            ['借車時間 TXNSRENTINGTIME', 4],
+            ['此次轉乘識別#3', 1],
+            ['此次轉乘識別#2', 1],
+            ['交易後票卡餘額 TXNSBALANCE', 4],
+            ['卡片交易序號 SEQUENCENO', 2],
+            ['SAM卡號 SAMID', 8],
+            ['押碼值 TAC', 4],
+            ['FileNameF3', 2],
+            ['?', 54],
+            ['扣款種類', 1],
+            ['腳踏車編號 BIKENO', 5],
+            ['還車車柱編號 PartNo', 5],
+            ['借車車柱編號 PartNo', 5],
+            ['maasenddate', 4],
+            ['massperiod', 1],
+          ],
+        },
+        i: {
+          fieldset: '',
+          hex: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
+        }, { deep: true })
+      },
+      computed: {
+        fieldset () {
+          return this.fieldsetConfig[this.i.fieldset] || []
+        },
+        datatable () {
+          let posStart = 0
+          return _.map(this.fieldset, field => {
+            const row = {
+              name: field[0],
+              len: field[1],
+              len2: field[1] * 2,
+              btns: [],
+            }
+            posStart += row.len2
+            if (posStart > this.i.hex.length) return row
+            const bytes = this.decodeBytes(this.i.hex.slice(posStart - row.len2, posStart))
+            row.btns.push({ name: 'hex', code: _.map(_.chunk(bytes, 10), v => v.join(' ')).join('<br>'), class1: 'btn-primary', class2: 'badge-light' })
+
+            if (row.len === 1) row.btns.push({ name: 'uint8', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int8
+            if (row.len === 2) row.btns.push({ name: 'uint16', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int16
+            if (row.len === 3) row.btns.push({ name: 'uint24', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int24
+            if (row.len === 4) row.btns.push({ name: 'uint32', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int32
+            if (row.len === 4) row.btns.push({ name: 'unixtime', code: this.decodeUnixtime(bytes), class1: 'badge-warning', class2: 'badge-light' }) // unixtime
+            if (row.len === 8) row.btns.push({ name: 'uint64', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int64
+            return row
+          })
+        },
+      },
+      methods: {
+        async btnCopy (text) {
+          const activeElement = document.activeElement
+          this.copyText = text
+          await sleep(100)
+          const copyText = this.$refs.result
+          copyText.select()
+          copyText.setSelectionRange(0, Number.MAX_SAFE_INTEGER) // For mobile devices
+          document.execCommand('copy')
+          await sleep(100)
+          activeElement.focus()
+        },
+        decodeBytes (hex) {
+          return _.map(_.chunk(hex, 2), v => v.join('')).reverse()
+        },
+        decodeUnixtime (bytes) {
+          return moment.unix(this.decodeInt(bytes)).format('YYYY-MM-DD HH:mm:ss')
+        },
+        decodeInt (bytes) {
+          return _.parseInt(bytes.join(''), 16)
+        },
+      },
+    })
