@@ -185,6 +185,7 @@ block script
             if (row.len === 3) row.btns.push({ name: 'uint24', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int24
             if (row.len === 4) row.btns.push({ name: 'uint32', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int32
             if (row.len === 4) row.btns.push({ name: 'unixtime', code: this.decodeUnixtime(bytes), class1: 'badge-warning', class2: 'badge-light' }) // unixtime
+            if (row.len === 4) row.btns.push({ name: 'unixtime-28800', code: this.decodeUnixtime(bytes, -28800), class1: 'badge-warning', class2: 'badge-light' }) // unixtime
             if (row.len === 8) row.btns.push({ name: 'uint64', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' }) // int64
             return row
           })
@@ -205,8 +206,8 @@ block script
         decodeBytes (hex) {
           return _.map(_.chunk(hex, 2), v => v.join('')).reverse()
         },
-        decodeUnixtime (bytes) {
-          return moment.unix(this.decodeInt(bytes)).format('YYYY-MM-DD HH:mm:ss')
+        decodeUnixtime (bytes, diff = 0) {
+          return moment.unix(this.decodeInt(bytes) + diff).format('YYYY-MM-DD HH:mm:ss')
         },
         decodeInt (bytes) {
           return _.parseInt(bytes.join(''), 16)
