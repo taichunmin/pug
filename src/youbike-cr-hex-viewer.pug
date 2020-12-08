@@ -28,7 +28,7 @@ block content
       label HEX #[span.badge.badge-pill.badge-secondary {{ i.hex.length / 2 }}]
       textarea.form-control.text-monospace(v-model="i.hex", style="height: 300px")
     .d-flex.align-items-center.w-100(v-for="row in datatable")
-      .text-right(style="width: 25%") #[span.badge.badge-pill.badge-secondary {{ row.len }}] {{ row.name }}
+      .text-right(style="width: 25%") #[span.badge.badge-pill.badge-secondary {{ row.start }}~{{ row.end }} ({{ row.len }})] {{ row.name }}
       .flex-grow-1.text-monospace.pr-2.pb-2
         button.btn.btn-sm.mt-2.ml-2(v-for="btn in row.btns", :class="btn.class1", @click="btnCopy(btn.code)")
           | {{ btn.name }}
@@ -105,6 +105,7 @@ block script
             ['備份電子票值 BEVVALUE', 4],
             ['同步後電子票值 SYNCVALUE', 4],
             ['優惠記名卡身份證字型大小 PERSONALID', 6],
+            ['前筆交易日期 PREGENTIME', 4],
             ['前筆交易類別 PREGENCLASS', 1],
             ['前筆交易票值 PREGENDEDUCTEVALUE', 2],
             ['前筆交易後票值 PREGENBALANCEEVALUE', 2],
@@ -121,10 +122,9 @@ block script
             ['換乘識別群組#7-交易端未設備編號 TRFTXNTERMINALID', 4],
             ['個人身分別 PERSONALTYPE', 1],
             ['發卡單位 ISSUECODE', 1],
-            ['交易金額 TXNSVALUE', 2],
+            ['租賃應付金額 TXNSPAYAMOUNT', 2],
             ['交易時間 TXNSTIME', 4],
             ['交易類別', 1],
-            ['租賃應付金額 TXNSPAYAMOUNT', 2],
             ['租賃應付金額 TXNSPAYAMOUNT2', 2],
             ['換乘優惠金額 TXNSTRANSAMOUNT', 2],
             ['項目優惠金額 TXNSPORJECTAMOUNT', 2],
@@ -172,6 +172,8 @@ block script
               name: field[0],
               len: field[1],
               len2: field[1] * 2,
+              start: posStart / 2,
+              end: posStart / 2 + field[1],
               btns: [],
             }
             posStart += row.len2
