@@ -14,13 +14,16 @@ block style
 block content
   #app.my-3.container(v-cloak)
     h2.mb-3.text-center YBCR HEX Viewer
-    .input-group.mb-3
-      .input-group-prepend: span.input-group-text Fieldset
-      select.form-control(v-model="i.fieldset")
-        option(v-for="v, k in fieldsetConfig", :value="k") {{ k }} ({{ _.sum(_.map(v, '1')) }})
-    .input-group.mb-3
-      .input-group-prepend: span.input-group-text For Copy
-      input.form-control(type="text", :value="copyText", ref="result", readonly)
+    .row.mb-3
+      .col
+        .input-group
+          .input-group-prepend: span.input-group-text Fieldset
+          select.form-control(v-model="i.fieldset")
+            option(v-for="v, k in fieldsetConfig", :value="k") {{ k }} ({{ _.sum(_.map(v, '1')) }})
+      .col
+        .input-group
+          .input-group-prepend: span.input-group-text For Copy
+          input.form-control(type="text", :value="copyText", ref="result", readonly)
     .form-group
       label HEX #[span.badge.badge-pill.badge-secondary {{ i.hex.length / 2 }}]
       textarea.form-control.text-monospace(v-model="i.hex", style="height: 300px")
