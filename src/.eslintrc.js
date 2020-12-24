@@ -13,6 +13,7 @@ module.exports = {
     _: 'readonly',
     axios: 'readonly',
     CryptoJS: 'readonly',
+    dayjs: 'readonly',
     joi: 'readonly',
     JSON5: 'readonly',
     liff: 'readonly',
@@ -30,6 +31,7 @@ module.exports = {
   },
   rules: {
     'eol-last': ['error', 'never'],
+    'multiline-ternary': 0, // 0 = off, 1 = warn, 2 = error
     'no-return-await': 0, // 0 = off, 1 = warn, 2 = error
     'spaced-comment': ['error', 'always', { markers: ['-'] }],
     'comma-dangle': ['error', {

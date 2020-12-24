@@ -137,18 +137,17 @@ block script
   script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
   script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script.
-    window.sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
-    window.arrJoin = arr => arr.join('')
-    window.arrRevJoin = arr => arr.reverse().join('')
-    window.btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
-    window.btoDateStr = bytes => dayjs.unix((btoUint(bytes) - 2110) * 86400 - 28800).format('YYYY-MM-DD')
-    window.btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
-    window.btoInt = bytes => {
+    const arrJoin = arr => arr.join('')
+    const arrRevJoin = arr => arr.reverse().join('')
+    const btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
+    const btoDateStr = bytes => dayjs.unix((btoUint(bytes) - 2110) * 86400 - 28800).format('YYYY-MM-DD')
+    const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
+    const btoInt = bytes => {
       const mask = 2 ** (bytes.length * 8 - 1)
       const uint = btoUint(bytes)
       return (mask & uint) ? (uint - mask - mask) : uint
     }
-    window.btoTxn = bytes => ({
+    const btoTxn = bytes => ({
       tsqn: btoInt([bytes[0]]),
       time: btoDatetimeStr(bytes.slice(1, 5)),
       subject: `HEX ${bytes[5]}`,
