@@ -1,0 +1,199 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = 'EasyCard M1 Card Viewer'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      span.input-group-text
+        min-width: 100px
+
+block content
+  #app.my-3.container(v-cloak)
+    h2.mb-3.text-center=title
+    .row.text-monospace
+      .col
+        .form-group
+          label EML (HEX)
+          textarea.form-control.form-control-sm(rows="65", v-model="i.eml")
+      .col
+        .form-group
+          label 卡片基本資料
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 卡片編號
+            input.form-control(:value="card.uid")
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 製造時間
+            input.form-control(:value="card.mfd")
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 有效時間
+            input.form-control(:value="card.exp")
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 餘額
+            input.form-control(:value="card.balance")
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 日限額日期
+            input.form-control(:value="card.quotaDate")
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 日限額金額
+            input.form-control(:value="card.quota")
+        .form-group
+          label 公車紀錄
+        .form-group
+          label 轉乘紀錄
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 時間
+            input.form-control
+          .row.mx-n1
+            .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 交易序號
+                input.form-control
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 交易金額
+                input.form-control
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 轉乘前群組
+                input.form-control
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 場站編號
+                input.form-control
+            .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 交易方式
+                input.form-control
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 餘額
+                input.form-control
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 轉乘後群組
+                input.form-control
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 設備編號
+                input.form-control
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 身份證
+            input.form-control
+        .form-group(v-for="txn of card.deducts")
+          label 最近扣款交易 \#{{ txn.tsqn }}
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 時間
+            input.form-control(:value="txn.time")
+          .row.mx-n1
+            .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 交易序號
+                input.form-control(:value="txn.tsqn")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 交易金額
+                input.form-control(:value="txn.amount")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 業者編號
+                input.form-control(:value="txn.provider")
+            .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 交易方式
+                input.form-control(:value="txn.subject")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 餘額
+                input.form-control(:value="txn.ev")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 場站編號
+                input.form-control(:value="txn.location")
+          .input-group.input-group-sm.mb-1
+            .input-group-prepend
+              span.input-group-text.justify-content-center 設備編號
+            input.form-control(:value="txn.device")
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script.
+    window.sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
+    window.arrJoin = arr => arr.join('')
+    window.arrRevJoin = arr => arr.reverse().join('')
+    window.btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
+    window.btoDateStr = bytes => dayjs.unix((btoUint(bytes) - 2110) * 86400 - 28800).format('YYYY-MM-DD')
+    window.btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
+    window.btoInt = bytes => {
+      const mask = 2 ** (bytes.length * 8 - 1)
+      const uint = btoUint(bytes)
+      return (mask & uint) ? (uint - mask - mask) : uint
+    }
+    window.btoTxn = bytes => ({
+      tsqn: btoInt([bytes[0]]),
+      time: btoDatetimeStr(bytes.slice(1, 5)),
+      subject: `HEX ${bytes[5]}`,
+      amount: btoInt(bytes.slice(6, 8)),
+      ev: btoInt(bytes.slice(8, 10)),
+      provider: `HEX ${bytes[10]}`,
+      location: `HEX ${bytes[11]}`,
+      device: `HEX ${arrRevJoin(bytes.slice(12, 16))}`,
+    })
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        i: {
+          eml: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
+        }, { deep: true })
+      },
+      computed: {
+        bytes () {
+          const bytes = this.i.eml.toLowerCase().replace(/[^0-9a-f]/g, '')
+          if (bytes.length !== 2048) return
+          return _.chunk(bytes, 2).map(arrJoin)
+        },
+        card () {
+          const bytes = this.bytes
+          return !bytes ? {} : {
+            uid: arrRevJoin(bytes.slice(0, 4)), // 卡片編號
+            mfd: btoDatetimeStr(bytes.slice(65, 69)), // 製造時間
+            exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
+            balance: btoInt(bytes.slice(144, 147)), // 餘額
+            quota: btoUint(bytes.slice(1005, 1008)), // 日限額金額
+            quotaDate: btoDateStr(bytes.slice(1003, 1005)), // 日限額日期
+            deducts: _.sortBy(_.uniqBy(_.map([13, 14, 16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), 'tsqn'), ['time']),
+          }
+        },
+      },
+      methods: {
+      },
+    })

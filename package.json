@@ -11,8 +11,8 @@
     "lint": "eslint --ext .js,.pug --fix ."
   },
   "dependencies": {
-    "cross-env": "^7.0.2",
-    "debug": "^4.1.1",
+    "cross-env": "^7.0.3",
+    "debug": "^4.3.1",
     "fast-glob": "^3.2.4",
     "finalhandler": "^1.1.2",
     "jstransformer-sass": "^1.0.0",
@@ -20,15 +20,15 @@
     "serve-static": "^1.14.1"
   },
   "devDependencies": {
-    "eslint": "^7.9.0",
-    "eslint-config-standard": "^14.1.1",
-    "eslint-plugin-import": "^2.22.0",
+    "eslint": "^7.16.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-pug": "^1.2.2",
-    "eslint-plugin-standard": "^4.0.1",
+    "eslint-plugin-pug": "^1.2.3",
+    "eslint-plugin-standard": "^5.0.0",
     "livereload": "^0.9.1",
-    "node-watch": "^0.6.4"
+    "node-watch": "^0.7.1"
   },
   "resolutions": {
     "**/kind-of": "^6.0.3"
