@@ -46,8 +46,12 @@ block content
                 input.form-control(:value="card?.balance")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
-                  span.input-group-text.justify-content-center 日限額日期
-                input.form-control(:value="card?.quotaDate")
+                  span.input-group-text.justify-content-center 每日限額
+                input.form-control(:value="card?.quota?.daily")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 限額日期
+                input.form-control(:value="card?.quota?.date")
             .col.px-1
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
@@ -63,8 +67,12 @@ block content
                 input.form-control(:value="card?.autoload")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
-                  span.input-group-text.justify-content-center 日限額金額
-                input.form-control(:value="card?.quota")
+                  span.input-group-text.justify-content-center 單次限額
+                input.form-control(:value="card?.quota?.once")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 已用限額
+                input.form-control(:value="card?.quota?.used")
         .form-group(v-if="card.urt")
           label 轉乘交易紀錄
           .input-group.input-group-sm.mb-1
@@ -203,6 +211,20 @@ block script
       if (_.inRange(provider, 90, 98) || _.inRange(provider, 110, 115)) name = '微笑單車'
       return `${name} ${byte}`
     }
+    const btoProfile = (() => {
+      const PROFILES = {
+        0: '普通',
+        1: '敬老一',
+        2: '敬老二',
+        3: '愛心',
+        4: '愛陪',
+        5: '學生',
+        6: '軍人',
+        7: '警察',
+        8: '孩童',
+      }
+      return byte => _.get(PROFILES, _.parseInt(byte, 16), byte)
+    })()
     const btoInt = bytes => {
       const mask = 2 ** (bytes.length * 8 - 1)
       const uint = btoUint(bytes)
@@ -263,14 +285,18 @@ block script
             deducts, // 最近扣款交易
             exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
             issued: btoDatetimeStr(bytes.slice(69, 73)), // 製造時間
-            quota: btoUint(bytes.slice(1005, 1008)), // 日限額金額
-            quotaDate: btoDateStr(bytes.slice(1003, 1005)), // 日限額日期
             txns, // 最近所有交易
             uid: arrJoin(bytes.slice(0, 4)), // 卡片編號
             urt, // 轉乘交易紀錄
+            quota: {
+              daily: btoUint(bytes.slice(83, 85)), // 日限額金額
+              date: btoDateStr(bytes.slice(1003, 1005)), // 日限額日期
+              once: btoUint(bytes.slice(85, 87)), // 日限額金額
+              used: btoUint(bytes.slice(1005, 1008)), // 日限額金額
+            },
             profile: { // 身份別與到期時間
               exp: btoDatetimeStr(bytes.slice(961, 965)),
-              type: btoUint(bytes.slice(960, 961)),
+              type: btoProfile(bytes[960]),
             },
           }
         },
