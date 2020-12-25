@@ -52,6 +52,10 @@ block content
                 .input-group-prepend
                   span.input-group-text.justify-content-center 限額日期
                 input.form-control(readonly, :value="card?.quota?.date")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 區碼
+                input.form-control(readonly, :value="card?.area")
             .col.px-1
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
@@ -77,14 +81,22 @@ block content
                 .input-group-prepend
                   span.input-group-text.justify-content-center 已用限額
                 input.form-control(readonly, :value="card?.quota?.used")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 銀行編號
+                input.form-control(readonly, :value="card?.bank")
         .form-group(v-if="card.urt")
-          label 轉乘交易紀錄
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 時間
-            input.form-control(readonly, :value="card.urt?.time")
+          label 轉乘紀錄
           .row.mx-n1
             .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 時間
+                input.form-control(readonly, :value="card.urt?.time")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 轉乘前群組
+                input.form-control(readonly, :value="card.urt?.tgc1")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 交易序號
@@ -95,33 +107,29 @@ block content
                 input.form-control(readonly, :value="card.urt?.amount")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
-                  span.input-group-text.justify-content-center 轉乘前群組
-                input.form-control(readonly, :value="card.urt?.tgc1")
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
                   span.input-group-text.justify-content-center 場站編號
                 input.form-control(readonly, :value="card.urt?.location")
             .col.px-1
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
-                  span.input-group-text.justify-content-center 交易方式
-                input.form-control(readonly, :value="card.urt?.subject")
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 餘額
-                input.form-control(readonly, :value="card.urt?.ev")
+                  span.input-group-text.justify-content-center 舊轉乘群組
+                input.form-control(readonly, :value="card.urt?.provider")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 轉乘後群組
                 input.form-control(readonly, :value="card.urt?.tgc2")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
+                  span.input-group-text.justify-content-center 交易方式
+                input.form-control(readonly, :value="card.urt?.type")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 餘額
+                input.form-control(readonly, :value="card.urt?.ev")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
                   span.input-group-text.justify-content-center 設備編號
                 input.form-control(readonly, :value="card.urt?.device")
-        .form-group
-          label 公車進出站紀錄
-        .form-group
-          label 捷運進出站紀錄
         .form-group(v-for="txn of [card.credit]")
           label 最近加值交易 \#{{ txn?.tsqn }}
           .input-group.input-group-sm.mb-1
@@ -146,7 +154,7 @@ block content
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 交易方式
-                input.form-control(readonly, :value="txn?.subject")
+                input.form-control(readonly, :value="txn?.type")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 餘額
@@ -159,43 +167,33 @@ block content
             .input-group-prepend
               span.input-group-text.justify-content-center 設備編號
             input.form-control(readonly, :value="txn?.device")
-        .form-group(v-for="txn of card.deducts")
-          label 最近扣款交易 \#{{ txn?.tsqn }}
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 時間
-            input.form-control(readonly, :value="txn?.time")
-          .row.mx-n1
-            .col.px-1
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 交易序號
-                input.form-control(readonly, :value="txn?.tsqn")
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 交易金額
-                input.form-control(readonly, :value="txn?.amount")
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 業者編號
-                input.form-control(readonly, :value="txn?.provider")
-            .col.px-1
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 交易方式
-                input.form-control(readonly, :value="txn?.subject")
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 餘額
-                input.form-control(readonly, :value="txn?.ev")
-              .input-group.input-group-sm.mb-1
-                .input-group-prepend
-                  span.input-group-text.justify-content-center 場站編號
-                input.form-control(readonly, :value="txn?.location")
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 設備編號
-            input.form-control(readonly, :value="txn?.device")
+        .form-group
+          label 最近扣款交易
+          .table-responsive
+            table.table.table-sm.table-bordered.table-striped.text-center
+              thead: tr.text-nowrap
+                th #
+                th 時間
+                th 交易方式
+                th 交易金額
+                th 餘額
+                th 業者編號
+                th 場站編號
+                th 設備編號
+              tbody
+                tr(v-for="txn of card.deducts")
+                  th {{ txn?.tsqn }}
+                  td {{ txn?.time }}
+                  td {{ txn?.type }}
+                  td {{ txn?.amount }}
+                  td {{ txn?.ev }}
+                  td {{ txn?.provider }}
+                  td {{ txn?.location }}
+                  td {{ txn?.device }}
+        .form-group
+          label 公車進出站紀錄
+        .form-group
+          label 捷運進出站紀錄
       .form-group
         label EML (HEX)
         textarea.form-control.form-control-sm(rows="65", cols="32", v-model="i.eml")
@@ -259,7 +257,7 @@ block script
     const btoTxn = bytes => ({
       tsqn: btoInt([bytes[0]]),
       time: btoDatetimeStr(bytes.slice(1, 5)),
-      subject: `h=${bytes[5]}`,
+      type: `h=${bytes[5]}`,
       amount: btoInt(bytes.slice(6, 8)),
       ev: btoInt(bytes.slice(8, 10)),
       provider: btoProvider(bytes[10]),
@@ -292,27 +290,28 @@ block script
         card () {
           const bytes = this.bytes
           if (!bytes) return {}
-          const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
           const credit = btoTxn(bytes.slice(160, 176)) // 最近加值交易
-          const txns = _.mapKeys([...deducts, credit], 'tsqn') // 最近所有交易
+          const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
 
           // 處理轉乘資料 Usage TXN Record for Transfer
+          const transfers = _.mapKeys(_.map([13, 14], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), 'tsqn')
           const tsqnUrt = btoUint([bytes[192]])
-          const urt = !_.has(txns, tsqnUrt) ? null : {
-            ...txns[tsqnUrt],
-            tgc1: `h=${bytes[194]}`, // 轉乘前群組
+          const urt = !_.has(transfers, tsqnUrt) ? null : {
+            ...transfers[tsqnUrt],
+            tgc1: `h=${bytes[204]}`, // 轉乘前群組
             tgc2: `h=${bytes[205]}`, // 轉乘後群組
           }
 
           return {
+            area: `h=${bytes[90]}`, // 區碼
             autoload: btoUint(bytes.slice(81, 83)), // 自動加值
             balance: btoInt(bytes.slice(144, 147)), // 餘額
+            bank: `h=${bytes[91]}`, // 銀行編號
             credit, // 最近加值交易
             deducts, // 最近扣款交易
             exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
             issued: btoDatetimeStr(bytes.slice(69, 73)), // 製造時間
-            txns, // 最近所有交易
-            type: btoCardType(bytes[109]), // 卡別
+            type: btoCardType(bytes[93]), // 卡別
             uid: arrRevJoin(bytes.slice(0, 4)), // 卡片編號
             urt, // 轉乘交易紀錄
             quota: {
@@ -327,7 +326,5 @@ block script
             },
           }
         },
-      },
-      methods: {
       },
     })
