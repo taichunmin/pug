@@ -26,75 +26,76 @@ block content
             input.form-control(:value="card?.uid")
           .input-group.input-group-sm.mb-1
             .input-group-prepend
-              span.input-group-text.justify-content-center 製造時間
-            input.form-control(:value="card?.mfd")
+              span.input-group-text.justify-content-center 發卡時間
+            input.form-control(:value="card?.issued")
           .input-group.input-group-sm.mb-1
             .input-group-prepend
-              span.input-group-text.justify-content-center 有效時間
+              span.input-group-text.justify-content-center 到期時間
             input.form-control(:value="card?.exp")
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 餘額
-            input.form-control(:value="card?.balance")
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 日限額日期
-            input.form-control(:value="card?.quotaDate")
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 日限額金額
-            input.form-control(:value="card?.quota")
-        .form-group
-          label 自動加值
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 預設加值金額
-            input.form-control(:value="card?.autoload?.amount")
-        .form-group
-          label 轉乘紀錄
+          .row.mx-n1
+            .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 餘額
+                input.form-control(:value="card?.balance")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 日限額日期
+                input.form-control(:value="card?.quotaDate")
+            .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 預設加值
+                input.form-control(:value="card?.autoload")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 日限額金額
+                input.form-control(:value="card?.quota")
+        .form-group(v-if="card.urt")
+          label 轉乘交易紀錄
           .input-group.input-group-sm.mb-1
             .input-group-prepend
               span.input-group-text.justify-content-center 時間
-            input.form-control
+            input.form-control(:value="card.urt?.time")
           .row.mx-n1
             .col.px-1
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 交易序號
-                input.form-control
+                input.form-control(:value="card.urt?.tsqn")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 交易金額
-                input.form-control
+                input.form-control(:value="card.urt?.amount")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 轉乘前群組
-                input.form-control
+                input.form-control(:value="card.urt?.tgc1")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 場站編號
-                input.form-control
+                input.form-control(:value="card.urt?.location")
             .col.px-1
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 交易方式
-                input.form-control
+                input.form-control(:value="card.urt?.subject")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 餘額
-                input.form-control
+                input.form-control(:value="card.urt?.ev")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 轉乘後群組
-                input.form-control
+                input.form-control(:value="card.urt?.tgc2")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 設備編號
-                input.form-control
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 身份證
-            input.form-control
+                input.form-control(:value="card.urt?.device")
+        .form-group
+          label 公車進出站紀錄
+        .form-group
+          label 捷運進出站紀錄
         .form-group(v-for="txn of [card.credit]")
           label 最近加值交易 \#{{ txn?.tsqn }}
           .input-group.input-group-sm.mb-1
@@ -222,18 +223,31 @@ block script
         },
         card () {
           const bytes = this.bytes
-          return !bytes ? {} : {
+          if (!bytes) return {}
+          const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
+          const credit = btoTxn(bytes.slice(160, 176)) // 最近加值交易
+          const txns = _.mapKeys([...deducts, credit], 'tsqn') // 最近所有交易
+
+          // 處理轉乘資料 Usage TXN Record for Transfer
+          const tsqnUrt = btoUint([bytes[192]])
+          const urt = !_.has(txns, tsqnUrt) ? null : {
+            ...txns[tsqnUrt],
+            tgc1: `HEX ${bytes[194]}`, // 轉乘前群組
+            tgc2: `HEX ${bytes[205]}`, // 轉乘後群組
+          }
+
+          return {
+            autoload: btoUint(bytes.slice(81, 83)), // 自動加值
             balance: btoInt(bytes.slice(144, 147)), // 餘額
-            credit: btoTxn(bytes.slice(160, 176)), // 最近加值交易
-            deducts: _.sortBy(_.uniqBy(_.map([13, 14, 16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), 'tsqn'), ['time']), // 最近扣款交易
+            credit, // 最近加值交易
+            deducts, // 最近扣款交易
             exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
-            mfd: btoDatetimeStr(bytes.slice(69, 73)), // 製造時間
+            issued: btoDatetimeStr(bytes.slice(69, 73)), // 製造時間
             quota: btoUint(bytes.slice(1005, 1008)), // 日限額金額
             quotaDate: btoDateStr(bytes.slice(1003, 1005)), // 日限額日期
+            txns, // 最近所有交易
             uid: arrJoin(bytes.slice(0, 4)), // 卡片編號
-            autoload: { // 自動加值
-              amount: btoUint(bytes.slice(81, 83)),
-            },
+            urt, // 轉乘交易紀錄
           }
         },
       },
