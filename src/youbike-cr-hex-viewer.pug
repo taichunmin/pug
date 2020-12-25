@@ -87,7 +87,7 @@ block script
             ['還車車柱編號 PartNo', 5],
             ['前筆轉乘交易序號 TSQN of URT', 3],
             ['前筆轉乘交易時間 TXN Date Time of URT', 4, { unixtime: 1 }],
-            ['特種票到期日 Fare Product Expire Date', 2],
+            ['特種票到期日 Fare Product Expire Date', 2, { date: 1 }],
             ['特種票票種 Fare Product Type', 1],
             ['換乘代碼 Transfer Group Code', 1],
             ['新換乘代碼 New Transfer Group Code', 2],
@@ -189,9 +189,10 @@ block script
             if (row.len === 5) row.btns.push({ name: 'no', code: this.decodeNo5(bytes), class1: 'badge-warning', class2: 'badge-light' })
             if (row.len === 8) row.btns.push({ name: 'uint64', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
             if (row.options.bike) row.btns.push({ name: '車號', code: this.decodeBikeId(bytes), class1: 'badge-warning', class2: 'badge-light' })
-            if (row.options.unixtime) row.btns.push({ name: 'unixtime', code: this.decodeUnixtime(bytes, -28800), class1: 'badge-warning', class2: 'badge-light' })
+            if (row.options.date) row.btns.push({ name: 'date', code: this.decodeDate(bytes), class1: 'badge-warning', class2: 'badge-light' })
             if (row.options.eccCardType) row.btns.push({ name: '卡別', code: this.decodeEccCardTypeName(bytes), class1: 'badge-warning', class2: 'badge-light' })
             if (row.options.eccProfile) row.btns.push({ name: '身份別', code: this.decodeEccProfile(bytes), class1: 'badge-warning', class2: 'badge-light' })
+            if (row.options.unixtime) row.btns.push({ name: 'unixtime', code: this.decodeUnixtime(bytes, -28800), class1: 'badge-warning', class2: 'badge-light' })
             return row
           })
         },
@@ -258,6 +259,10 @@ block script
             '08': '孩童',
           }
           return ECC_PROFILE[bytes[0].toUpperCase()]
+        },
+        decodeDate (bytes) {
+          const u = this.decodeInt(bytes)
+          return u <= 0 ? '未知' : moment(`${1980 + (u >> 9)}-${(u >> 5) & 0xF}-${u & 0x1F}`).format('YYYY-MM-DD')
         },
       },
     })
