@@ -12,11 +12,13 @@ block style
         font-family: 'Noto Sans TC', sans-serif
       span.input-group-text
         min-width: 100px
+      .text-monospace, .text-monospace input
+        letter-spacing: -.5px
 
 block content
   #app.my-3.container-fluid(v-cloak)
     h2.mb-3.text-center=title
-    .text-monospace.d-flex
+    .text-monospace.d-flex.flex-column.flex-sm-row
       .mr-3.flex-fill
         .form-group
           label 卡片基本資料
@@ -24,16 +26,16 @@ block content
             .input-group-prepend
               span.input-group-text.justify-content-center 卡片編號
             input.form-control(:value="card?.uid")
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 發卡時間
-            input.form-control(:value="card?.issued")
-          .input-group.input-group-sm.mb-1
-            .input-group-prepend
-              span.input-group-text.justify-content-center 到期時間
-            input.form-control(:value="card?.exp")
           .row.mx-n1
             .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 發卡時間
+                input.form-control(:value="card?.issued")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 身份別
+                input.form-control(:value="card?.profile?.type")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 餘額
@@ -43,6 +45,14 @@ block content
                   span.input-group-text.justify-content-center 日限額日期
                 input.form-control(:value="card?.quotaDate")
             .col.px-1
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 到期時間
+                input.form-control(:value="card?.exp")
+              .input-group.input-group-sm.mb-1
+                .input-group-prepend
+                  span.input-group-text.justify-content-center 身份到期
+                input.form-control(:value="card?.profile?.exp")
               .input-group.input-group-sm.mb-1
                 .input-group-prepend
                   span.input-group-text.justify-content-center 預設加值
@@ -183,6 +193,12 @@ block script
     const btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
     const btoDateStr = bytes => dayjs.unix((btoUint(bytes) - 2110) * 86400 - 28800).format('YYYY-MM-DD')
     const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
+    const btoProvider = byte => {
+      let name = 'HEX'
+      const provider = _.parseInt(byte, 16)
+      if (_.inRange(provider, 90, 98) || _.inRange(provider, 110, 115)) name = '微笑單車'
+      return `${name} ${byte}`
+    }
     const btoInt = bytes => {
       const mask = 2 ** (bytes.length * 8 - 1)
       const uint = btoUint(bytes)
@@ -194,7 +210,7 @@ block script
       subject: `HEX ${bytes[5]}`,
       amount: btoInt(bytes.slice(6, 8)),
       ev: btoInt(bytes.slice(8, 10)),
-      provider: `HEX ${bytes[10]}`,
+      provider: btoProvider(bytes[10]),
       location: `HEX ${bytes[11]}`,
       device: `HEX ${arrRevJoin(bytes.slice(12, 16))}`,
     })
@@ -217,7 +233,7 @@ block script
       },
       computed: {
         bytes () {
-          const bytes = this.i.eml.toLowerCase().replace(/[^0-9a-f-]/g, '')
+          const bytes = this.i.eml.toLowerCase().replace(/-/g, '0').replace(/[^0-9a-f]/g, '')
           if (bytes.length !== 2048) return
           return _.chunk(bytes, 2).map(arrJoin)
         },
@@ -248,6 +264,10 @@ block script
             txns, // 最近所有交易
             uid: arrJoin(bytes.slice(0, 4)), // 卡片編號
             urt, // 轉乘交易紀錄
+            profile: { // 身份別與到期時間
+              exp: btoDatetimeStr(bytes.slice(961, 965)),
+              type: btoUint(bytes.slice(960, 961)),
+            },
           }
         },
       },
