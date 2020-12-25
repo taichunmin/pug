@@ -204,6 +204,13 @@ block script
       '12': '刷出 (抵免)', // 抵免或社福點數
       '13': '刷出 (定期票)', // 旅遊票或月票
     }
+    const ECC_TXN_TYPES = {
+      '00': '刷進扣款',
+      '02': '加值',
+      '10': '刷出扣款',
+      '20': '小額扣款',
+      '40': '自動加值',
+    }
     const ECC_PROVIDERS = {
       '43': '統聯(中部)',
       '5A': 'YouBike',
@@ -220,6 +227,7 @@ block script
       '71': 'YouBike',
       '72': 'YouBike',
       '86': '全家',
+      'C2': 'YouBike',
     }
     const arrJoin = arr => arr.join('')
     const arrRevJoin = arr => arr.reverse().join('')
@@ -227,6 +235,7 @@ block script
     const btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
     const btoProfile = byte => _.get(ECC_PROFILES, byte, `0x${byte}`)
     const btoProvider = byte => _.get(ECC_PROVIDERS, byte, `0x${byte}`)
+    const btoTxnType = byte => _.get(ECC_TXN_TYPES, byte, `0x${byte}`)
     const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
     const btoUrtDiscount = byte => _.get(ECC_URT_DISCOUNTS, byte, `0x${byte}`)
     const btoDateStr = bytes => {
@@ -247,7 +256,7 @@ block script
       tgc0: `0x${bytes[10]}`, // 舊轉乘群組
       time: btoDatetimeStr(bytes.slice(1, 5)),
       tsqn: btoInt([bytes[0]]),
-      type: `0x${bytes[5]}`,
+      type: btoTxnType(bytes[5]),
     })
     window.vm = new Vue({
       el: '#app',
