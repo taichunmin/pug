@@ -10,16 +10,20 @@ block style
         display: none
       body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
         font-family: 'Noto Sans TC', sans-serif
-      span.input-group-text
-        min-width: 100px
-      .text-monospace, .text-monospace input
-        letter-spacing: -.5px
+      #card
+        &, input.form-control
+          letter-spacing: -1px
+        textarea.form-control
+          font-size: 12px
+        span.input-group-text
+          min-width: 90px
+          padding: .25rem 0
 
 block content
   #app.my-3.container-fluid(v-cloak)
     h2.mb-3.text-center=title
-    .text-monospace.d-flex.flex-column.flex-sm-row
-      .mr-3.flex-fill
+    #card.text-monospace.d-flex.flex-column.flex-sm-row
+      .mr-sm-3.flex-fill
         .form-group
           label 卡片基本資料
           .input-group.input-group-sm.mb-1
