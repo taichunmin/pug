@@ -203,13 +203,16 @@ block script
     const arrJoin = arr => arr.join('')
     const arrRevJoin = arr => arr.reverse().join('')
     const btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
-    const btoDateStr = bytes => dayjs.unix((btoUint(bytes) - 2110) * 86400 - 28800).format('YYYY-MM-DD')
     const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
+    const btoDateStr = bytes => {
+      const u = btoUint(bytes)
+      return u <= 0 ? '未知' : dayjs(`${1980 + (u >> 9)}-${(u >> 5) & 0xF}-${u & 0x1F}`).format('YYYY-MM-DD')
+    }
     const btoProvider = byte => {
-      let name = 'HEX'
+      let name = ''
       const provider = _.parseInt(byte, 16)
-      if (_.inRange(provider, 90, 98) || _.inRange(provider, 110, 115)) name = '微笑單車'
-      return `${name} ${byte}`
+      if (_.inRange(provider, 90, 98) || _.inRange(provider, 110, 115)) name = '微笑單車 '
+      return `${name}h=${byte}`
     }
     const btoProfile = (() => {
       const PROFILES = {
@@ -233,12 +236,12 @@ block script
     const btoTxn = bytes => ({
       tsqn: btoInt([bytes[0]]),
       time: btoDatetimeStr(bytes.slice(1, 5)),
-      subject: `HEX ${bytes[5]}`,
+      subject: `h=${bytes[5]}`,
       amount: btoInt(bytes.slice(6, 8)),
       ev: btoInt(bytes.slice(8, 10)),
       provider: btoProvider(bytes[10]),
-      location: `HEX ${bytes[11]}`,
-      device: `HEX ${arrRevJoin(bytes.slice(12, 16))}`,
+      location: `h=${bytes[11]}`,
+      device: `h=${arrRevJoin(bytes.slice(12, 16))}`,
     })
     window.vm = new Vue({
       el: '#app',
@@ -274,8 +277,8 @@ block script
           const tsqnUrt = btoUint([bytes[192]])
           const urt = !_.has(txns, tsqnUrt) ? null : {
             ...txns[tsqnUrt],
-            tgc1: `HEX ${bytes[194]}`, // 轉乘前群組
-            tgc2: `HEX ${bytes[205]}`, // 轉乘後群組
+            tgc1: `h=${bytes[194]}`, // 轉乘前群組
+            tgc2: `h=${bytes[205]}`, // 轉乘後群組
           }
 
           return {
