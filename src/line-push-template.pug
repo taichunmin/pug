@@ -29,7 +29,7 @@ block content
     h1 LINE 訊息推送工具
     .form-group
       label(for="csv") CSV 網址 (資料會放到 #[code row] 然後以第一列當作 key)
-      textarea#csv.form-control.form-control-sm(v-model="i.csv")
+      textarea#csv.form-control.form-control-sm(v-model="i.csv", rows="5")
     .row
       .col
         .form-group
