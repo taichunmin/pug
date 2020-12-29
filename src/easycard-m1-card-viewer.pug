@@ -255,7 +255,7 @@ block script
       provider: btoProvider(bytes[10]),
       tgc0: `0x${bytes[10]}`, // 舊轉乘群組
       time: btoDatetimeStr(bytes.slice(1, 5)),
-      tsqn: btoInt([bytes[0]]),
+      tsqn: btoUint([bytes[0]]),
       type: btoTxnType(bytes[5]),
     })
     window.vm = new Vue({
