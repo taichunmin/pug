@@ -136,7 +136,8 @@ block script
             if (rows.length < 1) throw new Error('無法從 csv 中取得資料')
             const tplMsg = _.template(this.i.msg)
             const msg = JSON5.parse(tplMsg({ Qs, _, dayjs, row: _.first(rows) }))
-            const res = await liff.shareTargetPicker(msg)
+            console.log('msg =', JSON.stringify(msg))
+            const res = await liff.shareTargetPicker(_.isArray(msg) ? msg : [msg])
             if (_.get(res, 'status') !== 'success') throw new Error('傳送失敗')
             await Swal.fire({
               icon: 'success',
