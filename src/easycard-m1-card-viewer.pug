@@ -284,7 +284,7 @@ block script
           return _.chunk(bytes, 2).map(arrJoin)
         },
         card () {
-          if (!this.bytes || this.ready) return {}
+          if (!this.bytes || !this.ready) return {}
           const bytes = this.bytes
           const credit = btoTxn(bytes.slice(160, 176)) // 最近加值交易
           const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
