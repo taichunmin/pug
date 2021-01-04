@@ -220,6 +220,7 @@ block script
     const btoTxnType = byte => _.get(ECC_TXN_TYPES, byte, `0x${byte}`)
     const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
     const btoUrtDiscount = byte => _.get(ECC_URT_DISCOUNTS, byte, `0x${byte}`)
+    const uintToB = uint => _.toUpper(_.padStart(_.parseInt(uint).toString(16), 2, '0'))
     const btoDateStr = bytes => {
       const u = btoUint(bytes)
       return u <= 0 ? '未知' : dayjs(`${1980 + (u >> 9)}-${(u >> 5) & 0xF}-${u & 0x1F}`).format('YYYY-MM-DD')
@@ -238,10 +239,9 @@ block script
         header: true,
       }), 'data', [])
     }
-    const btoSpLoc = (spByte, locByte) => {
-      ;[sp, loc] = [btoUint([spByte]), btoUint([locByte])]
-      const found = _.find(window.vm.cached.sploc, r => r.spId === sp && (r.locId === loc || r.locId === 0))
-      return found ? { provider: found.spName, location: found.locName } : { provider: `0x${spByte}`, location: `0x${locByte}` }
+    const btoSpLoc = (sp, loc) => {
+      const sploc = _.get(vm, 'cached.sploc', {})
+      return sploc[`${sp}${loc}`] || sploc[`${sp}00`] || { provider: `0x${sp}`, location: `0x${loc}` }
     }
     const btoTxn = bytes => ({
       ...btoSpLoc(bytes[10], bytes[11]),
@@ -261,7 +261,7 @@ block script
           eml: '',
         },
         cached: {
-          sploc: [],
+          sploc: {},
         },
       },
       async mounted () {
@@ -327,12 +327,10 @@ block script
       methods: {
         async initSploc () {
           const rows = await getCsv('https://gist.githubusercontent.com/taichunmin/f4699905e583354b2cbd1a6e67484235/raw/sp_loc_mapping.csv')
-          this.$set(this.cached, 'sploc', _.map(rows, r => ({
-            locId: _.parseInt(r.locId),
-            locName: _.trim(r.locName),
-            spId: _.parseInt(r.spId),
-            spName: _.trim(r.spName),
-          })))
+          this.$set(this.cached, 'sploc', _.fromPairs(_.map(rows, r => [`${uintToB(r.spId)}${uintToB(r.locId)}`, {
+            provider: _.trim(r.spName),
+            location: _.trim(r.locName),
+          }])))
         },
       },
     })
