@@ -92,13 +92,13 @@ block content
               input.form-control(readonly, :value="card.urt?.discount")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘前群組
-              input.form-control(readonly, :value="card.urt?.tgc1")
+              input.form-control(readonly, :value="card.urt?.xfer1")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘後群組
-              input.form-control(readonly, :value="card.urt?.tgc2")
+              input.form-control(readonly, :value="card.urt?.xfer2")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 舊轉乘群組
-              input.form-control(readonly, :value="card.urt?.tgc0")
+              input.form-control(readonly, :value="card.urt?.xfer0")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 場站編號
               input.form-control(readonly, :value="card.urt?.location")
@@ -195,7 +195,7 @@ block script
       '0C': '腳踏車',
       '0D': 'iCash卡',
     }
-    const ECC_URT_DISCOUNTS = {
+    const ECC_XFER_DISCOUNTS = {
       '00': '刷進 (原價)',
       '01': '刷進 (打折)', // 有打折
       '02': '刷進 (抵免)', // 抵免或社福點數
@@ -278,12 +278,14 @@ block script
     }
     const arrJoin = arr => arr.join('')
     const arrRevJoin = arr => arr.reverse().join('')
+    const btoArea = byte => _.get(ECC_AREA_CODE, byte, `0x${byte}`)
     const btoCardType = byte => _.get(ECC_CARD_TYPES, byte, `0x${byte}`)
     const btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
     const btoProfile = byte => _.get(ECC_PROFILES, byte, `0x${byte}`)
     const btoTxnType = byte => _.get(ECC_TXN_TYPES, byte, `0x${byte}`)
     const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
-    const btoUrtDiscount = byte => _.get(ECC_URT_DISCOUNTS, byte, `0x${byte}`)
+    const btoXfer = byte => _.get(ECC_XFER_CODE, byte, `0x${byte}`)
+    const btoXferDiscount = byte => _.get(ECC_XFER_DISCOUNTS, byte, `0x${byte}`)
     const uintToB = uint => _.toUpper(_.padStart(_.parseInt(uint).toString(16), 2, '0'))
     const btoDateStr = bytes => {
       const u = btoUint(bytes)
@@ -312,7 +314,7 @@ block script
       amount: btoInt(bytes.slice(6, 8)),
       device: `0x${arrRevJoin(bytes.slice(12, 16))}`,
       ev: btoInt(bytes.slice(8, 10)),
-      tgc0: `0x${bytes[10]}`, // 舊轉乘群組
+      xfer0: `0x${bytes[10]}`, // 舊轉乘群組
       time: btoDatetimeStr(bytes.slice(1, 5)),
       tsqn: btoUint([bytes[0]]),
       type: btoTxnType(bytes[5]),
@@ -358,13 +360,13 @@ block script
           const tsqnUrt = btoUint([bytes[192]])
           const urt = !_.has(transfers, tsqnUrt) ? null : {
             ...transfers[tsqnUrt],
-            discount: btoUrtDiscount(bytes[194]), // 優惠方式
-            tgc1: `0x${bytes[205]}`, // 轉乘前群組
-            tgc2: `0x${bytes[204]}`, // 轉乘後群組
+            discount: btoXferDiscount(bytes[194]), // 優惠方式
+            xfer1: btoXfer(bytes[204]), // 轉乘前群組
+            xfer2: btoXfer(bytes[205]), // 轉乘後群組
           }
 
           return {
-            area: `0x${bytes[90]}`, // 區碼
+            area: btoArea(bytes[90]), // 區碼
             autoload: btoUint(bytes.slice(81, 83)), // 自動加值
             balance: btoInt(bytes.slice(144, 147)), // 餘額
             bank: `0x${bytes[91]}`, // 銀行編號
