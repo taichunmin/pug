@@ -1,4 +1,4 @@
-extends /layouts/default
+extends /layouts/dark
 
 block beforehtml
   - const title = 'YBCR HEX Viewer'
@@ -68,7 +68,7 @@ block script
             ['區碼 AreaCode', 1],
             ['交易金額 TXNAMT', 3],
             ['銀行代碼 BankCode', 1],
-            ['二代卡防虛擬碼 CPD', 2],
+            ['二代卡防虛擬碼(忠誠點數)', 2],
             ['票卡最後一筆加值記錄 LastCreditLogp', 33],
             ['SubType', 1],
             ['TSQN', 3],
@@ -89,9 +89,9 @@ block script
             ['前筆轉乘交易時間 TXN Date Time of URT', 4, { unixtime: 1 }],
             ['特種票到期日 Fare Product Expire Date', 2, { date: 1 }],
             ['特種票票種 Fare Product Type', 1],
-            ['換乘代碼 Transfer Group Code', 1],
-            ['新換乘代碼 New Transfer Group Code', 2],
-            ['換乘優惠金額 Transfer Discount', 2],
+            ['轉乘代碼 Transfer Group Code', 1],
+            ['新轉乘代碼 New Transfer Group Code', 2],
+            ['轉乘優惠金額 Transfer Discount', 2],
             ['社福優惠金額 Personal Discount', 2],
             ['社福卡免費搭乘累積點數 Accumulated Free Rides', 2],
             ['借車車柱編號 rent_PartNo', 5],
@@ -99,51 +99,48 @@ block script
           ],
           ipass: [
             ['卡號 CSN', 4],
-            ['廠商批號', 12],
+            ['卡號批號', 12],
             ['交易讀寫器編號', 4],
-            ['電子票值 EVVALUE', 4],
-            ['備份電子票值 BEVVALUE', 4],
-            ['同步後電子票值 SYNCVALUE', 4],
-            ['優惠記名卡身份證字型大小 PERSONALID', 6],
-            ['前筆交易日期 PREGENTIME', 4, { unixtime: 1 }],
-            ['前筆交易類別 PREGENCLASS', 1],
-            ['前筆交易票值 PREGENDEDUCTEVALUE', 2],
-            ['前筆交易後票值 PREGENBALANCEEVALUE', 2],
-            ['前筆交易系統編號 PREGENSYSTEM', 1],
-            ['前筆交易地點或業者 PREGENLOCATIONCOMPID', 1],
-            ['前筆交易設備編號 PREGENTERMINALID', 4],
-            ['同步狀態 SYNCSTATUS', 1],
-            ['換乘識別群組#1-交易時間 TRFTXNTIME', 4, { unixtime: 1 }],
-            ['換乘識別群組#2-本次交通系統代碼 TrfCurrentSystemID', 1],
-            ['換乘識別群組#3 TRFPREVIOUSSYSTEMID', 1],
-            ['換乘識別群組#4-交易類別 TRFTXNCLASS', 1],
-            ['換乘識別群組#5-交易運輸業者(全域業者代碼) TRFTXNCOMPID', 1],
-            ['轉乘識別群組#6-交易運輸地點、站號或段號 TRFTXNLOCATIONID', 1],
-            ['換乘識別群組#7-交易端未設備編號 TRFTXNTERMINALID', 4],
-            ['個人身分別 PERSONALTYPE', 1],
-            ['發卡單位 ISSUECODE', 1],
-            ['租賃應付金額 TXNSPAYAMOUNT', 2],
-            ['交易時間 TXNSTIME', 4, { unixtime: 1 }],
+            ['電子票值 evValue', 4],
+            ['備份電子票值 bevValue', 4],
+            ['同步後電子票值 syncValue', 4],
+            ['優惠記名卡身份證字型大小 personalID', 6],
+            ['前筆交易日期 preGenTime', 4, { unixtime: 1 }],
+            ['前筆交易類別 preGenClass', 1],
+            ['前筆交易票值 preGenDeductEValue', 2],
+            ['前筆交易後票值 preGenBalanceEValue', 2],
+            ['前筆交易系統編號 preGenSystem', 1],
+            ['前筆交易地點或業者 preGenLocationCompID', 1],
+            ['前筆交易設備編號 preGenTerminalID', 4],
+            ['同步狀態 syncStatus', 1],
+            ['前筆轉乘識別群組#1-交易時間 trfTxnTime', 4, { unixtime: 1 }],
+            ['前筆轉乘識別群組#2-本次交通系統代碼 trfCurrentSystemID', 1],
+            ['前筆轉乘識別群組#3 trfPreviousSystemID', 1],
+            ['前筆轉乘識別群組#4-交易類別 trfTxnClass', 1],
+            ['前筆轉乘識別群組#5-交易運輸業者(全域業者代碼) trfTxnCompID', 1],
+            ['前筆轉乘識別群組#6-交易運輸地點、站號或段號 trfTxnLocationID', 1],
+            ['前筆轉乘識別群組#7-交易端未設備編號 trfTxnTerminalID', 4],
+            ['個人身分別 personalType', 1],
+            ['發卡單位 issueCode', 1],
+            ['交易金額 txnsValue', 2],
+            ['交易時間 txnsTime', 4, { unixtime: 1 }],
             ['交易類別', 1],
-            ['租賃應付金額 TXNSPAYAMOUNT2', 2],
-            ['換乘優惠金額 TXNSTRANSAMOUNT', 2],
-            ['項目優惠金額 TXNSPORJECTAMOUNT', 2],
-            ['項目優惠旗標 TXNSPROJECTFLAG', 1],
-            ['借車時間 TXNSRENTINGTIME', 4, { unixtime: 1 }],
-            ['此次轉乘識別#3', 1],
-            ['此次轉乘識別#2', 1],
-            ['交易後票卡餘額 TXNSBALANCE', 4],
-            ['卡片交易序號 SEQUENCENO', 2],
-            ['SAM卡號 SAMID', 8],
-            ['押碼值 TAC', 4],
-            ['FileNameF3', 2],
-            ['?', 54],
+            ['租賃交易應付金額 txnsPayAmount', 2],
+            ['轉乘優惠金額 txnsTransAmount', 2],
+            ['專案優惠金額 txnsPorjectAmount', 2],
+            ['專案優惠旗標 txnsProjectFlaf', 1],
+            ['借車時間 txnsRentingTime', 4, { unixtime: 1 }],
+            ['此次轉乘識別群組#3', 1],
+            ['此次轉乘識別群組#2', 1],
+            ['交易後卡片餘額 txnsBalance', 4],
+            ['卡片交易序號 sequenceNO', 2],
+            ['SAM卡號 samID', 8],
+            ['交易驗證碼 TAC', 4],
+            ['TacByteAry', 56],
             ['扣款種類', 1],
-            ['腳踏車編號 BIKENO', 5, { bike: 1 }],
-            ['還車車柱編號 PartNo', 5],
-            ['借車車柱編號 PartNo', 5],
-            ['maasenddate', 4],
-            ['massperiod', 1],
+            ['腳踏車編號 BikeNo', 5],
+            ['車柱編號 PartNo', 2],
+            ['RFU', 13], // max 74
           ],
         },
         i: {
@@ -182,12 +179,20 @@ block script
             const bytes = this.decodeBytes(this.i.hex.slice(posStart - row.len2, posStart))
             row.btns.push({ name: 'hex', code: _.map(_.chunk(bytes, 10), v => v.join(' ')).join('<br>'), class1: 'btn-primary', class2: 'badge-light' })
 
-            if (row.len === 1) row.btns.push({ name: 'uint8', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
-            if (row.len === 2) row.btns.push({ name: 'uint16', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
-            if (row.len === 3) row.btns.push({ name: 'uint24', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
-            if (row.len === 4) row.btns.push({ name: 'uint32', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
+            // 無號整數
+            if (row.len === 1) row.btns.push({ name: 'uint8', code: this.decodeUint(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 2) row.btns.push({ name: 'uint16', code: this.decodeUint(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 3) row.btns.push({ name: 'uint24', code: this.decodeUint(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 4) row.btns.push({ name: 'uint32', code: this.decodeUint(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 8) row.btns.push({ name: 'uint64', code: this.decodeUint(bytes), class1: 'btn-info', class2: 'badge-light' })
+
+            // 有號整數
+            if (row.len === 2) row.btns.push({ name: 'int16', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 3) row.btns.push({ name: 'int24', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 4) row.btns.push({ name: 'int32', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
+            if (row.len === 8) row.btns.push({ name: 'int64', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
+
             if (row.len === 5) row.btns.push({ name: 'no', code: this.decodeNo5(bytes), class1: 'badge-warning', class2: 'badge-light' })
-            if (row.len === 8) row.btns.push({ name: 'uint64', code: this.decodeInt(bytes), class1: 'btn-info', class2: 'badge-light' })
             if (row.options.bike) row.btns.push({ name: '車號', code: this.decodeBikeId(bytes), class1: 'badge-warning', class2: 'badge-light' })
             if (row.options.date) row.btns.push({ name: 'date', code: this.decodeDate(bytes), class1: 'badge-warning', class2: 'badge-light' })
             if (row.options.eccCardType) row.btns.push({ name: '卡別', code: this.decodeEccCardTypeName(bytes), class1: 'badge-warning', class2: 'badge-light' })
@@ -210,22 +215,27 @@ block script
           activeElement.focus()
         },
         decodeBytes (hex) {
-          return _.map(_.chunk(hex, 2), v => v.join('')).reverse()
+          return _.map(_.chunk(_.toUpper(hex), 2), v => v.join('')).reverse()
         },
         decodeUnixtime (bytes, diff = 0) {
-          return moment.unix(this.decodeInt(bytes) + diff).format('YYYY-MM-DD HH:mm:ss')
+          return moment.unix(this.decodeUint(bytes) + diff).format('YYYY-MM-DD HH:mm:ss')
         },
-        decodeInt (bytes) {
+        decodeUint (bytes) {
           return _.parseInt(bytes.join(''), 16)
         },
-        decodeNo5 (bytes) {
-          return bytes.reverse().join('').toUpperCase()
+        decodeInt (bytes) {
+          const mask = 2 ** (bytes.length * 8 - 1)
+          const uint = this.decodeUint(bytes)
+          return (mask & uint) ? (uint - mask - mask) : uint
         },
-        decodeIntFixWidth (bytes, len) {
-          return _.padStart(this.decodeInt(bytes), len, '0')
+        decodeNo5 (bytes) {
+          return bytes.reverse().join('')
+        },
+        decodeUintFixWidth (bytes, len) {
+          return _.padStart(this.decodeUint(bytes), len, '0')
         },
         decodeBikeId (bytes) {
-          return `${this.decodeIntFixWidth(bytes.slice(1, 2), 2)}${this.decodeIntFixWidth(bytes.slice(2), 5)}`
+          return `${this.decodeUintFixWidth(bytes.slice(1, 2), 2)}${this.decodeUintFixWidth(bytes.slice(2), 5)}`
         },
         decodeEccCardTypeName (bytes) {
           const ECC_CARD_TYPE_NAME = {
@@ -261,7 +271,7 @@ block script
           return ECC_PROFILE[bytes[0].toUpperCase()]
         },
         decodeDate (bytes) {
-          const u = this.decodeInt(bytes)
+          const u = this.decodeUint(bytes)
           return u <= 0 ? '未知' : moment(`${1980 + (u >> 9)}-${(u >> 5) & 0xF}-${u & 0x1F}`).format('YYYY-MM-DD')
         },
       },
