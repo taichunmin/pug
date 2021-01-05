@@ -360,8 +360,8 @@ block script
           const xfers = _.map([13, 14], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16)))
           const xfer = {
             ..._.maxBy(xfers, 'tsqnUint'),
-            xfer1: btoXfer(bytes[204]), // 轉乘前群組
-            xfer2: btoXfer(bytes[205]), // 轉乘後群組
+            xfer1: btoXfer(bytes[205]), // 轉乘前群組
+            xfer2: btoXfer(bytes[204]), // 轉乘後群組
           }
 
           return {
