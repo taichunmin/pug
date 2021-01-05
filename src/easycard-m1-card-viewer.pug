@@ -31,6 +31,9 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 卡片編號
               input.form-control(readonly, :value="card?.uid")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 交易序號
+              input.form-control(readonly, :value="card?.tsqn")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 餘額
               input.form-control(readonly, :value="card?.balance")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
@@ -69,42 +72,39 @@ block content
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 卡片效期
               input.form-control(readonly, :value="card?.exp")
-        .form-group(v-if="card.urt")
+        .form-group(v-if="card.xfer")
           label 轉乘紀錄
           .row.mx-n1
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 交易序號
-              input.form-control(readonly, :value="card.urt?.tsqn")
+              input.form-control(readonly, :value="card.xfer?.tsqn")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 時間
-              input.form-control(readonly, :value="card.urt?.time")
-            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 交易方式
-              input.form-control(readonly, :value="card.urt?.type")
-            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 扣款
-              input.form-control(readonly, :value="card.urt?.amount")
-            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 餘額
-              input.form-control(readonly, :value="card.urt?.ev")
+              input.form-control(readonly, :value="card.xfer?.time")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 優惠方式
-              input.form-control(readonly, :value="card.urt?.discount")
+              input.form-control(readonly, :value="card.xfer?.xferType")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 扣款
+              input.form-control(readonly, :value="card.xfer?.amount")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 餘額
+              input.form-control(readonly, :value="card.xfer?.ev")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘前群組
-              input.form-control(readonly, :value="card.urt?.xfer1")
+              input.form-control(readonly, :value="card.xfer?.xfer1")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘後群組
-              input.form-control(readonly, :value="card.urt?.xfer2")
+              input.form-control(readonly, :value="card.xfer?.xfer2")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 舊轉乘群組
-              input.form-control(readonly, :value="card.urt?.xfer0")
+              .input-group-prepend: span.input-group-text.justify-content-center 業者
+              input.form-control(readonly, :value="card.xfer?.provider")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 場站編號
-              input.form-control(readonly, :value="card.urt?.location")
+              .input-group-prepend: span.input-group-text.justify-content-center 場站
+              input.form-control(readonly, :value="card.xfer?.location")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 設備編號
-              input.form-control(readonly, :value="card.urt?.device")
+              input.form-control(readonly, :value="card.xfer?.device")
         .form-group(v-for="txn of [card.credit]")
           label 最近加值交易
           .row.mx-n1
@@ -124,10 +124,10 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 餘額
               input.form-control(readonly, :value="txn?.ev")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 業者編號
+              .input-group-prepend: span.input-group-text.justify-content-center 業者
               input.form-control(readonly, :value="txn?.provider")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 場站編號
+              .input-group-prepend: span.input-group-text.justify-content-center 場站
               input.form-control(readonly, :value="txn?.location")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 設備編號
@@ -195,7 +195,7 @@ block script
       '0C': '腳踏車',
       '0D': 'iCash卡',
     }
-    const ECC_XFER_DISCOUNTS = {
+    const ECC_XFER_TYPES = {
       '00': '刷進 (原價)',
       '01': '刷進 (打折)', // 有打折
       '02': '刷進 (抵免)', // 抵免或社福點數
@@ -285,7 +285,7 @@ block script
     const btoTxnType = byte => _.get(ECC_TXN_TYPES, byte, `0x${byte}`)
     const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
     const btoXfer = byte => _.get(ECC_XFER_CODE, byte, `0x${byte}`)
-    const btoXferDiscount = byte => _.get(ECC_XFER_DISCOUNTS, byte, `0x${byte}`)
+    const btoXferType = byte => _.get(ECC_XFER_TYPES, byte, `0x${byte}`)
     const uintToB = uint => _.toUpper(_.padStart(_.parseInt(uint).toString(16), 2, '0'))
     const btoDateStr = bytes => {
       const u = btoUint(bytes)
@@ -314,10 +314,11 @@ block script
       amount: btoInt(bytes.slice(6, 8)),
       device: `0x${arrRevJoin(bytes.slice(12, 16))}`,
       ev: btoInt(bytes.slice(8, 10)),
-      xfer0: `0x${bytes[10]}`, // 舊轉乘群組
       time: btoDatetimeStr(bytes.slice(1, 5)),
-      tsqn: btoUint([bytes[0]]),
+      tsqn: `0x${bytes[0]}`,
+      tsqnUint: btoUint([bytes[0]]),
       type: btoTxnType(bytes[5]),
+      xferType: btoXferType(bytes[5]),
     })
     window.vm = new Vue({
       el: '#app',
@@ -356,11 +357,9 @@ block script
           const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
 
           // 處理轉乘資料 Usage TXN Record for Transfer
-          const transfers = _.mapKeys(_.map([13, 14], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), 'tsqn')
-          const tsqnUrt = btoUint([bytes[192]])
-          const urt = !_.has(transfers, tsqnUrt) ? null : {
-            ...transfers[tsqnUrt],
-            discount: btoXferDiscount(bytes[194]), // 優惠方式
+          const xfers = _.map([13, 14], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16)))
+          const xfer = {
+            ..._.maxBy(xfers, 'tsqnUint'),
             xfer1: btoXfer(bytes[204]), // 轉乘前群組
             xfer2: btoXfer(bytes[205]), // 轉乘後群組
           }
@@ -374,9 +373,10 @@ block script
             deducts, // 最近扣款交易
             exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
             issued: btoDatetimeStr(bytes.slice(69, 73)), // 製造時間
+            tsqn: `0x${arrRevJoin(bytes.slice(192, 194))} (${btoUint(bytes.slice(192, 194))})`, // 交易序號
             type: btoCardType(bytes[93]), // 卡別
             uid: arrRevJoin(bytes.slice(0, 4)), // 卡片編號
-            urt, // 轉乘交易紀錄
+            xfer, // 轉乘交易紀錄
             quota: {
               daily: btoUint(bytes.slice(83, 85)), // 日限額金額
               date: btoDateStr(bytes.slice(1003, 1005)), // 日限額日期
