@@ -155,8 +155,24 @@ block content
                   td {{ txn?.provider }}
                   td {{ txn?.location }}
                   td {{ txn?.device }}
-        .form-group
-          label 公車進出站紀錄
+        .form-group(v-for="bus, busId of card.buses")
+          label 公車{{ '上下'[busId] }}車紀錄
+          .row.mx-n1
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 操作員編號
+              input.form-control(readonly, :value="bus?.agent")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 路線編號
+              input.form-control(readonly, :value="bus?.line")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 時間
+              input.form-control(readonly, :value="bus?.time")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 站牌編號
+              input.form-control(readonly, :value="bus?.station")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 區段編號
+              input.form-control(readonly, :value="bus?.zone")
         .form-group
           label 捷運進出站紀錄
       .form-group(style="min-width: 240px")
@@ -291,6 +307,13 @@ block script
       const u = btoUint(bytes)
       return u <= 0 ? '未知' : dayjs(`${1980 + (u >> 9)}-${(u >> 5) & 0xF}-${u & 0x1F}`).format('YYYY-MM-DD')
     }
+    const btoBus = bytes => ({
+      agent: `0x${arrRevJoin(bytes.slice(3, 5))}`,
+      line: `0x${arrJoin(bytes.slice(5, 7))}`,
+      time: btoDatetimeStr(bytes.slice(7, 11)),
+      station: btoUint([bytes[11]]),
+      zone: btoUint([bytes[12]]),
+    })
     const btoInt = bytes => {
       const mask = 2 ** (bytes.length * 8 - 1)
       const uint = btoUint(bytes)
@@ -356,7 +379,7 @@ block script
           const credit = btoTxn(bytes.slice(160, 176)) // 最近加值交易
           const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
 
-          // 處理轉乘資料 Usage TXN Record for Transfer
+          // 轉乘交易紀錄 Usage TXN Record for Transfer
           const xfers = _.map([13, 14], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16)))
           const xfer = {
             ..._.maxBy(xfers, 'tsqnUint'),
@@ -364,11 +387,15 @@ block script
             xfer2: btoXfer(bytes[204]), // 轉乘後群組
           }
 
+          // 公車上下車紀錄
+          const buses = _.map([45, 46], blk => btoBus(bytes.slice(blk * 16, blk * 16 + 16)))
+
           return {
             area: btoArea(bytes[90]), // 區碼
             autoload: btoUint(bytes.slice(81, 83)), // 自動加值
             balance: btoInt(bytes.slice(144, 147)), // 餘額
             bank: `0x${bytes[91]}`, // 銀行編號
+            buses, // 公車上下車紀錄
             credit, // 最近加值交易
             deducts, // 最近扣款交易
             exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
