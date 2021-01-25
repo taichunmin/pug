@@ -54,6 +54,7 @@ block content
 block script
   script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
+    /* global sleep, loginPromise */
     window.loginPromise = (async () => {
       await liff.init({ liffId: '1654046335-GrzoBW0r' })
       if (new URL(window.location).searchParams.get('liff.state')) await new Promise(resolve => {}) // 永遠不會結束的 Promise
