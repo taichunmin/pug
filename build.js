@@ -35,7 +35,7 @@ exports.build = async () => {
 
   // compile pug files
   const pugFiles = _.map(_.filter(await fg('src/**/*.pug'), file => {
-    if (/\/(layout|compoment)-[^/]+\.pug$/.test(file)) return false
+    if (/\/layouts\/[^/]+\.pug$/.test(file)) return false
     return true
   }), file => file.slice(4))
 
