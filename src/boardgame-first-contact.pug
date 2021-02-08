@@ -87,7 +87,7 @@ block content
               .symbol(:class="`symbol-${_.padStart(idx, 2, '0')}`")
               i.fa.fa-eye.text-warning(v-if="i.alien2[idx]")
       small.text-muted #[strong.text-success 綠色底色]代表肯定，#[strong.text-danger 紅色底色]代表否定，#[strong.text-warning 黃色眼睛]代表已提示的符號。
-      button.btn.mt-2.btn-block.btn-outline-warning(type="button", @click="btnSaveShownSymbol", tabindex="-1") #[span.fa.fa-fw.fa-eye] 紀錄已提示的符號
+      button.btn.mt-2.btn-block.btn-outline-warning(type="button", @click="btnSaveShownSymbol", tabindex="-1") #[span.fa.fa-fw.fa-eye] 儲存已提示的符號
       button.btn.mt-2.btn-block.btn-outline-danger(type="button", @click="btnResetAlien1", tabindex="-1") #[span.fa.fa-fw.fa-trash-o] 清空本頁面
     #page-alien2.page(v-if="i.page === 'alien2' && _.isArray(i.alien2)")
       table.table.table-col-5.table-bordered.mb-1
@@ -116,7 +116,7 @@ block content
                 | 的形容詞
               button.close(type="button", @click="adjModal('hide')"): span &times;
             table.table.table-col-5.table-bordered.mb-0.font-sm
-              tr(v-for="fi in 5")
+              tr(v-for="fi in 6")
                 template(v-for="fj in 5")
                   td.px-1(v-for="adjId of [fi*5+fj-6]", :class="`bg-${earth1AdjClass(adjId)}`", @click="earth1AdjToggle(adjId)") {{ adjs[adjId] }}
             .modal-footer
@@ -144,7 +144,7 @@ block script
         alien1bg: ['white', 'success', 'danger'],
         alien2bg: ['white', 'warning'],
         earth1bg: ['white', 'info'],
-        adjs: ['活的', '大的', '食物', '危險', '圓的', '固體', '液體', '尖的', '人類', '植物', '工具', '武器', '金屬', '美麗', '布', '長的', '重的', '明亮', '會飛', '珍貴', '溫暖', '防禦', '知識', '快的', '力量'],
+        adjs: ['活的', '大的', '食物', '危險', '圓的', '固體', '液體', '尖的', '人類', '植物', '工具', '武器', '金屬', '美麗', '布', '長的', '重的', '明亮', '會飛', '珍貴', '溫暖', '防禦', '知識', '快的', '力量', '1', '2', '3', '4', '5'],
       },
       async mounted () {
         // 自動儲存功能
