@@ -75,10 +75,10 @@ block content
   #app.my-3.container(v-cloak)
     h2.mb-3.text-center 第一類接觸
     select.form-control.mb-3(v-model="i.page")
-      option(value="alien1") 1. 外星人 - 展示符號
-      option(value="alien2") 2. 外星人 - 編輯已提示的符號
-      option(value="earth1") 3. 地球人 - 符號含意
-      option(value="earth2") 4. 地球人 - 進貢
+      option(value="alien1") 外星人 - 1 展示符號
+      option(value="alien2") 外星人 - 2 編輯已提示的符號
+      option(value="earth1") 地球人 - 1 符號含意
+      option(value="earth2") 地球人 - 2 進貢
     #page-alien1.page(v-if="i.page === 'alien1' && _.isArray(i.alien1)")
       table.table.table-col-5.table-bordered.mb-1
         tr(v-for="fi in 5")
@@ -86,7 +86,7 @@ block content
             td.p-2(v-for="idx of [fi*5+fj-6]", :class="`bg-${alien1bg[i.alien1[idx]]}`", @click="$set(i.alien1, idx, (i.alien1[idx]+1)%3)")
               .symbol(:class="`symbol-${_.padStart(idx, 2, '0')}`")
               i.fa.fa-eye.text-warning(v-if="i.alien2[idx]")
-      small.text-muted #[strong.text-success 綠色底色]代表肯定，#[strong.text-danger 紅色底色]代表否定，#[strong.text-warning 黃色眼睛]代表已提示的符號。
+      small.text-muted #[strong.text-success 綠色底色]代表肯定，#[strong.text-danger 灰色底色]代表否定，#[strong.text-warning 黃色眼睛]代表已提示的符號。
       button.btn.mt-2.btn-block.btn-outline-warning(type="button", @click="btnSaveShownSymbol", tabindex="-1") #[span.fa.fa-fw.fa-eye] 儲存已提示的符號
       button.btn.mt-2.btn-block.btn-outline-danger(type="button", @click="btnResetAlien1", tabindex="-1") #[span.fa.fa-fw.fa-trash-o] 清空本頁面
     #page-alien2.page(v-if="i.page === 'alien2' && _.isArray(i.alien2)")
@@ -141,7 +141,7 @@ block script
           earth1: null,
           earth2: null,
         },
-        alien1bg: ['white', 'success', 'danger'],
+        alien1bg: ['white', 'success', 'secondary'],
         alien2bg: ['white', 'warning'],
         earth1bg: ['white', 'info'],
         adjs: ['活的', '大的', '食物', '危險', '圓的', '固體', '液體', '尖的', '人類', '植物', '工具', '武器', '金屬', '美麗', '布', '長的', '重的', '明亮', '會飛', '珍貴', '溫暖', '防禦', '知識', '快的', '力量', '1', '2', '3', '4', '5'],
