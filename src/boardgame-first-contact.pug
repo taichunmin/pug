@@ -86,7 +86,7 @@ block content
             td.p-2(v-for="idx of [fi*5+fj-6]", :class="`bg-${alien1bg[i.alien1[idx]]}`", @click="$set(i.alien1, idx, (i.alien1[idx]+1)%3)")
               .symbol(:class="`symbol-${_.padStart(idx, 2, '0')}`")
               i.fa.fa-eye.text-warning(v-if="i.alien2[idx]")
-      small.text-muted #[strong.text-success 綠色底色]代表肯定，#[strong.text-danger 灰色底色]代表否定，#[strong.text-warning 黃色眼睛]代表已提示的符號。
+      small.text-muted #[strong.text-success 綠色底色]代表肯定，#[strong.text-secondary 灰色底色]代表否定，#[strong.text-warning 黃色眼睛]代表已提示的符號。
       button.btn.mt-2.btn-block.btn-outline-warning(type="button", @click="btnSaveShownSymbol", tabindex="-1") #[span.fa.fa-fw.fa-eye] 儲存已提示的符號
       button.btn.mt-2.btn-block.btn-outline-danger(type="button", @click="btnResetAlien1", tabindex="-1") #[span.fa.fa-fw.fa-trash-o] 清空本頁面
     #page-alien2.page(v-if="i.page === 'alien2' && _.isArray(i.alien2)")
