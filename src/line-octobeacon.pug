@@ -117,6 +117,7 @@ block script
 
         async btnDevice () {
           try {
+            this.showLoading('請稍候', '選擇裝置中…')
             this.device = await this.bleGetDevice()
             await Swal.fire({ icon: 'success', title: '裝置選擇成功' })
           } catch (err) {
@@ -127,6 +128,7 @@ block script
 
         async btnRead () {
           try {
+            this.showLoading('請稍候', '從裝置讀取中…')
             if (!this.device) this.device = await this.bleGetDevice()
             await this.device.gatt.connect()
             const service = await this.device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
@@ -142,6 +144,7 @@ block script
 
         async btnWrite () {
           try {
+            this.showLoading('請稍候', '上傳到裝置中…')
             const blob = this.settingStringify()
             if (!this.device) this.device = await this.bleGetDevice()
             await this.device.gatt.connect()
@@ -154,6 +157,16 @@ block script
             console.log(err)
             await Swal.fire({ icon: 'error', title: '上傳到裝置失敗', text: err.message })
           }
+        },
+
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            onBeforeOpen: () => { Swal.showLoading() },
+          })
         },
 
         settingParse (blob) {
