@@ -29,10 +29,11 @@ block content
       .col.mb-4: .card
         .card-body.text-monospace
           h5.card-title 操作
-          button.mt-2.btn.btn-sm.btn-block.btn-outline-primary(type="button", @click="btnDevice") #[span.fa.fa-fw.fa-search] 重新選裝置
-          button.mt-2.btn.btn-sm.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 從裝置讀取
-          button.mt-2.btn.btn-sm.btn-block.btn-outline-warning(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 上傳到裝置
-          button.mt-2.btn.btn-sm.btn-block.btn-outline-danger(type="button", @click="btnReset", tabindex="-1") #[span.fa.fa-fw.fa-trash-o] 清空本頁面
+          .row.row-cols-1.row-cols-md-2
+            .col: button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 讀取資料
+            .col: button.mt-2.btn.btn-block.btn-outline-warning(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 寫入資料
+            .col: button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnDevice") #[span.fa.fa-fw.fa-search] 選擇裝置
+            .col: button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 清除資料
       .col.mb-4(v-for="bc, bcNo in i.beacons"): .card.card-beacon
         .card-body.text-monospace
           .card-title.d-flex.justify-content-between
