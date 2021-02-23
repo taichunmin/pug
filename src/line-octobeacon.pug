@@ -62,8 +62,9 @@ block script
     window.vm = new Vue({
       el: '#app',
       data: {
+        device: null,
         i: {
-          beacons: [],
+          beacons: null,
         },
       },
       async mounted () {
@@ -109,18 +110,29 @@ block script
               services: ['89798198-0000-0000-0000-000000000000'],
             }],
           })
-          if (!device) throw new Error('No device selected')
+          if (!device) throw new Error('未選擇裝置')
           return device
+        },
+
+        async btnRepickDevice () {
+          try {
+            this.device = await this.bleGetDevice()
+            await Swal.fire({ icon: 'success', title: '裝置選擇成功' })
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '裝置選擇失敗', text: err.message })
+          }
         },
 
         async btnRead () {
           try {
-            const device = await this.bleGetDevice()
-            await device.gatt.connect()
-            const service = await device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
+            if (!this.device) this.device = await this.bleGetDevice()
+            await this.device.gatt.connect()
+            const service = await this.device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
             const characteristic = await service.getCharacteristic('89798198-249d-48bd-894e-db156f1a70e6')
             this.settingParse(await characteristic.readValue())
-            device.gatt.disconnect()
+            this.device.gatt.disconnect()
+            await Swal.fire({ icon: 'success', title: '從裝置讀取成功' })
           } catch (err) {
             console.log(err)
             await Swal.fire({ icon: 'error', title: '從裝置讀取失敗', text: err.message })
@@ -130,12 +142,13 @@ block script
         async btnWrite () {
           try {
             const blob = this.settingStringify()
-            const device = await this.bleGetDevice()
-            await device.gatt.connect()
-            const service = await device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
+            if (!this.device) this.device = await this.bleGetDevice()
+            await this.device.gatt.connect()
+            const service = await this.device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
             const characteristic = await service.getCharacteristic('89798198-249d-48bd-894e-db156f1a70e6')
             await characteristic.writeValue(blob.buffer)
-            device.gatt.disconnect()
+            this.device.gatt.disconnect()
+            await Swal.fire({ icon: 'success', title: '上傳到裝置成功' })
           } catch (err) {
             console.log(err)
             await Swal.fire({ icon: 'error', title: '上傳到裝置失敗', text: err.message })
