@@ -29,11 +29,11 @@ block content
       .col.mb-4: .card
         .card-body.text-monospace
           h5.card-title 操作
-          .row.row-cols-1.row-cols-md-2
-            .col: button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 讀取資料
-            .col: button.mt-2.btn.btn-block.btn-outline-warning(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 寫入資料
-            .col: button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnDevice") #[span.fa.fa-fw.fa-search] 選擇裝置
-            .col: button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 清除資料
+          .row.row-cols-1.row-cols-md-2.mx-n1
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 讀取資料
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 寫入資料
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-info(type="button", @click="btnDevice") #[span.fa.fa-fw.fa-bluetooth] 選擇裝置
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 清除資料
       .col.mb-4(v-for="bc, bcNo in i.beacons"): .card.card-beacon
         .card-body.text-monospace
           .card-title.d-flex.justify-content-between
@@ -42,19 +42,19 @@ block content
               input.custom-control-input(type="checkbox", :id="`bc${bcNo}-enabled`", v-model="bc.enabled")
               label.custom-control-label(:for="`bc${bcNo}-enabled`") 啟用
           .was-validated
-            .input-group.input-group-sm.mb-2
+            .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse offset(16)
               input.form-control.text-right(type="text", maxlength="16", inputmode="verbatim", pattern="[0-9a-fA-F]{16}", required, v-model="bc.offset")
-            .input-group.input-group-sm.mb-2
+            .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse hwid(10)
               input.form-control.text-right(type="text", maxlength="10", inputmode="verbatim", pattern="[0-9a-fA-F]{10}", required, v-model="bc.hwid")
-            .input-group.input-group-sm.mb-2
+            .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse vendor(8)
               input.form-control.text-right(type="text", maxlength="8", inputmode="verbatim", pattern="[0-9a-fA-F]{8}", required, v-model="bc.vendor")
-            .input-group.input-group-sm
+            .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse lot(16)
               input.form-control.text-right(type="text", maxlength="16", inputmode="verbatim", pattern="[0-9a-fA-F]{16}", required, v-model="bc.lot")
