@@ -1,0 +1,189 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = 'Octobeacon 設定'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="設定 Octobeacon 的工具程式")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/line-octobeacon.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .card-beacon
+        .input-group-sm
+          .input-group-text
+            min-width: 6.5rem;
+
+block content
+  #app.my-3.container-fluid(v-cloak)
+    h3.mb-3.text-center Octobeacon 設定
+    .row.row-cols-1.row-cols-md-2.row-cols-xl-4
+      .col.mb-4: .card
+        .card-body.text-monospace
+          h5.card-title 操作
+          button.btn.mt-2.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 從裝置讀取
+          button.btn.mt-2.btn-block.btn-outline-primary(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 上傳到裝置
+          button.btn.mt-2.btn-block.btn-outline-danger(type="button", @click="btnReset", tabindex="-1") #[span.fa.fa-fw.fa-trash-o] 清空本頁面
+      .col.mb-4(v-for="bc, bcNo in i.beacons"): .card.card-beacon
+        .card-body.text-monospace
+          .card-title.d-flex.justify-content-between
+            h5 LINE Beacon {{ bcNo + 1 }}
+            .custom-control.custom-switch
+              input.custom-control-input(type="checkbox", :id="`bc${bcNo}-enabled`", v-model="bc.enabled")
+              label.custom-control-label(:for="`bc${bcNo}-enabled`") 啟用
+          .was-validated
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend
+                span.input-group-text.flex-row-reverse offset(16)
+              input.form-control.text-right(type="text", maxlength="16", inputmode="verbatim", pattern="[0-9a-fA-F]{16}", required, v-model="bc.offset")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend
+                span.input-group-text.flex-row-reverse hwid(10)
+              input.form-control.text-right(type="text", maxlength="10", inputmode="verbatim", pattern="[0-9a-fA-F]{10}", required, v-model="bc.hwid")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend
+                span.input-group-text.flex-row-reverse vendor(8)
+              input.form-control.text-right(type="text", maxlength="8", inputmode="verbatim", pattern="[0-9a-fA-F]{8}", required, v-model="bc.vendor")
+            .input-group.input-group-sm
+              .input-group-prepend
+                span.input-group-text.flex-row-reverse lot(16)
+              input.form-control.text-right(type="text", maxlength="16", inputmode="verbatim", pattern="[0-9a-fA-F]{16}", required, v-model="bc.lot")
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        i: {
+          beacons: [],
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
+        }, { deep: true })
+
+        if (!this.i.beacons) await this.btnReset(false)
+      },
+      methods: {
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設紀錄',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否重設本頁面的紀錄？',
+            })
+            if (!confirm.value) return
+          }
+          this.$set(this.i, 'beacons', _.times(8, () => ({
+            enabled: true,
+            offset: _.padStart('', 16, '0'),
+            hwid: _.padStart('', 10, '0'),
+            vendor: _.padStart('', 8, '0'),
+            lot: _.padStart('', 16, '0'),
+          })))
+        },
+
+        async bleGetDevice () {
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [{
+              name: 'Octobeacon',
+              services: ['89798198-0000-0000-0000-000000000000'],
+            }],
+          })
+          if (!device) throw new Error('No device selected')
+          return device
+        },
+
+        async btnRead () {
+          try {
+            const device = await this.bleGetDevice()
+            await device.gatt.connect()
+            const service = await device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
+            const characteristic = await service.getCharacteristic('89798198-249d-48bd-894e-db156f1a70e6')
+            this.settingParse(await characteristic.readValue())
+            device.gatt.disconnect()
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '從裝置讀取失敗', text: err.message })
+          }
+        },
+
+        async btnWrite () {
+          try {
+            const blob = this.settingStringify()
+            const device = await this.bleGetDevice()
+            await device.gatt.connect()
+            const service = await device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
+            const characteristic = await service.getCharacteristic('89798198-249d-48bd-894e-db156f1a70e6')
+            await characteristic.writeValue(blob.buffer)
+            device.gatt.disconnect()
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '上傳到裝置失敗', text: err.message })
+          }
+        },
+
+        settingParse (blob) {
+          console.log('settingParse: ', blob)
+          const version = blob.getUint8(0)
+          if (version !== 1) throw new Error(`version should be 1, received ${version}.`)
+          const enabled = blob.getUint8(1)
+          const ts = blob.getBigUint64(2, true)
+          const beacons = _.times(8, i => ({
+            enabled: (enabled & (1 << i)) > 0,
+            offset: _.padStart((blob.getBigUint64(25 * i + 10, true) + ts).toString(16), 16, '0'),
+            hwid: this.blob2hex(blob, 25 * i + 18, 5),
+            vendor: this.blob2hex(blob, 25 * i + 23, 4),
+            lot: this.blob2hex(blob, 25 * i + 27, 8),
+          }))
+          this.$set(this.i, 'beacons', beacons)
+        },
+
+        settingStringify () {
+          const buffer = new ArrayBuffer(210)
+          const blob = new DataView(buffer)
+          const beacons = this.i.beacons
+          blob.setUint8(0, 1) // version
+          blob.setUint8(1, _.reduce(beacons, (sum, bc, bcNo) => sum + (bc.enabled ? (1 << bcNo) : 0), 0)) // enabled
+          blob.setBigUint64(2, BigInt(0), true)
+          for (let i = 0; i < 8; i++) {
+            const beacon = beacons[i]
+            if (!/^[0-9a-fA-F]{16}$/.test(beacon.offset)) throw new Error(`beacon[${i}].offset 資料格式有誤`)
+            if (!/^[0-9a-fA-F]{10}$/.test(beacon.hwid)) throw new Error(`beacon[${i}].hwid 資料格式有誤`)
+            if (!/^[0-9a-fA-F]{8}$/.test(beacon.vendor)) throw new Error(`beacon[${i}].vendor 資料格式有誤`)
+            if (!/^[0-9a-fA-F]{16}$/.test(beacon.lot)) throw new Error(`beacon[${i}].lot 資料格式有誤`)
+            blob.setBigUint64(25 * i + 10, BigInt(`0x${beacon.offset}`), true)
+            this.hex2blob(`${beacon.hwid}${beacon.vendor}${beacon.lot}`, blob, 25 * i + 18, 17)
+          }
+          console.log('settingStringify: ', blob)
+          return blob
+        },
+
+        blob2hex (blob, start, len) {
+          return _.chain(len).times(i => _.padStart(blob.getUint8(start + i).toString(16), 2, '0')).join('').value()
+        },
+
+        hex2blob (hex, blob, start, len) {
+          for (let i = 0; i < len; i++) blob.setUint8(start + i, _.parseInt(`${hex[2 * i]}${hex[2 * i + 1]}`, 16))
+        },
+      },
+    })
