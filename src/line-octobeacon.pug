@@ -107,7 +107,7 @@ block script
         async bleGetDevice () {
           const device = await navigator.bluetooth.requestDevice({
             filters: [{
-              name: 'Octobeacon',
+              namePrefix: 'Octobeacon',
               services: ['89798198-0000-0000-0000-000000000000'],
             }],
           })
