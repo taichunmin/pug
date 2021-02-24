@@ -29,10 +29,11 @@ block content
       .col.mb-4: .card
         .card-body.text-monospace
           h5.card-title 操作
+          p.card-text 本程式目前支援在 Windows、macOS 及 Android 6.0 以上的 Chrome 中執行。
           .row.row-cols-1.row-cols-md-2.mx-n1
-            .col.px-1: button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 讀取資料
-            .col.px-1: button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 寫入資料
-            .col.px-1: button.mt-2.btn.btn-block.btn-outline-info(type="button", @click="btnDevice") #[span.fa.fa-fw.fa-bluetooth] 選擇裝置
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 讀取 Beacon
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 寫入 Beacon
+            .col.px-1: button.mt-2.btn.btn-block.btn-outline-info(type="button", @click="btnDevice") #[span.fa.fa-fw.fa-bluetooth] 選擇 Beacon
             .col.px-1: button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 清除資料
       .col.mb-4(v-for="bc, bcNo in i.beacons"): .card.card-beacon
         .card-body.text-monospace
@@ -45,19 +46,19 @@ block content
             .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse offset(16)
-              input.form-control.text-right(type="text", maxlength="16", inputmode="verbatim", pattern="[0-9a-fA-F]{16}", required, v-model="bc.offset")
+              input.form-control.text-right(type="text", maxlength="16", inputmode="email", pattern="[0-9a-fA-F]{16}", required, v-model="bc.offset")
             .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse hwid(10)
-              input.form-control.text-right(type="text", maxlength="10", inputmode="verbatim", pattern="[0-9a-fA-F]{10}", required, v-model="bc.hwid")
+              input.form-control.text-right(type="text", maxlength="10", inputmode="email", pattern="[0-9a-fA-F]{10}", required, v-model="bc.hwid")
             .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse vendor(8)
-              input.form-control.text-right(type="text", maxlength="8", inputmode="verbatim", pattern="[0-9a-fA-F]{8}", required, v-model="bc.vendor")
+              input.form-control.text-right(type="text", maxlength="8", inputmode="email", pattern="[0-9a-fA-F]{8}", required, v-model="bc.vendor")
             .input-group.input-group-sm.mt-2
               .input-group-prepend
                 span.input-group-text.flex-row-reverse lot(16)
-              input.form-control.text-right(type="text", maxlength="16", inputmode="verbatim", pattern="[0-9a-fA-F]{16}", required, v-model="bc.lot")
+              input.form-control.text-right(type="text", maxlength="16", inputmode="email", pattern="[0-9a-fA-F]{16}", required, v-model="bc.lot")
 
 block script
   script.
@@ -82,6 +83,10 @@ block script
         if (!this.i.beacons) await this.btnReset(false)
       },
       methods: {
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability') === true
+        },
+
         async btnReset (confirm = true) {
           if (confirm) {
             confirm = await Swal.fire({
@@ -106,6 +111,7 @@ block script
         },
 
         async bleGetDevice () {
+          if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
           const device = await navigator.bluetooth.requestDevice({
             filters: [{
               namePrefix: 'Octobeacon',
@@ -174,10 +180,10 @@ block script
           console.log('settingParse: ', blob)
           const version = blob.getUint8(0)
           if (version !== 1) throw new Error(`version should be 1, received ${version}.`)
-          const enabled = blob.getUint8(1)
+          const enabled = blob.getUint8(1).toString(2)
           const ts = blob.getBigUint64(2, true)
           const beacons = _.times(8, i => ({
-            enabled: (enabled & (1 << i)) > 0,
+            enabled: enabled[i] === '1',
             offset: _.padStart((blob.getBigUint64(25 * i + 10, true) + ts).toString(16), 16, '0'),
             hwid: this.blob2hex(blob, 25 * i + 18, 5),
             vendor: this.blob2hex(blob, 25 * i + 23, 4),
@@ -191,7 +197,7 @@ block script
           const blob = new DataView(buffer)
           const beacons = this.i.beacons
           blob.setUint8(0, 1) // version
-          blob.setUint8(1, _.reduce(beacons, (sum, bc, bcNo) => sum + (bc.enabled ? (1 << bcNo) : 0), 0)) // enabled
+          blob.setUint8(1, _.parseInt(_.map(beacons, bc => '01'[+bc.enabled]).join(''), 2)) // enabled
           blob.setBigUint64(2, BigInt(0), true)
           for (let i = 0; i < 8; i++) {
             const beacon = beacons[i]
