@@ -85,7 +85,7 @@ block script
       },
       methods: {
         async getBluetoothAvailability () {
-          return await _.invoke(navigator, 'bluetooth.getAvailability') === true
+          return await _.invoke(navigator, 'bluetooth.getAvailability')
         },
 
         async btnReset (confirm = true) {
