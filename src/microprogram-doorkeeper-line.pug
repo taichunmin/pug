@@ -154,8 +154,44 @@ block script
               type: 'box',
               contents: [
                 {
+                  size: 'lg',
+                  text: `${_.get(this.employees, this.h.uid, this.h.uid)}你好：`,
+                  type: 'text',
+                  weight: 'bold',
+                },
+                {
+                  margin: 'md',
                   size: 'sm',
-                  text: `這是屬於「${_.get(this.employees, this.h.uid, this.h.uid)}」的專屬設定網址，請勿將網址轉貼給他人使用。`,
+                  text: '邀請您開啟微程式的刷卡通知服務，目前的功能有：',
+                  type: 'text',
+                  wrap: true,
+                },
+                {
+                  layout: 'vertical',
+                  paddingAll: '15px',
+                  spacing: 'sm',
+                  type: 'box',
+                  contents: [
+                    {
+                      size: 'sm',
+                      text: '1. 今天首次刷卡通知',
+                      type: 'text',
+                    },
+                    {
+                      size: 'sm',
+                      text: '2. 今天超過 10 小時通知',
+                      type: 'text',
+                    },
+                    {
+                      size: 'sm',
+                      text: '3. 昨天未達 9 小時通知',
+                      type: 'text',
+                    },
+                  ],
+                },
+                {
+                  size: 'sm',
+                  text: '以下是您專屬的設定連結，本連結不會失效，請勿轉貼給他人使用。',
                   type: 'text',
                   wrap: true,
                 },
@@ -170,7 +206,7 @@ block script
                   style: 'primary',
                   type: 'button',
                   action: {
-                    label: '點此設定',
+                    label: '點此開啟刷卡通知',
                     type: 'uri',
                     uri: url,
                   },
@@ -179,69 +215,59 @@ block script
             },
             header: {
               backgroundColor: '#E2231A',
-              layout: 'horizontal',
-              spacing: 'md',
+              layout: 'vertical',
               type: 'box',
               contents: [
                 {
-                  backgroundColor: '#ffffff',
-                  cornerRadius: '50px',
-                  flex: 0,
-                  height: '64px',
-                  layout: 'vertical',
+                  layout: 'horizontal',
                   type: 'box',
-                  width: '64px',
                   contents: [
                     {
-                      align: 'center',
-                      aspectMode: 'cover',
-                      aspectRatio: '1:1',
-                      gravity: 'center',
-                      size: 'full',
-                      type: 'image',
-                      url: 'https://i.imgur.com/5tS4s3Y.png',
+                      flex: 1,
+                      layout: 'vertical',
+                      type: 'box',
+                      contents: [],
+                    },
+                    {
+                      cornerRadius: '50px',
+                      flex: 0,
+                      height: '100px',
+                      layout: 'vertical',
+                      type: 'box',
+                      width: '100px',
+                      contents: [
+                        {
+                          aspectMode: 'cover',
+                          aspectRatio: '1:1',
+                          backgroundColor: '#ffffff',
+                          gravity: 'center',
+                          type: 'image',
+                          url: 'https://i.imgur.com/5tS4s3Y.png',
+                        },
+                      ],
+                    },
+                    {
+                      flex: 1,
+                      layout: 'vertical',
+                      type: 'box',
+                      contents: [],
                     },
                   ],
                 },
                 {
-                  flex: 1,
-                  layout: 'vertical',
-                  spacing: 'sm',
-                  type: 'box',
-                  contents: [
-                    {
-                      flex: 1,
-                      layout: 'vertical',
-                      type: 'box',
-                      contents: [],
-                    },
-                    {
-                      color: '#E5ABA8',
-                      size: 'sm',
-                      text: '微程式資訊',
-                      type: 'text',
-                    },
-                    {
-                      color: '#ffffff',
-                      size: 'xl',
-                      text: '設定刷卡通知',
-                      type: 'text',
-                      weight: 'bold',
-                      wrap: true,
-                    },
-                    {
-                      flex: 1,
-                      layout: 'vertical',
-                      type: 'box',
-                      contents: [],
-                    },
-                  ],
+                  align: 'center',
+                  color: '#ffffff',
+                  margin: '15px',
+                  size: 'xxl',
+                  text: '微程式刷卡通知',
+                  type: 'text',
+                  weight: 'bold',
                 },
               ],
             },
           }
           if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
-            msg = { type: 'flex', altText: '這是您的刷卡通知專屬設定網址。', contents: msg }
+            msg = { type: 'flex', altText: '邀請您開啟微程式的刷卡通知服務。', contents: msg }
           }
           if (!_.isArray(msg)) msg = [msg]
           console.log('msg =', JSON.stringify(msg))
