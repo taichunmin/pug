@@ -24,7 +24,7 @@ block style
 
 block content
   #app.my-3.container-fluid(v-cloak)
-    h3.mb-3.text-center Octobeacon 設定
+    h3.mb-3.text-center= title
     .row.row-cols-1.row-cols-md-2.row-cols-xl-4
       .col.mb-4: .card
         .card-body.text-monospace
@@ -45,19 +45,19 @@ block content
           .was-validated
             .input-group.input-group-sm.mt-2
               .input-group-prepend
-                span.input-group-text.flex-row-reverse offset(16)
+                span.input-group-text.justify-content-end offset(16)
               input.form-control.text-right(type="text", maxlength="16", inputmode="email", pattern="[0-9a-fA-F]{16}", required, v-model="bc.offset")
             .input-group.input-group-sm.mt-2
               .input-group-prepend
-                span.input-group-text.flex-row-reverse hwid(10)
+                span.input-group-text.justify-content-end hwid(10)
               input.form-control.text-right(type="text", maxlength="10", inputmode="email", pattern="[0-9a-fA-F]{10}", required, v-model="bc.hwid")
             .input-group.input-group-sm.mt-2
               .input-group-prepend
-                span.input-group-text.flex-row-reverse vendor(8)
+                span.input-group-text.justify-content-end vendor(8)
               input.form-control.text-right(type="text", maxlength="8", inputmode="email", pattern="[0-9a-fA-F]{8}", required, v-model="bc.vendor")
             .input-group.input-group-sm.mt-2
               .input-group-prepend
-                span.input-group-text.flex-row-reverse lot(16)
+                span.input-group-text.justify-content-end lot(16)
               input.form-control.text-right(type="text", maxlength="16", inputmode="email", pattern="[0-9a-fA-F]{16}", required, v-model="bc.lot")
 
 block script

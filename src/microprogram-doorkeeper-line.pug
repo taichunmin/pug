@@ -1,0 +1,251 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = '微程式刷卡通知設定'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="微程式刷卡通知設定")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://liff.line.me/1655633310-Y3EoMePD")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .input-group-prepend
+        .input-group-text
+          min-width: 6rem;
+
+block content
+  #app.my-3.container-fluid(v-cloak, v-if="ready")
+    h3.mb-3.text-center= title
+    .text-monospace.was-validated
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-end lihi
+        input.form-control(type="url", inputmode="url", required, pattern="https://.+", v-model="h.lihi")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-end callback
+        input.form-control(type="url", inputmode="url", required, pattern="https://.+", v-model="h.callback")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-end secret
+        input.form-control(type="password", required, pattern="[0-9a-zA-Z]{43}", v-model="h.secret")
+      .form-group.mt-2
+        label 員工編號 (uid)
+        .input-group.input-group-sm
+          input.form-control(type="tel", inputmode="tel", required, pattern="[0-9-]{3,}", v-model="h.uid")
+          .input-group-append: span.input-group-text {{ _.get(employees, [h.uid], '未知') }}
+    .row.mx-n1
+      .col.px-1: button.mt-2.btn.btn-block.btn-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 清除資料
+      .col.px-1: button.mt-2.btn.btn-block.btn-success(type="button", @click="btnShare") #[span.fa.fa-fw.fa-paper-plane-o] 傳送連結
+
+block script
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script.
+    const loginPromise = (async () => {
+      await liff.init({ liffId: '1655633310-Y3EoMePD' })
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+      }
+      const profile = await liff.getProfile().catch(() => ({}))
+      if (!profile.userId) throw new Error('無法取得 userId')
+      if (window.gtagSetLineId) window.gtagSetLineId(profile.userId)
+      return profile
+    })()
+    const encodeBase64url = str => {
+      if (!_.isInteger(str.sigBytes)) str = CryptoJS.enc.Utf8.parse(`${str}`)
+      return CryptoJS.enc.Base64.stringify(str).replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_', '=': '' }, c))
+    }
+    const hs256Base64url = (msg, secret) => {
+      if (!_.isString(msg)) throw new Error('invalid msg')
+      if (!_.isString(secret) || !secret) throw new Error('invalid secret')
+      return encodeBase64url(CryptoJS.HmacSHA256(msg, secret))
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        ready: false,
+        employees: null,
+        h: {
+          callback: 'https://us-central1-mp-parking-lot.cloudfunctions.net/gcf-doorkeeper-line-http/linenotify',
+          lihi: 'https://lihi1.com/q4kAj',
+          secret: '',
+          uid: '',
+        },
+      },
+      async mounted () {
+        await loginPromise
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        this.employees = await this.getEmployees()
+        this.ready = true
+      },
+      methods: {
+        async getCsv (url) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: +new Date() },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+
+        async getEmployees () {
+          const rows = await this.getCsv('https://gist.githubusercontent.com/taichunmin/705dae98222ebb6c2b6be9d5d30f3765/raw/doorkeeper-employees.csv')
+          return _.fromPairs(_.map(rows, row => [row.uid, row.name]))
+        },
+
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設紀錄',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否重設本頁面的紀錄？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+
+        async btnShare () {
+          try {
+            await loginPromise
+            if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker，請嘗試更新應用程式版本。')
+            const res = await liff.shareTargetPicker(this.getRenderedMsgs())
+            if (_.get(res, 'status') !== 'success') throw new Error('已取消傳送')
+            await Swal.fire({
+              icon: 'success',
+              title: '傳送成功',
+            })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '傳送失敗', text: err.message })
+          }
+        },
+
+        getRenderedMsgs () {
+          const json = JSON5.stringify({ uid: this.h.uid, callback: this.h.callback })
+          const url = `${this.h.lihi}/${encodeBase64url(json)}.${hs256Base64url(json, this.h.secret)}`
+          let msg = {
+            type: 'bubble',
+            body: {
+              layout: 'vertical',
+              type: 'box',
+              contents: [
+                {
+                  size: 'sm',
+                  text: `這是屬於「${_.get(this.employees, this.h.uid, this.h.uid)}」的專屬設定網址，請勿將網址轉貼給他人使用。`,
+                  type: 'text',
+                  wrap: true,
+                },
+              ],
+            },
+            footer: {
+              layout: 'vertical',
+              type: 'box',
+              contents: [
+                {
+                  color: '#E2231A',
+                  style: 'primary',
+                  type: 'button',
+                  action: {
+                    label: '點此設定',
+                    type: 'uri',
+                    uri: url,
+                  },
+                },
+              ],
+            },
+            header: {
+              backgroundColor: '#E2231A',
+              layout: 'horizontal',
+              spacing: 'md',
+              type: 'box',
+              contents: [
+                {
+                  backgroundColor: '#ffffff',
+                  cornerRadius: '50px',
+                  flex: 0,
+                  height: '64px',
+                  layout: 'vertical',
+                  type: 'box',
+                  width: '64px',
+                  contents: [
+                    {
+                      align: 'center',
+                      aspectMode: 'cover',
+                      aspectRatio: '1:1',
+                      gravity: 'center',
+                      size: 'full',
+                      type: 'image',
+                      url: 'https://i.imgur.com/5tS4s3Y.png',
+                    },
+                  ],
+                },
+                {
+                  flex: 1,
+                  layout: 'vertical',
+                  spacing: 'sm',
+                  type: 'box',
+                  contents: [
+                    {
+                      flex: 1,
+                      layout: 'vertical',
+                      type: 'box',
+                      contents: [],
+                    },
+                    {
+                      color: '#E5ABA8',
+                      size: 'sm',
+                      text: '微程式資訊',
+                      type: 'text',
+                    },
+                    {
+                      color: '#ffffff',
+                      size: 'xl',
+                      text: '設定刷卡通知',
+                      type: 'text',
+                      weight: 'bold',
+                      wrap: true,
+                    },
+                    {
+                      flex: 1,
+                      layout: 'vertical',
+                      type: 'box',
+                      contents: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          }
+          if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
+            msg = { type: 'flex', altText: '這是您的刷卡通知專屬設定網址。', contents: msg }
+          }
+          if (!_.isArray(msg)) msg = [msg]
+          console.log('msg =', JSON.stringify(msg))
+          return msg
+        },
+      },
+    })
