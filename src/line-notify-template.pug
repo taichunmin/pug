@@ -1,0 +1,289 @@
+extends /layouts/default
+
+block beforehtml
+  - const title = 'LINE Notify 大量發送工具'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="LINE Notify 大量發送工具")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://liff.line.me/1654046335-L8mO8BYy")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .input-group-prepend
+        .input-group-text
+          min-width: 5rem;
+
+block content
+  #app.my-3.container-fluid(v-cloak)
+    h3.mb-3.text-center= title
+    .text-monospace.was-validated
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 資料 CSV
+        textarea.form-control(type="url", inputmode="url", required, pattern="https://[^/?#]+[^?#]*(\\?[^#]*)?(#.*)?", v-model="h.csv")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end token
+        input.form-control(type="text", inputmode="url", required, pattern=".+", v-model="h.token")
+      .card.mb-2(v-for="msg, msgNo in h.msgs", :key="msgNo")
+        .card-body.text-monospace
+          .card-title.d-flex.justify-content-between.align-items-start.mb-0
+            h5 第 {{ msgNo + 1 }} 筆訊息
+            button.py-0.btn.btn-sm.btn-outline-danger(type="button", @click="btnDel(msgNo)") #[span.fa.fa-fw.fa-trash-o]刪除
+          small.text-muted 所有欄位均可使用 #[code _.template] 的語法，CSV 中讀取的資料會存在 #[code ${row}] 變數中。
+          .row.mt-2.mx-n1
+            .col.px-1: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end package
+              input.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.stickerPackageId")
+            .col.px-1: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end sticker
+              input.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.stickerId")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-end 圖片網址
+            textarea.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.imageFullsize")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-end 縮圖網址
+            textarea.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.imageThumbnail")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-end 訊息內容
+            textarea.form-control(type="text", inputmode="url", rows="10", required, pattern=".+", v-model="msg.message")
+      .row.mx-n2
+        button.btn.btn-info.mx-2.my-1(type="button", @click="btnAdd") 新增一筆訊息
+        button.btn.btn-success.mx-2.my-1(type="button", @click="btnShare") 分享測試訊息
+        button.btn.btn-danger.mx-2.my-1(type="button", @click="btnSend") 推送訊息
+        a.btn.btn-outline-info.mx-2.my-1(href="https://notify-bot.line.me/doc/en/", target="_blank") Notify 文件
+        a.btn.btn-outline-info.mx-2.my-1(href="https://lodash.com/docs/#template", target="_blank") _.template 變數語法說明
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script.
+    const loginPromise = (async () => {
+      await liff.init({ liffId: '1654046335-L8mO8BYy' })
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+      }
+      const profile = await liff.getProfile().catch(() => ({}))
+      if (!profile.userId) throw new Error('無法取得 userId')
+      if (window.gtagSetLineId) window.gtagSetLineId(profile.userId)
+      return profile
+    })()
+    window.httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
+    window.joiCustomUrl = (value, helpers) => {
+      const a = new URL(value)
+      if (!/^https?:$/.test(a.protocol)) throw new TypeError('Protocol of URL should be http/https')
+      return a.href
+    }
+    window.joiToken = (Joi => {
+      const schema = Joi.string().regex(/^[0-9A-Za-z]{43,}$/).empty('').required()
+      const options = { abortEarly: false, stripUnknown: true }
+      return value => schema.validateAsync(value, options)
+    })(joi)
+    window.joiMsg = (Joi => {
+      const schema = Joi.object({
+        imageFullsize: Joi.string().trim().custom(window.joiCustomUrl).optional(),
+        imageThumbnail: Joi.string().trim().custom(window.joiCustomUrl).optional(),
+        message: Joi.string().min(1).max(1000).required(),
+        stickerId: Joi.number().integer().min(1).optional(),
+        stickerPackageId: Joi.number().integer().min(1).optional(),
+      }).and('imageFullsize', 'imageThumbnail').and('stickerId', 'stickerPackageId')
+      const options = { abortEarly: false, stripUnknown: true }
+      return value => schema.validateAsync(value, options)
+    })(joi)
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          token: '${row.token}', // eslint-disable-line no-template-curly-in-string
+          csv: '',
+          msgs: null,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        if (!_.get(this, 'h.msgs.length', 0)) await this.btnAdd()
+      },
+      methods: {
+        async btnAdd () {
+          if (!_.get(this, 'h.msgs')) this.$set(this.h, 'msgs', [])
+          this.h.msgs.push({
+            imageFullsize: '${row.image}', // eslint-disable-line no-template-curly-in-string
+            imageThumbnail: '${row.thumbnail}', // eslint-disable-line no-template-curly-in-string
+            message: '${row.message}', // eslint-disable-line no-template-curly-in-string
+            stickerId: '${row.sticker}', // eslint-disable-line no-template-curly-in-string
+            stickerPackageId: '${row.package}', // eslint-disable-line no-template-curly-in-string
+          })
+        },
+        async btnDel (msgNo) {
+          const yn = await Swal.fire({
+            cancelButtonColor: '#3085d6',
+            cancelButtonText: '取消',
+            confirmButtonColor: '#d33',
+            confirmButtonText: '刪除',
+            focusCancel: true,
+            icon: 'warning',
+            showCancelButton: true,
+            text: `是否刪除第 ${msgNo + 1} 筆訊息？`,
+          })
+          if (!yn.value) return
+          this.h.msgs.splice(msgNo, 1)
+        },
+        async btnSend () {
+          try {
+            this.showLoading('訊息推送中', '讀取 CSV 資料')
+            const rows = await this.getCsv(this.h.csv)
+            if (!rows.length) throw new Error('CSV 中沒有資料')
+
+            const yn = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '取消',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '開始推送',
+              icon: 'question',
+              showCancelButton: true,
+              text: `即將推送給 ${rows.length} 個帳號`,
+              title: '訊息推送確認',
+            })
+            if (!yn.value) return // 使用者自行取消
+
+            this.showLoading('訊息推送中', '編譯訊息樣版')
+            const tpl = this.compileTpl()
+
+            let errCnt = 0
+            for (const [rowId, row] of _.toPairs(rows)) {
+              try {
+                this.showLoading('訊息推送中', `編譯給帳號 (${_.parseInt(rowId) + 1} / ${rows.length}) 的訊息`)
+                const ctx = { Qs, _, dayjs, row }
+                const token = await window.joiToken(tpl.token(ctx))
+                const msgs = await Promise.all(_.map(tpl.msgs, tplMsg => window.joiMsg(_.mapValues(tplMsg, v => v(ctx)))))
+                for (const [msgId, msg] of _.toPairs(msgs)) {
+                  this.showLoading('訊息推送中', `推送給帳號 (${_.parseInt(rowId) + 1} / ${rows.length})，訊息 (${_.parseInt(msgId) + 1} / ${msgs.length})`)
+                  await this.apiNotify(token, msg)
+                }
+              } catch (err) {
+                err.message = `帳號 ${_.parseInt(rowId) + 1} 發生錯誤: ${err.message}`
+                console.error(err)
+                errCnt++
+              }
+            }
+            if (errCnt) throw new Error(`累計發生 ${errCnt} 個錯誤，請從開發者工具中查看錯誤。`)
+            await Swal.fire({ icon: 'success', title: '訊息推送成功' })
+          } catch (err) {
+            err.message = _.get(err, 'response.data.message', err.message) // axios error
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '訊息推送失敗', text: err.message })
+          }
+        },
+        async btnShare () {
+          try {
+            this.showLoading('分享測試訊息', '初始化 LIFF')
+            await loginPromise
+            if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker，請嘗試更新應用程式版本。')
+
+            this.showLoading('分享測試訊息', '讀取 CSV 資料')
+            const rows = await this.getCsv(this.h.csv)
+            if (!rows.length) throw new Error('CSV 中沒有資料')
+
+            this.showLoading('分享測試訊息', '編譯訊息樣版')
+            const tpl = this.compileTpl()
+
+            this.showLoading('分享測試訊息', '編譯訊息')
+            const ctx = { Qs, _, dayjs, row: _.first(rows) }
+            const notifyMsgs = await Promise.all(_.map(tpl.msgs, tplMsg => window.joiMsg(_.mapValues(tplMsg, v => v(ctx)))))
+            const chunks = _.chunk(_.flatten(_.map(notifyMsgs, this.notifyMsgToShareMsg)), 5) // 轉換成可用 shareTargetPicker 分享的訊息
+            console.log('chunks =', JSON.stringify(chunks))
+
+            const confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '取消',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '開始分享',
+              icon: 'question',
+              showCancelButton: true,
+              text: `接下來會有連續 ${chunks.length} 次分享`,
+              title: '分享測試訊息',
+            })
+            if (!confirm.value) return // 使用者自行取消
+            for (const [chunkNo, chunk] of _.toPairs(chunks)) {
+              this.showLoading('分享測試訊息', `分享 (${_.parseInt(chunkNo) + 1} / ${chunks.length}) 次`)
+              if (_.get(await liff.shareTargetPicker(chunk), 'status') !== 'success') throw new Error('分享失敗')
+            }
+            await Swal.fire({ icon: 'success', title: '訊息推送成功' })
+          } catch (err) {
+            err.message = _.get(err, 'response.data.message', err.message) // axios error
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '分享測試訊息失敗', text: err.message })
+          }
+        },
+        async getCsv (url) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: _.floor(Date.now() / 3e4) },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async apiNotify (token, msg) {
+          try {
+            await axios.post('https://us-central1-taichunmin.cloudfunctions.net/cors-anywhere', window.httpBuildQuery(msg), {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { u: 'https://notify-api.line.me/api/notify' },
+            })
+          } catch (err) {
+            err.message = _.get(err, 'response.data.message', err.message)
+            err.status = _.get(err, 'response.status', 500)
+            if (err.status === 401) err.message = `token 已失效 (${token})`
+            throw err
+          }
+        },
+        compileTpl () {
+          return {
+            token: _.template(this.h.token),
+            msgs: _.map(this.h.msgs, msg => _.mapValues(msg, _.template)),
+          }
+        },
+        notifyMsgToShareMsg (msg) {
+          return [
+            { // message
+              type: 'text',
+              text: `【測試訊息】${msg.message}`,
+            },
+            ...(!msg.stickerId ? [] : [{ // sticker
+              originalContentUrl: `https://stickershop.line-scdn.net/stickershop/v1/sticker/${msg.stickerId}/iPhone/sticker@2x.png`,
+              previewImageUrl: `https://stickershop.line-scdn.net/stickershop/v1/sticker/${msg.stickerId}/iPhone/sticker@2x.png`,
+              type: 'image',
+            }]),
+            ...(!msg.imageFullsize || !msg.imageThumbnail ? [] : [{ // image
+              originalContentUrl: msg.imageFullsize,
+              previewImageUrl: msg.imageThumbnail,
+              type: 'image',
+            }]),
+          ]
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            onBeforeOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

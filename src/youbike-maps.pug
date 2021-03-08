@@ -61,7 +61,7 @@ block content
     #map
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/@hapi/joi@17/dist/joi-browser.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
   script(src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
   script(src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
   script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
@@ -87,7 +87,8 @@ block script
         is_open: joi.number().integer().min(0).default(0).empty(''),
         updated_at: joi.date().timestamp('unix').required(),
       })
-      return value => schema.validateAsync(value, { stripUnknown: true })
+      const options = { abortEarly: false, stripUnknown: true }
+      return value => schema.validateAsync(value, options)
     })()
 
     const stationToIcon = (() => {

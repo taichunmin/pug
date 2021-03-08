@@ -16,7 +16,6 @@ async function main () {
   const livereloadServer = livereload.createServer({
     delay: 500,
   })
-  livereloadServer.watch(publicDir)
 
   const staticServer = http.createServer((req, res) => {
     serveStatic(publicDir, {
@@ -30,6 +29,7 @@ async function main () {
     if (!match) log(`"${name}" changed.`)
     else log(`http://localhost:3000/${match[1].replace(/\\/g, '/')}.html`)
     await build(true)
+    livereloadServer.refresh('')
   })
 }
 
