@@ -57,8 +57,10 @@ block content
         button.btn.btn-info.mx-2.my-1(type="button", @click="btnAdd") 新增一筆訊息
         button.btn.btn-success.mx-2.my-1(type="button", @click="btnShare") 分享測試訊息
         button.btn.btn-danger.mx-2.my-1(type="button", @click="btnSend") 推送訊息
+        a.btn.btn-outline-info.mx-2.my-1(href="https://line.me/R/ti/p/@736cebrk", target="_blank") 查 Sticker 的 ID
         a.btn.btn-outline-info.mx-2.my-1(href="https://notify-bot.line.me/doc/en/", target="_blank") Notify 文件
-        a.btn.btn-outline-info.mx-2.my-1(href="https://lodash.com/docs/#template", target="_blank") _.template 變數語法說明
+        a.btn.btn-outline-info.mx-2.my-1(href="https://lodash.com/docs/#template", target="_blank") 訊息變數教學
+        a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/media/messaging-api/sticker_list.pdf", target="_blank") Sticker 清單
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
@@ -253,6 +255,7 @@ block script
           }
         },
         compileTpl () {
+          if (!_.get(this, 'h.msgs.length')) throw new Error('請新增訊息')
           return {
             token: _.template(this.h.token),
             msgs: _.map(this.h.msgs, msg => _.mapValues(msg, _.template)),

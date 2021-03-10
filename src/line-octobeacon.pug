@@ -25,11 +25,11 @@ block style
 block content
   #app.my-3.container-fluid(v-cloak)
     h3.mb-3.text-center= title
-    .row.row-cols-1.row-cols-md-2.row-cols-xl-4
+    .row.row-cols-1.row-cols-md-2.row-cols-xl-3
       .col.mb-4: .card
         .card-body.text-monospace
           h5.card-title 操作
-          p.card-text 本程式目前支援在 Windows、macOS 及 Android 6.0 以上的 Chrome 中執行。
+          p.card-text 本程式目前支援在 Windows、macOS 及 Android 6.0 以上的 Chrome 中執行，請開啟定位以及藍牙。
           .row.row-cols-1.row-cols-md-2.mx-n1
             .col.px-1: button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnRead") #[span.fa.fa-fw.fa-download] 讀取 Beacon
             .col.px-1: button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnWrite") #[span.fa.fa-fw.fa-upload] 寫入 Beacon
@@ -120,6 +120,7 @@ block script
             }],
           })
           if (!device) throw new Error('未選擇裝置')
+          await sleep(100)
           return device
         },
 
@@ -129,7 +130,7 @@ block script
             this.device = await this.bleGetDevice()
             await Swal.fire({ icon: 'success', title: '裝置選擇成功' })
           } catch (err) {
-            console.log(err)
+            console.error(err)
             await Swal.fire({ icon: 'error', title: '裝置選擇失敗', text: err.message })
           }
         },
@@ -146,7 +147,7 @@ block script
             await sleep(500) // 裝置重新廣播的時間是 0.5 秒
             await Swal.fire({ icon: 'success', title: '從裝置讀取成功' })
           } catch (err) {
-            console.log(err)
+            console.error(err)
             await Swal.fire({ icon: 'error', title: '從裝置讀取失敗', text: err.message })
           }
         },
@@ -164,7 +165,7 @@ block script
             await sleep(500) // 裝置重新廣播的時間是 0.5 秒
             await Swal.fire({ icon: 'success', title: '上傳到裝置成功' })
           } catch (err) {
-            console.log(err)
+            console.error(err)
             await Swal.fire({ icon: 'error', title: '上傳到裝置失敗', text: err.message })
           }
         },
@@ -181,6 +182,7 @@ block script
 
         settingParse (blob) {
           console.log('settingParse: ', blob)
+          if (_.get(blob, 'byteLength', 0) !== 210) throw new Error('尚未進入工程模式')
           const version = blob.getUint8(0)
           if (version !== 1) throw new Error(`version should be 1, received ${version}.`)
           const enabled = blob.getUint8(1).toString(2)
