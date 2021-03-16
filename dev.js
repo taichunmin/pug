@@ -1,34 +1,35 @@
 const { build } = require('./build')
+const { getBaseurl } = require('./utils')
 const finalhandler = require('finalhandler')
-const http = require('http')
+const https = require('https')
 const livereload = require('livereload')
 const log = require('debug')('app:watch')
 const path = require('path')
+const selfsigned = require('./selfsigned')
 const serveStatic = require('serve-static')
 const watch = require('node-watch')
 
 async function main () {
-  await build(true)
-  log('build finish.')
-
   const publicDir = path.resolve(__dirname, 'dist')
+  const baseUrl = getBaseurl()
+  await build(true)
+  log(`build finish. Visit: ${baseUrl}`)
 
   const livereloadServer = livereload.createServer({
-    delay: 500,
+    delay: 1000,
+    port: 3000,
+    server: https.createServer(selfsigned(), async (req, res) => {
+      serveStatic(publicDir, {
+        index: ['index.html', 'index.htm'],
+      })(req, res, finalhandler(req, res))
+    }),
   })
 
-  const staticServer = http.createServer((req, res) => {
-    serveStatic(publicDir, {
-      index: ['index.html', 'index.htm'],
-    })(req, res, finalhandler(req, res))
-  })
-  staticServer.listen(3000)
-
-  watch('./src', { recursive: true }, async (e, name) => {
-    const match = name.match(/src[\\/](.+)\.pug/)
+  watch(['./src', './layout'], { recursive: true }, async (e, name) => { // , './component'
+    const match = name.match(/^src[\\/](.+)\.pug$/)
+    await build()
     if (!match) log(`"${name}" changed.`)
-    else log(`http://localhost:3000/${match[1].replace(/\\/g, '/')}.html`)
-    await build(true)
+    else log(`${baseUrl}${match[1].replace(/\\/g, '/')}.html`)
     livereloadServer.refresh('')
   })
 }

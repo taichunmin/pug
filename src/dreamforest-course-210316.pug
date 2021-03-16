@@ -1,0 +1,188 @@
+extends /layout/default
+
+block beforehtml
+  -
+    const title = '夢森林課程報名'
+    const liffId = '1655633310-kWv3DWxn' // prod
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content=title)
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content=`https://liff.line.me/${liffId}`)
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container-fluid(v-cloak, v-if="ready")
+    h3.text-center.mb-3 夢森林課程報名
+    .text-monospace.was-validated
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 時間
+        input.form-control(type="text", readonly, disabled, :value="time")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 課名
+        textarea.form-control(rows="3", readonly, disabled, :value="course")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 姓名
+        input.form-control(type="text", required, pattern=".{2,}", v-model="h.name")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 信箱
+        input.form-control(type="email", inputmode="email", required, pattern="[\\w.]+@program.com.tw", v-model="h.email")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 部門
+        input.form-control(type="text", required, pattern=".{2,}", v-model="h.department")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 職稱
+        input.form-control(type="text", required, pattern=".{2,}", v-model="h.title")
+      .input-group.input-group-sm.mb-2
+        .input-group-prepend: span.input-group-text.justify-content-end 備註
+        textarea.form-control(rows="5", v-model="note")
+      button.btn.btn-lg.btn-block.btn-success(type="button", @click="btnSubmit") 送出
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script.
+    const loginPromise = (async () => {
+      await liff.init({ liffId: '#{liffId}' })
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+      }
+      const profile = await liff.getProfile().catch(() => ({}))
+      if (!profile.userId) throw new Error('無法取得 userId')
+      if (window.gtagSetLineId) window.gtagSetLineId(profile.userId)
+      return profile
+    })()
+    window.decodeBase64 = str => {
+      return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(str.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c))))
+    }
+    window.joiForm = (Joi => {
+      const schema = Joi.object({
+        course: Joi.string().trim().min(2).required(),
+        department: Joi.string().trim().min(2).required(),
+        email: Joi.string().trim().email({ tlds: { allow: false } }).regex(/@program\.com\.tw$/).required(),
+        name: Joi.string().trim().min(2).required(),
+        note: Joi.string().trim().empty('').default('').optional(),
+        time: Joi.string().trim().min(2).required(),
+        title: Joi.string().trim().min(2).required(),
+      })
+      const options = { abortEarly: false, stripUnknown: true }
+      return value => schema.validateAsync(value, options)
+    })(joi)
+    window.httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        ready: false,
+        note: '',
+        h: {
+          department: '',
+          email: '',
+          name: '',
+          title: '',
+        },
+      },
+      computed: {
+        course () {
+          return this.paramBase64('course', '')
+        },
+        time () {
+          return this.paramBase64('time', '')
+        },
+      },
+      async mounted () {
+        await loginPromise
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        this.note = this.paramBase64('note', '')
+        this.ready = true
+      },
+      methods: {
+        async btnSubmit () {
+          try {
+            this.showLoading('課程報名', '處理中請稍候…')
+            const body = await window.joiForm({
+              course: this.course,
+              department: this.h.department,
+              email: this.h.email,
+              name: this.h.name,
+              note: this.note,
+              time: this.time,
+              title: this.h.title,
+            })
+            // https://docs.google.com/forms/d/e/1FAIpQLSdWRzEaZh6WHupjkq7vcVpjNKkVYpp44au8S95Wvb49d8rH4Q/viewform?usp=pp_url&entry.1360041841=time&entry.1150087531=course&entry.1133765164=name&entry.661913675=email&entry.66914760=department&entry.548249594=title&entry.1221220906=note
+            await axios.post('https://us-central1-taichunmin.cloudfunctions.net/cors-anywhere', window.httpBuildQuery({
+              'entry.1133765164': body.name,
+              'entry.1150087531': body.course,
+              'entry.1221220906': body.note,
+              'entry.1360041841': body.time,
+              'entry.548249594': body.title,
+              'entry.661913675': body.email,
+              'entry.66914760': body.department,
+            }), {
+              params: { u: 'https://docs.google.com/forms/d/e/1FAIpQLSdWRzEaZh6WHupjkq7vcVpjNKkVYpp44au8S95Wvb49d8rH4Q/formResponse' },
+            })
+            await Swal.fire({ icon: 'success', title: '報名成功' })
+            liff.closeWindow()
+          } catch (err) {
+            console.error(err)
+            Swal.fire({ icon: 'error', title: '報名失敗', text: err.message })
+          }
+        },
+
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設資料',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否重設本頁面的資料？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            onBeforeOpen: () => { Swal.showLoading() },
+          })
+        },
+
+        paramBase64 (key, defaultValue) {
+          try {
+            const val = new URL(location).searchParams.get(key)
+            return _.isNil(val) ? defaultValue : window.decodeBase64(val)
+          } catch (err) {
+            return defaultValue
+          }
+        },
+      },
+    })

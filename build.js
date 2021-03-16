@@ -1,4 +1,7 @@
+require('dotenv').config()
+
 const _ = require('lodash')
+const { getBaseurl, getenv } = require('./utils')
 const fg = require('fast-glob')
 const fsPromises = require('fs').promises
 const htmlMinifier = require('html-minifier').minify
@@ -9,7 +12,9 @@ const UglifyJS = require('uglify-es')
 
 exports.build = async () => {
   const PUG_OPTIONS = {
-    basedir: path.resolve(__dirname, 'src'),
+    basedir: path.resolve(__dirname),
+    baseurl: getBaseurl(),
+    NODE_ENV: getenv('NODE_ENV', 'production'),
   }
 
   const htmlMinifierOptions = {
@@ -34,10 +39,7 @@ exports.build = async () => {
   }
 
   // compile pug files
-  const pugFiles = _.map(_.filter(await fg('src/**/*.pug'), file => {
-    if (/\/layouts\/[^/]+\.pug$/.test(file)) return false
-    return true
-  }), file => file.slice(4))
+  const pugFiles = _.map(await fg('src/**/*.pug'), file => file.slice(4))
 
   for (const file of pugFiles) {
     try {
