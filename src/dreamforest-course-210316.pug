@@ -79,6 +79,7 @@ block script
       const options = { abortEarly: false, stripUnknown: true }
       return value => schema.validateAsync(value, options)
     })(joi)
+    window.sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
     window.httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
     window.vm = new Vue({
       el: '#app',
@@ -90,6 +91,7 @@ block script
           email: '',
           name: '',
           title: '',
+          registerd: [],
         },
       },
       computed: {
@@ -113,6 +115,12 @@ block script
 
         this.note = this.paramBase64('note', '')
         this.ready = true
+
+        await window.sleep(100)
+        const registerd = _.toArray(_.get(this, 'h.registerd', []))
+        if (_.includes(registerd, this.course)) {
+          await Swal.fire({ icon: 'warning', title: '已報名', text: '你可能已經報名過這個課程囉！' })
+        }
       },
       methods: {
         async btnSubmit () {
@@ -139,6 +147,8 @@ block script
             }), {
               params: { u: 'https://docs.google.com/forms/d/e/1FAIpQLSdWRzEaZh6WHupjkq7vcVpjNKkVYpp44au8S95Wvb49d8rH4Q/formResponse' },
             })
+            const registerd = _.toArray(_.get(this, 'h.registerd', []))
+            this.$set(this.h, 'registerd', _.take(_.uniq([body.course, ...registerd]), 5))
             await Swal.fire({ icon: 'success', title: '報名成功' })
             liff.closeWindow()
           } catch (err) {
