@@ -1,0 +1,40 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'YouBike 站點 For 我的地圖'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="YouBike 站點 For Google 我的地圖")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/youbike-kml-google-my-maps.pug")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.text-monospace.container(v-cloak)
+    .card
+      .card-body
+        h5.card-title= title
+        p.card-text 請下載所有 KML 檔案後，個別匯入「我的地圖」中。
+      .list-group.list-group-flush
+        a.list-group-item.list-group-item-action.list-group-item-info(v-for="(kml, idx) of kmls", :key="kml", target="_blank", :href="kml") 請點此下載第 {{ _.parseInt(idx) + 1 }} 個 KML 檔案
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        kmls: null,
+      },
+      async mounted () {
+        this.kmls = _.get(await axios.get('https://storage-taichunmin.taichunmin.idv.tw/youbike-kml/index.json'), 'data').sort()
+      },
+    })
