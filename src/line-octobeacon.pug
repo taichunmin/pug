@@ -176,7 +176,7 @@ block script
             text,
             allowOutsideClick: false,
             showConfirmButton: false,
-            onBeforeOpen: () => { Swal.showLoading() },
+            didOpen: () => { Swal.showLoading() },
           })
         },
 
