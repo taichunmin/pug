@@ -182,7 +182,7 @@ block script
             text,
             allowOutsideClick: false,
             showConfirmButton: false,
-            didOpen: () => { Swal.showLoading() },
+            willOpen: () => { Swal.showLoading() },
           })
         },
 
