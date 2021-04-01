@@ -103,7 +103,7 @@ block script
             if (!confirm.value) return
           }
           this.$set(this.i, 'beacons', _.times(8, () => ({
-            enabled: true,
+            enabled: false,
             offset: _.padStart('', 16, '0'),
             hwid: _.padStart('', 10, '0'),
             vendor: _.padStart('', 8, '0'),
