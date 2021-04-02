@@ -23,7 +23,7 @@ block content
     .card
       .card-body
         h5.card-title= title
-        p.card-text #[a(href="https://console.cloud.google.com/functions/details/us-central1/gcf-youbike-kml?hl=zh-TW&project=taichunmin&tab=testing") 點此手動執行爬蟲]，然後下載所有 KML 檔案後，個別匯入「我的地圖」中。
+        p.card-text #[a(target="_blank", href="https://console.cloud.google.com/functions/details/us-central1/gcf-youbike-kml?hl=zh-TW&project=taichunmin&tab=testing") 點此手動執行爬蟲]，然後下載所有 KML 檔案後，匯入#[a(target="_blank", href="https://www.google.com/maps/d/u/0/edit?mid=13mn_G-uGGAYmHqmHpUeodqYxssas5WdS&usp=sharing") 「YouBike 站點地圖」]中。
       .list-group.list-group-flush
         a.list-group-item.list-group-item-action.list-group-item-info(v-for="(kml, idx) of kmls", :key="kml", target="_blank", :href="kml") 請點此下載第 {{ _.parseInt(idx) + 1 }} 個 KML 檔案
 
