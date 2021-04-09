@@ -27,7 +27,7 @@ block content
     .text-monospace.was-validated
       .input-group.input-group-sm.mb-2
         .input-group-prepend: span.input-group-text.justify-content-end 資料 CSV
-        textarea.form-control(type="url", inputmode="url", required, pattern="https://[^/?#]+[^?#]*(\\?[^#]*)?(#.*)?", v-model="h.csv")
+        textarea.form-control(inputmode="url", required, pattern="https://[^/?#]+[^?#]*(\\?[^#]*)?(#.*)?", v-model="h.csv")
       .input-group.input-group-sm.mb-2
         .input-group-prepend: span.input-group-text.justify-content-end token
         input.form-control(type="text", inputmode="url", required, pattern=".+", v-model="h.token")
@@ -46,13 +46,13 @@ block content
               input.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.stickerId")
           .input-group.input-group-sm.mt-2
             .input-group-prepend: span.input-group-text.justify-content-end 圖片網址
-            textarea.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.imageFullsize")
+            textarea.form-control(inputmode="url", required, pattern=".+", v-model="msg.imageFullsize")
           .input-group.input-group-sm.mt-2
             .input-group-prepend: span.input-group-text.justify-content-end 縮圖網址
-            textarea.form-control(type="text", inputmode="url", required, pattern=".+", v-model="msg.imageThumbnail")
+            textarea.form-control(inputmode="url", required, pattern=".+", v-model="msg.imageThumbnail")
           .input-group.input-group-sm.mt-2
             .input-group-prepend: span.input-group-text.justify-content-end 訊息內容
-            textarea.form-control(type="text", inputmode="url", rows="10", required, pattern=".+", v-model="msg.message")
+            textarea.form-control(inputmode="url", rows="10", required, pattern=".+", v-model="msg.message")
       .row.mx-n2
         button.btn.btn-info.mx-2.my-1(type="button", @click="btnAdd") 新增一筆訊息
         button.btn.btn-success.mx-2.my-1(type="button", @click="btnShare") 分享測試訊息
@@ -60,7 +60,7 @@ block content
         a.btn.btn-outline-info.mx-2.my-1(href="https://line.me/R/ti/p/@736cebrk", target="_blank") 查 Sticker 的 ID
         a.btn.btn-outline-info.mx-2.my-1(href="https://notify-bot.line.me/doc/en/", target="_blank") Notify 文件
         a.btn.btn-outline-info.mx-2.my-1(href="https://lodash.com/docs/#template", target="_blank") 訊息變數教學
-        a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/media/messaging-api/sticker_list.pdf", target="_blank") Sticker 清單
+        a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/en/docs/messaging-api/sticker-list/", target="_blank") Sticker 清單
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
@@ -268,8 +268,8 @@ block script
               text: `【測試訊息】${msg.message}`,
             },
             ...(!msg.stickerId ? [] : [{ // sticker
-              originalContentUrl: `https://stickershop.line-scdn.net/stickershop/v1/sticker/${msg.stickerId}/iPhone/sticker@2x.png`,
-              previewImageUrl: `https://stickershop.line-scdn.net/stickershop/v1/sticker/${msg.stickerId}/iPhone/sticker@2x.png`,
+              originalContentUrl: `https://stickershop.line-scdn.net/stickershop/v1/sticker/${msg.stickerId}/android/sticker.png;compress=true`,
+              previewImageUrl: `https://stickershop.line-scdn.net/stickershop/v1/sticker/${msg.stickerId}/android/sticker.png;compress=true`,
               type: 'image',
             }]),
             ...(!msg.imageFullsize || !msg.imageThumbnail ? [] : [{ // image

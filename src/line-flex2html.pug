@@ -1,0 +1,71 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'LINE Flex 2 Html 測試'
+
+block style
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/gh/PamornT/flex2html@main/css/flex2html.css")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container(v-cloak)
+    h3.mb-3.text-center= title
+    .form-group.mb-3
+      label(for="h-flex") LINE Flex 訊息 (JSON5)
+      textarea.form-control.form-control-sm#h-flex(rows="10", v-model="h.flex")
+    .row.mx-n2.mb-3
+      button.btn.btn-success.mx-2.my-1(type="button", @click="btnFlex2html") 顯示
+      a.btn.btn-outline-info.mx-2.my-1(href="https://github.com/PamornT/flex2html", target="_blank") flex2html 專案
+      a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/flex-simulator/", target="_blank") Flex 訊息模擬器
+      a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/en/reference/messaging-api/#flex-message", target="_blank") LINE 訊息文件
+    .chatbox: #flex2html(ref="flex2html")
+
+block script
+  script(src="https://cdn.jsdelivr.net/gh/PamornT/flex2html@main/js/flex2html.min.js")
+  script.
+    window.parseJsonOrDefault = (str, defaultValue) => {
+      try {
+        if (!_.isString(str) && !_.isBuffer(str)) return defaultValue
+        return JSON5.parse(str)
+      } catch (err) {
+        return defaultValue
+      }
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: { flex: '' },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnFlex2html () {
+          try {
+            if (!window.flex2html) throw new Error('window.flex2html 不存在')
+            let flex = window.parseJsonOrDefault(this.h.flex)
+            if (_.includes(['bubble', 'carousel'], _.get(flex, 'type'))) {
+              // 幫 Flex 訊息模擬器補上外層
+              flex = { type: 'flex', altText: '您有一則新訊息', contents: flex }
+            }
+            if (!flex) throw new Error('Flex 有誤')
+            this.$refs.flex2html.innerHTML = ''
+            window.flex2html('flex2html', flex)
+          } catch (err) {
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        }
+      },
+    })
