@@ -23,6 +23,10 @@ block style
 
 block content
   #app.container.my-4.text-monospace(v-cloak)
+    .alert.alert-danger
+      | 本程式已經年久失修，
+      a(href="https://taichunmin.idv.tw/liff-businesscard/") 請改用新版網頁
+      | 。
     h1.my-3.text-center 數位版名片
     #share(v-if="page === 'share'")
       p 請按一下「選擇分享對象」來透過 LINE 分享名片吧！
@@ -51,6 +55,8 @@ block content
       .text-center.py-3 載入名片資料中，請稍候…
 
 block script
+  script(src="https://cdn.jsdelivr.net/npm/crypto-js@3/crypto-js.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js")
   script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
   script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
@@ -166,7 +172,13 @@ block script
         },
         getRenderedMsgs () {
           if (!this.render || !this.vcard) throw new Error('沒有正確載入 render 以及 vcard')
-          let msg = JSON5.parse(this.render({ vcard: this.vcard, _, Qs }))
+          let msg = JSON5.parse(this.render({
+            _,
+            CryptoJS,
+            dayjs,
+            Qs,
+            vcard: this.vcard,
+          }))
           if (_.includes(['bubble', 'carousel'], _.get(msg, 'type'))) {
             msg = { type: 'flex', altText: '請在手機上查看數位版名片。', contents: msg }
           }
