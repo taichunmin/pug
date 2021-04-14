@@ -39,9 +39,16 @@ block content
         .input-group.input-group-sm
           input.form-control(type="tel", inputmode="tel", required, pattern="[0-9-]{3,}", v-model="h.uid")
           .input-group-append: span.input-group-text {{ _.get(employees, [h.uid], '未知') }}
+      .input-group.input-group-sm.mt-2
+        input.form-control(type="text", :value="urlRegister", ref="result", readonly, @click="btnCopy")
+        .input-group-append
+          button.btn.btn-outline-secondary.d-flex.justify-content-center.align-items-center(type="button", @click="btnCopy") #[i.fa.mr-2.fa-clipboard] 複製網址
     .row.mx-n1
-      .col.px-1: button.mt-2.btn.btn-block.btn-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 清除資料
-      .col.px-1: button.mt-2.btn.btn-block.btn-success(type="button", @click="btnShare") #[span.fa.fa-fw.fa-paper-plane-o] 傳送連結
+      .col.px-1: button.mt-2.btn.btn-block.btn-danger(type="button", @click="btnReset") #[i.fa.fa-fw.fa-trash-o] 清除資料
+      .col.px-1: button.mt-2.btn.btn-block.btn-success(type="button", @click="btnShare") #[i.fa.fa-fw.fa-paper-plane-o] 傳送連結
+    .row.mx-n1
+      .col.px-1: a.mt-2.btn.btn-block.btn-outline-dark(target="_blank", href="https://line.me/R/nv/addFriends") #[i.fa.fa-fw.fa-address-card] 加入好友
+      .col.px-1: a.mt-2.btn.btn-block.btn-outline-dark(target="_blank", href="https://line.me/R/nv/QRCodeReader") #[i.fa.fa-fw.fa-qrcode] 掃碼加友
 
 block script
   script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
@@ -92,6 +99,12 @@ block script
 
         this.employees = await this.getEmployees()
         this.ready = true
+      },
+      computed: {
+        urlRegister () {
+          const json = JSON5.stringify({ uid: this.h.uid, callback: this.h.callback })
+          return `${this.h.lihi}/${encodeBase64url(json)}.${hs256Base64url(json, this.h.secret)}`
+        },
       },
       methods: {
         async getCsv (url) {
@@ -144,9 +157,15 @@ block script
           }
         },
 
+        async btnCopy () {
+          const copyText = this.$refs.result
+          copyText.select()
+          copyText.setSelectionRange(0, 999999) // For mobile devices
+          document.execCommand('copy')
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+
         getRenderedMsgs () {
-          const json = JSON5.stringify({ uid: this.h.uid, callback: this.h.callback })
-          const url = `${this.h.lihi}/${encodeBase64url(json)}.${hs256Base64url(json, this.h.secret)}`
           let msg = {
             type: 'bubble',
             body: {
@@ -179,19 +198,24 @@ block script
                     },
                     {
                       size: 'sm',
-                      text: '2. 今天超過 10 小時通知',
+                      text: '2. 今天已達 9 小時通知',
                       type: 'text',
                     },
                     {
                       size: 'sm',
-                      text: '3. 昨天未達 9 小時通知',
+                      text: '3. 今天超過 10 小時通知',
+                      type: 'text',
+                    },
+                    {
+                      size: 'sm',
+                      text: '4. 昨天未達 9 小時通知',
                       type: 'text',
                     },
                   ],
                 },
                 {
                   size: 'sm',
-                  text: '以下是您專屬的設定連結，本連結不會失效，請勿轉貼給他人使用。',
+                  text: '以下是您專屬的設定連結，點選此連結代表您同意本服務獲取必要之個人資料，本連結不會失效，請勿轉貼給他人使用。',
                   type: 'text',
                   wrap: true,
                 },
@@ -208,7 +232,7 @@ block script
                   action: {
                     label: '點此開啟刷卡通知',
                     type: 'uri',
-                    uri: url,
+                    uri: this.urlRegister,
                   },
                 },
               ],
