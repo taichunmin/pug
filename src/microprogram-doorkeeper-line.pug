@@ -179,41 +179,6 @@ block script
                   weight: 'bold',
                 },
                 {
-                  margin: 'md',
-                  size: 'sm',
-                  text: '邀請您開啟微程式的刷卡通知服務，目前的功能有：',
-                  type: 'text',
-                  wrap: true,
-                },
-                {
-                  layout: 'vertical',
-                  paddingAll: '15px',
-                  spacing: 'sm',
-                  type: 'box',
-                  contents: [
-                    {
-                      size: 'sm',
-                      text: '1. 今天首次刷卡通知',
-                      type: 'text',
-                    },
-                    {
-                      size: 'sm',
-                      text: '2. 今天已達 9 小時通知',
-                      type: 'text',
-                    },
-                    {
-                      size: 'sm',
-                      text: '3. 今天超過 10 小時通知',
-                      type: 'text',
-                    },
-                    {
-                      size: 'sm',
-                      text: '4. 昨天未達 9 小時通知',
-                      type: 'text',
-                    },
-                  ],
-                },
-                {
                   size: 'sm',
                   text: '以下是您專屬的設定連結，點選此連結代表您同意本服務獲取必要之個人資料，本連結不會失效，請勿轉貼給他人使用。',
                   type: 'text',
@@ -223,6 +188,7 @@ block script
             },
             footer: {
               layout: 'vertical',
+              spacing: 'md',
               type: 'box',
               contents: [
                 {
@@ -233,6 +199,16 @@ block script
                     label: '點此開啟刷卡通知',
                     type: 'uri',
                     uri: this.urlRegister,
+                  },
+                },
+                {
+                  color: '#6c757d',
+                  style: 'primary',
+                  type: 'button',
+                  action: {
+                    label: '點此取消刷卡通知',
+                    type: 'uri',
+                    uri: 'https://notify-bot.line.me/my/',
                   },
                 },
               ],
