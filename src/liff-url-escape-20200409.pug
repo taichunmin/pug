@@ -36,7 +36,7 @@ block script
       if (queryPlaceId) gmap.searchParams.set('query_place_id', queryPlaceId)
       return gmap.href
     }
-    const vm = new Vue({ // eslint-disable-line
+    window.vm = new Vue({
       el: '#app',
       data: {
         code: '',

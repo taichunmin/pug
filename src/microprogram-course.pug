@@ -37,9 +37,11 @@ block content
 block script
   script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
   script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
   script.
     /* global gapi */
-    const vm = new Vue({ // eslint-disable-line
+    window.vConsole = new VConsole()
+    window.vm = new Vue({
       el: '#app',
       data: {
         attends: [],
@@ -87,34 +89,42 @@ block script
       },
       methods: {
         async gapiOnInit () {
-          // 初始化函式庫
-          await new Promise(resolve => { gapi.load('client:auth2', resolve) })
-          await gapi.client.init({
-            clientId: '417954202747-62a0pn2ankrsco790jr1h29n9vnf92lm.apps.googleusercontent.com',
-            scope: 'profile email',
-          })
-          // 等候使用者登入
-          const auth2 = gapi.auth2.getAuthInstance()
-          await new Promise(resolve => {
-            const updateSigninStatus = isSignedIn => { if (isSignedIn) resolve() }
-            auth2.isSignedIn.listen(updateSigninStatus)
-            updateSigninStatus(auth2.isSignedIn.get())
-          })
-          // 登入成功
-          const googleUser = auth2.currentUser.get()
-          const profile = googleUser.getBasicProfile()
-          this.$set(this, 'user', {
-            email: profile.getEmail(),
-            familyName: profile.getFamilyName(),
-            givenName: profile.getGivenName(),
-            id: profile.getId(),
-            imageUrl: profile.getImageUrl(),
-            name: profile.getName(),
-          })
-          this.idToken = googleUser.getAuthResponse().id_token
+          try {
+            // 初始化函式庫
+            await new Promise(resolve => { gapi.load('client:auth2', resolve) })
+            await gapi.client.init({
+              clientId: '417954202747-62a0pn2ankrsco790jr1h29n9vnf92lm.apps.googleusercontent.com',
+              scope: 'profile email',
+            })
+            // 等候使用者登入
+            const auth2 = gapi.auth2.getAuthInstance()
+            await new Promise(resolve => {
+              const updateSigninStatus = isSignedIn => { if (isSignedIn) resolve() }
+              auth2.isSignedIn.listen(updateSigninStatus)
+              updateSigninStatus(auth2.isSignedIn.get())
+            })
+            // 登入成功
+            const googleUser = auth2.currentUser.get()
+            const profile = googleUser.getBasicProfile()
+            this.$set(this, 'user', {
+              email: profile.getEmail(),
+              familyName: profile.getFamilyName(),
+              givenName: profile.getGivenName(),
+              id: profile.getId(),
+              imageUrl: profile.getImageUrl(),
+              name: profile.getName(),
+            })
+            this.idToken = googleUser.getAuthResponse().id_token
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '初始化錯誤', text: err.message })
+          }
         },
         btnSignin () {
           gapi.auth2.getAuthInstance().signIn()
+        },
+        btnSignout () {
+          gapi.auth2.getAuthInstance().signOut()
         },
         btoa (str) {
           str = str.replaceAll(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c, ''))
