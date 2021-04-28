@@ -151,9 +151,9 @@ block script
         },
       },
       methods: {
-        param (key) {
-          const url = new URL(location)
-          return url.searchParams.get(key)
+        param (key, defaultValue) {
+          const val = new URL(location).searchParams.get(key)
+          return _.isNil(val) ? defaultValue : val
         },
         handleError (err) {
           this.$set(this, 'error', errorToJson(err))

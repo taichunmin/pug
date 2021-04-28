@@ -122,9 +122,9 @@ block script
         fnIsValid (params) {
           return params.icon && params.label && params.link
         },
-        param (key) {
-          const url = new URL(location)
-          return url.searchParams.get(key)
+        param (key, defaultValue) {
+          const val = new URL(location).searchParams.get(key)
+          return _.isNil(val) ? defaultValue : val
         },
         setIcon (rel, icon) {
           const dom = document.querySelector(`link[rel='${rel}']`) || document.createElement('link')

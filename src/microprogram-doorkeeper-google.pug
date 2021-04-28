@@ -1,0 +1,100 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '微程式刷卡通知設定'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="微程式刷卡通知設定")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://liff.line.me/1655633310-Y3EoMePD")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container(v-cloak)
+    h3.mb-3.text-center= title
+    .text-monospace.was-validated
+      .form-group
+        label(for="h-uid") 員工編號
+        input#h-uid.form-control(type="tel", inputmode="tel", required, pattern="[0-9-]{5,}", v-model="h.uid")
+        small.form-text.text-muted 請輸入您的微程式員工編號
+      .form-group.form-check
+        input#h-gdpr.form-check-input(type="checkbox", required, v-model="gdpr")
+        label.form-check-label(for="h-gdpr") 我同意「微程式刷卡通知」服務依「個人資料保護法」規範下，使用我的姓名、微程式信箱、員工編號以及刷卡時間等個人資料，透過 LINE Notify 來提供我個人化的刷卡通知。
+      button.btn.btn-block.btn-danger(@click="btnGoogleSignin") #[span.fa.fa-google] 請用微程式信箱驗證
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        gdpr: false,
+        h: {
+          uid: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        await this.init()
+      },
+      methods: {
+        async init () {
+          try {
+            // 顯示錯誤訊息
+            const swalcfg = _.fromPairs(_.filter([
+              ['icon', this.param('swalicon')],
+              ['title', this.param('swaltitle')],
+              ['text', this.param('swaltext')],
+            ], row => _.isString(row[1])))
+            if (swalcfg.text) await Swal.fire(swalcfg)
+          } catch (err) {
+            console.err(error)
+            await Swal.fire({ icon: 'error', title: '初始化錯誤', text: err.message })
+          }
+        },
+        async btnGoogleSignin () {
+          try {
+            this.showLoading('請稍候', '驗證中')
+            if (!this.gdpr)  return await Swal.fire({ icon: 'error', title: '無法提供刷卡通知', text: '由於您沒有同意本服務取用您的資料，故本服務無法為您提供服務。' })
+            if (!this.h.uid) throw new Error('員工編號是必填欄位')
+            const url = new URL('https://us-central1-mp-parking-lot.cloudfunctions.net/gcf-doorkeeper-line-http/googleopenid')
+            url.searchParams.set('uid', this.h.uid)
+            url.searchParams.set('t', Date.now())
+            location.href = url.href
+            return await new Promise(resolve => {}) // 永遠不會結束的 Promise
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '驗證失敗', text: err.message })
+          }
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+        param (key, defaultValue) {
+          const val = new URL(location).searchParams.get(key)
+          return _.isNil(val) ? defaultValue : val
+        },
+      },
+    })
