@@ -1,35 +1,50 @@
 extends /layout/default
 
 block beforehtml
-  - const title = '微程式刷卡通知設定'
+  - const title = '微程式刷卡通知'
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
-  meta(property="og:description", content="微程式刷卡通知設定")
+  meta(property="og:description", content="若有任何使用上的問題，請與創新前瞻計畫室聯繫。")
+  meta(property="og:image:height", content="512")
+  meta(property="og:image:width", content="512")
+  meta(property="og:image", content="https://i.imgur.com/5tS4s3Y.png")
   meta(property="og:locale", content="zh_TW")
   meta(property="og:site_name", content="筆記國度")
   meta(property="og:title", content=title)
   meta(property="og:type", content="website")
-  meta(property="og:url", content="https://liff.line.me/1655633310-Y3EoMePD")
+  meta(property="og:url", content="https://lihi1.com/qYLWs")
   style
     :sass
       [v-cloak]
         display: none
       body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
         font-family: 'Noto Sans TC', sans-serif
+      body
+        background-image: url('https://i.imgur.com/ERW04Us.png')
+        background-repeat: no-repeat
+        background-position: top
+        background-size: auto 480px
 
 block content
   #app.my-3.container(v-cloak)
-    h3.mb-3.text-center= title
-    .text-monospace.was-validated
-      .form-group
+    h2.mb-3.text-center.text-danger= title
+    img.d-block.w-100.mx-auto(src="https://i.imgur.com/7xIMgXO.png", style="max-width: 580px")
+    .text-monospace
+      .form-group(:class="{'was-validated': !!h.uid}")
         label(for="h-uid") 員工編號
-        input#h-uid.form-control(type="tel", inputmode="tel", required, pattern="[0-9-]{5,}", v-model="h.uid")
-        small.form-text.text-muted 請輸入您的微程式員工編號
+        input#h-uid.form-control(type="tel", inputmode="tel", required, pattern="[0-9-]{5,}", v-model="h.uid", placeholder="請輸入您的微程式員工編號")
+      ul.text-danger(style="padding-inline-start: 1.25rem")
+        li 實際出缺勤紀錄請以 Portal 系統為主。
+        li 關於本刷卡通知服務若有申請、使用或解除連動之各項問題，請洽詢創新前瞻計畫室同仁。
       .form-group.form-check
         input#h-gdpr.form-check-input(type="checkbox", required, v-model="gdpr")
         label.form-check-label(for="h-gdpr") 我同意「微程式刷卡通知」服務依「個人資料保護法」規範下，使用我的姓名、微程式信箱、員工編號以及刷卡時間等個人資料，透過 LINE Notify 來提供我個人化的刷卡通知。
-      button.btn.btn-block.btn-danger(@click="btnGoogleSignin") #[span.fa.fa-google] 請用微程式信箱驗證
+      .d-flex
+        a.flex-fill.mr-2.btn.btn-dark.d-flex.justify-content-center.align-items-center(target="_blank", href="https://docs.google.com/presentation/d/1jk2sJg2Xy8YhQLbVAerJtSAmwKaHEReOEOFxBymHEGk/edit?usp=sharing&openExternalBrowser=1") #[span.mr-2.fa.fa-question-circle] 使用說明
+        button.flex-fill.btn.btn-danger.d-flex.justify-content-center.align-items-center(type="button", @click="btnGoogleSignin")
+          span.mr-2.fa.fa-google
+          span 確認送出#[br]進行認證
 
 block script
   script.
