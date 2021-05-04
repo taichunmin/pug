@@ -21,7 +21,7 @@ block style
       body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
         font-family: 'Noto Sans TC', sans-serif
       body
-        background-image: url('https://i.imgur.com/ERW04Us.png')
+        background-image: url('https://i.imgur.com/nFMLMdG.png')
         background-repeat: no-repeat
         background-position: top
         background-size: auto 480px
@@ -39,7 +39,7 @@ block content
         li 關於本刷卡通知服務若有申請、使用或解除連動之各項問題，請洽詢創新前瞻計畫室同仁。
       .form-group.form-check
         input#h-gdpr.form-check-input(type="checkbox", required, v-model="gdpr")
-        label.form-check-label(for="h-gdpr") 我同意「微程式刷卡通知」服務依「個人資料保護法」規範下，使用我的姓名、微程式信箱、員工編號以及刷卡時間等個人資料，透過 LINE Notify 來提供我個人化的刷卡通知。
+        label.form-check-label(for="h-gdpr") 我同意「微程式刷卡通知」服務依#[a(target="_blank", href="https://docs.google.com/presentation/d/1jk2sJg2Xy8YhQLbVAerJtSAmwKaHEReOEOFxBymHEGk/edit?usp=sharing&openExternalBrowser=1") 「個資使用條款聲明」]蒐集、處理及利用我的個人資料。
       .d-flex
         a.flex-fill.mr-2.btn.btn-dark.d-flex.justify-content-center.align-items-center(target="_blank", href="https://docs.google.com/presentation/d/1jk2sJg2Xy8YhQLbVAerJtSAmwKaHEReOEOFxBymHEGk/edit?usp=sharing&openExternalBrowser=1") #[span.mr-2.fa.fa-question-circle] 使用說明
         button.flex-fill.btn.btn-danger.d-flex.justify-content-center.align-items-center(type="button", @click="btnGoogleSignin")
