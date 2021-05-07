@@ -103,13 +103,15 @@ block script
       computed: {
         urlRegister () {
           const json = JSON5.stringify({ uid: this.h.uid, callback: this.h.callback })
-          return `${this.h.lihi}/${encodeBase64url(json)}.${hs256Base64url(json, this.h.secret)}`
+          const secret = _.get(this, 'h.secret')
+          if (!secret) return '請輸入 secret'
+          return `${this.h.lihi}/${encodeBase64url(json)}.${hs256Base64url(json, secret)}`
         },
       },
       methods: {
         async getCsv (url) {
           const csv = _.trim(_.get(await axios.get(url, {
-            params: { cachebust: +new Date() },
+            params: { cachebust: Date.now() },
           }), 'data'))
           return _.get(Papa.parse(csv, {
             encoding: 'utf8',

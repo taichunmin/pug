@@ -45,6 +45,7 @@ block content
         button.flex-fill.btn.btn-danger.d-flex.justify-content-center.align-items-center(type="button", @click="btnGoogleSignin")
           span.mr-2.fa.fa-google
           span 確認送出#[br]進行認證
+      a.mt-3.btn.btn-sm.btn-block.btn-link(href="https://notify-bot.line.me/my/") 如果想要取消刷卡通知請點此
 
 block script
   script.
@@ -86,7 +87,7 @@ block script
         async btnGoogleSignin () {
           try {
             this.showLoading('請稍候', '驗證中')
-            if (!this.gdpr)  return await Swal.fire({ icon: 'error', title: '無法提供刷卡通知', text: '由於您沒有同意本服務取用您的資料，故本服務無法為您提供服務。' })
+            if (!this.gdpr)  return await Swal.fire({ icon: 'error', title: '無法提供刷卡通知', text: '由於您不同意本服務取用您的資料，故無法為您提供服務。' })
             if (!this.h.uid) throw new Error('員工編號是必填欄位')
             const url = new URL('https://us-central1-mp-parking-lot.cloudfunctions.net/gcf-doorkeeper-line-http/googleopenid')
             url.searchParams.set('uid', this.h.uid)
