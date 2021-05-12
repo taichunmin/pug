@@ -8,7 +8,7 @@ const htmlMinifier = require('html-minifier').minify
 const log = require('debug')('app:index')
 const path = require('path')
 const pug = require('pug')
-const UglifyJS = require('uglify-es')
+const UglifyJS = require('uglify-js')
 
 exports.build = async () => {
   const PUG_OPTIONS = {
