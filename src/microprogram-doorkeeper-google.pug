@@ -80,14 +80,14 @@ block script
             ], row => _.isString(row[1])))
             if (swalcfg.text) await Swal.fire(swalcfg)
           } catch (err) {
-            console.err(error)
+            console.err(err)
             await Swal.fire({ icon: 'error', title: '初始化錯誤', text: err.message })
           }
         },
         async btnGoogleSignin () {
           try {
             this.showLoading('請稍候', '驗證中')
-            if (!this.gdpr)  return await Swal.fire({ icon: 'error', title: '無法提供刷卡通知', text: '由於您不同意本服務取用您的資料，故無法為您提供服務。' })
+            if (!this.gdpr) return await Swal.fire({ icon: 'error', title: '無法提供刷卡通知', text: '由於您不同意本服務取用您的資料，故無法為您提供服務。' })
             if (!this.h.uid) throw new Error('員工編號是必填欄位')
             const url = new URL('https://us-central1-mp-parking-lot.cloudfunctions.net/gcf-doorkeeper-line-http/googleopenid')
             url.searchParams.set('uid', this.h.uid)

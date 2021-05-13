@@ -51,7 +51,7 @@ exports.build = async () => {
       await fsPromises.writeFile(dist, html)
     } catch (err) {
       _.set(err, 'data.src', `./src/${file}`)
-      log(`Failed to render pug, err = ${inspect(_.omit(errToPlainObj(err), ['stack']), { depth: 100, sorted: true })}`)
+      log(`Failed to render pug, err = ${inspect(errToPlainObj(err), { depth: 100, sorted: true })}`)
       pugErrors++
     }
   }

@@ -162,9 +162,9 @@ block script
           const checkins = _.slice(_.uniq([...this.i.checkins, this.course.nonce]), -10)
           this.$set(this.i, 'checkins', checkins)
         },
-        async getCsv (url) {
+        async getCsv (url, cachetime = 3e4) {
           const csv = _.trim(_.get(await axios.get(url, {
-            params: { cachebust: new Date() / 3e4 },
+            params: { cachebust: _.floor(Date.now() / cachetime) },
           }), 'data'))
           return _.get(Papa.parse(csv, {
             encoding: 'utf8',
