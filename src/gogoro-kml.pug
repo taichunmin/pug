@@ -1,16 +1,16 @@
 extends /layout/default
 
 block beforehtml
-  - const title = 'YouBike 站點 KML 產生器'
+  - const title = 'GoStation® 電池交換站 KML 產生器'
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
-  meta(property="og:description", content="YouBike 站點 KML 產生器")
+  meta(property="og:description", content="GoStation® 電池交換站 KML 產生器")
   meta(property="og:locale", content="zh_TW")
   meta(property="og:site_name", content="筆記國度")
   meta(property="og:title", content=title)
   meta(property="og:type", content="website")
-  meta(property="og:url", content="https://taichunmin.idv.tw/pug/youbike-kml.html")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/gogoro-kml.html")
   style
     :sass
       [v-cloak]
@@ -23,7 +23,7 @@ block content
     .card
       .card-body
         h5.card-title= title
-        p.card-text 下載所有 KML 檔案後，匯入#[a(target="_blank", href="https://www.google.com/maps/d/u/0/edit?mid=13mn_G-uGGAYmHqmHpUeodqYxssas5WdS&usp=sharing") 「YouBike 站點地圖」]中。
+        p.card-text 下載所有 KML 檔案後，匯入#[a(target="_blank", href="https://www.google.com/maps/d/u/1/edit?mid=1waHTAI7cyvsQVhmLQf2bOoCi_mfThdFl&usp=sharing") 「GoStation® 電池交換站」]中。
       .list-group.list-group-flush
         a.list-group-item.list-group-item-action.list-group-item-info(v-for="kml of kmls", :key="kml.url", target="_blank", :href="kml.url", :download="kml.filename") 請點此下載 {{ kml.filename }} #[span.badge.badge-light {{ kml.size }}]
 
@@ -41,26 +41,23 @@ block script
         async init () {
           try {
             this.showLoading('請稍候…', '正在產生 KML')
-            const stationsByType = await this.getStationsByType()
             const today = dayjs().format('YYYY-MM-DD')
-            for (const [type, stations] of _.toPairs(stationsByType)) {
-              const chunks = _.chunk(stations, 2000)
-              for (const [chunkNo, chunk] of _.toPairs(chunks)) {
-                const part = _.toSafeInteger(chunkNo) + 1
-                const kml = this.placeToKml({
-                  name: `YouBike ${type}.0 第 ${part} 部份 (${today} 更新)`,
-                  places: _.map(chunk, s => ({
-                    coordinates: `${_.round(s.lng, 6)},${_.round(s.lat, 6)},0`,
-                    description: `地址: ${s.city}${s.area}${s.address}\n車位: ${s.space}`,
-                    name: s.name,
-                  })),
-                })
-                this.kmls.push({
-                  filename: `yb${type}_${part}_${today}.kml`,
-                  size: chunk.length,
-                  url: this.strToObjectURL(kml, { type: 'application/vnd.google-earth.kml+xml; charset=utf-8' }),
-                })
-              }
+            const chunks = _.chunk(await this.getPlaces(), 2000)
+            for (const [chunkNo, chunk] of _.toPairs(chunks)) {
+              const part = _.toSafeInteger(chunkNo) + 1
+              const kml = this.placeToKml({
+                name: `第 ${part} 部份 (${today} 更新)`,
+                places: _.map(chunk, s => ({
+                  coordinates: `${_.round(s.lng, 6)},${_.round(s.lat, 6)},0`,
+                  description: `地址: ${s.address}`,
+                  name: s.name,
+                })),
+              })
+              this.kmls.push({
+                filename: `gogoro_${part}_${today}.kml`,
+                size: chunk.length,
+                url: this.strToObjectURL(kml, { type: 'application/vnd.google-earth.kml+xml; charset=utf-8' }),
+              })
             }
             await Swal.fire({ icon: 'success', title: 'KML 產生成功' })
           } catch (err) {
@@ -68,11 +65,8 @@ block script
             await Swal.fire({ icon: 'error', title: 'KML 產生失敗', text: err.message })
           }
         },
-        async getStationsByType () {
-          const tsOneDayAgo = _.floor(Date.now() / 1e3) - 86400
-          let stations = await this.getCsv('https://gcs-youbike2-linebot.taichunmin.idv.tw/latest-data/youbike-station.csv')
-          stations = _.filter(stations, s => _.toSafeInteger(s.updated_at) > tsOneDayAgo)
-          return _.groupBy(stations, 'type')
+        async getPlaces () {
+          return await this.getCsv('https://storage-gogoro.taichunmin.idv.tw/data/gogoro-battery.csv')
         },
         async getCsv (url, cachetime = 3e4) {
           const csv = _.trim(_.get(await axios.get(url, {
