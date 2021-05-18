@@ -1,0 +1,66 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '20210519'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.text-monospace.container(v-cloak)
+    template(v-if="game.cur < quests.length")
+      h1.text-center 回答問題
+      .card
+        .card-body
+          h5.card-title {{ game.cur + 1 }}. 請輸入「{{ quest.tw }}」的英文：
+          .form-group
+            input.form-control(type="text", placeholder="請輸入英文單字", v-model="game.input", @keyup.enter="btnSubmit")
+          button.btn.btn-primary(type="button", @click="btnSubmit") 送出
+    template(v-else)
+      h1.text-center 恭喜全部答對
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        quests: [
+          { tw: '大象', en: 'elephant' },
+          { tw: '狗', en: 'dog' },
+          { tw: '鳥', en: 'bird' },
+          { tw: '橘子', en: 'orange' },
+          { tw: '貓咪', en: 'cat' },
+          { tw: '蘋果', en: 'apple' },
+        ],
+        game: {
+          cur: 0, // 目前的題號
+          input: '',
+        },
+      },
+      async mounted () { // init
+        this.$set(this, 'quests', _.shuffle(this.quests)) // 洗牌
+      },
+      computed: {
+        quest () {
+          return this.quests[this.game.cur]
+        },
+      },
+      methods: {
+        async btnSubmit () {
+          try {
+            if (this.game.input !== this.quest.en) throw new Error('wrong answer')
+            this.game.cur++
+            this.game.input = ''
+            await Swal.fire({ icon: 'success', title: '回答成功' })
+          } catch (err) {
+            this.game.input = ''
+            await Swal.fire({ icon: 'error', title: '回答錯誤' })
+          }
+        },
+      },
+    })
