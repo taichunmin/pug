@@ -29,21 +29,18 @@ block script
     window.vm = new Vue({
       el: '#app',
       data: {
-        quests: [
+        quests: _.shuffle([ // 洗牌
           { tw: '大象', en: 'elephant' },
           { tw: '狗', en: 'dog' },
           { tw: '鳥', en: 'bird' },
           { tw: '橘子', en: 'orange' },
           { tw: '貓咪', en: 'cat' },
           { tw: '蘋果', en: 'apple' },
-        ],
+        ]),
         game: {
           cur: 0, // 目前的題號
           input: '',
         },
-      },
-      async mounted () { // init
-        this.$set(this, 'quests', _.shuffle(this.quests)) // 洗牌
       },
       computed: {
         quest () {
