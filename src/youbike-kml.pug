@@ -48,7 +48,7 @@ block script
               for (const [chunkNo, chunk] of _.toPairs(chunks)) {
                 const part = _.toSafeInteger(chunkNo) + 1
                 const kml = this.placeToKml({
-                  name: `YouBike ${type}.0 第 ${part} 部份 (${today} 更新)`,
+                  name: `${today} YouBike ${type}.0 (第 ${part} 部份)`,
                   places: _.map(chunk, s => ({
                     coordinates: `${_.round(s.lng, 6)},${_.round(s.lat, 6)},0`,
                     description: `地址: ${s.city}${s.area}${s.address}\n車位: ${s.space}`,
