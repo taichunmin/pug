@@ -6,27 +6,27 @@ block style
       [v-cloak]
         display: none
       .nav-tabs .nav-link
-        height: 126px
+        height: 128px
         border-color: #e9ecef #e9ecef #dee2e6
       a.nav-link
         font-size: 2rem
       h5.card-title
-        font-size: 2rem
+        font-size: 1.9rem
       .card-body button.btn
         font-size: 2.5rem
 
 block content
   #app.p-1.my-3.mx-auto(style="width: 800px")
-    .card
+    .card.text-monospace
       .card-header
         ul.nav.nav-tabs.card-header-tabs.nav-fill
           li.nav-item(v-for="i in ['A', 'B', 'C']")
             a.nav-link.d-flex.justify-content-center.align-items-center(href="#", @click="page = i", :class="{active: (page === i)}") 切換選單 {{ i }}
       .card-body
-        h5.card-title.mb-3 這是 Richmenu Alias 的範例，詳細說明請查看文章。
+        h5.card-title.mb-3 這是 Richmenu Alias 的範例，詳情請查看文章。
         .row
-          .col: button.py-5.btn.btn-lg.btn-block.btn-outline-danger(type="button") #[i.mr-2.fa.fa-times-circle-o] 結束 DEMO
-          .col: button.py-5.btn.btn-lg.btn-block.btn-outline-success(type="button") #[i.mr-2.fa.fa-external-link] 查看文章
+          .col: button.py-5.btn.btn-lg.btn-block.btn-outline-danger(type="button") #[i.mr-1.fa.fa-times-circle-o] 結束範例
+          .col: button.py-5.btn.btn-lg.btn-block.btn-outline-success(type="button") #[i.mr-1.fa.fa-external-link] 查看文章
 
 block script
   script.
