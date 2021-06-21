@@ -1,0 +1,127 @@
+extends /layout/default
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      .richmenu
+        position: relative
+        overflow: hidden
+        height: 0
+        background-repeat: no-repeat
+        background-size: cover
+        border: 1px dashed gray
+      .area
+        border: 1px dashed red
+        color: red
+        font-size: .8rem
+        position: absolute
+      .input-group-sm .input-group-text
+        letter-spacing: -1px
+        min-width: 5rem
+
+block content
+  #app.container.py-3.text-monospace(v-cloak)
+    .row.mb-3
+      .col.was-validated
+        .input-group.input-group-sm.mb-2
+          .input-group-prepend: span.input-group-text.justify-content-end image
+          input.form-control(type="url", inputmode="url", required, pattern="(https?|line)://.+", v-model="h.image")
+        .row.mx-n1.mb-2
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end imgWidth
+              input.form-control(type="number", required, v-model="h.imgWidth")
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end imgHeight
+              input.form-control(type="number", required, v-model="h.imgHeight")
+        .row.mx-n1.mb-2
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end x
+              input.form-control(type="number", required, v-model="h.area1.x")
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end y
+              input.form-control(type="number", required, v-model="h.area1.y")
+        .row.mx-n1
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end width
+              input.form-control(type="number", required, v-model="h.area1.width")
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end height
+              input.form-control(type="number", required, v-model="h.area1.height")
+      .col.d-flex.flex-column
+        .input-group.input-group-sm.flex-fill
+          .input-group-prepend: span.input-group-text.justify-content-end.text-right areas#[br]csv
+          textarea#areas.form-control.form-control-sm(v-model="h.areas")
+    .richmenu(:style="styleRichmenu")
+      .area(:style="styleArea(h.area1)")
+      .area.d-flex.justify-content-center.align-items-center(v-for="area in areas", :style="styleArea(area)") {{ area.x }},{{ area.y }},{{ area.width }},{{ area.height }}
+
+block script
+  script.
+    window.areasToCsv = areas => {
+      // copy(areasToCsv(areas))
+      return Papa.unparse(_.map(areas, 'bounds'), { header: true })
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          areas: '',
+          image: 'https://i.imgur.com/uTSeCeQ.png',
+          imgHeight: 400,
+          imgWidth: 800,
+          area1: {
+            height: 400,
+            width: 800,
+            x: 0,
+            y: 0,
+          },
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        styleRichmenu () {
+          // https://css-tricks.com/aspect-ratio-boxes/
+          return {
+            backgroundImage: `url(${this.h.image})`,
+            paddingTop: `${this.h.imgHeight / this.h.imgWidth * 100}%`,
+          }
+        },
+        areas () {
+          try {
+            return _.get(Papa.parse(_.trim(this.h.areas), {
+              encoding: 'utf8',
+              header: true,
+            }), 'data', [])
+          } catch (err) {
+            return []
+          }
+        },
+      },
+      methods: {
+        styleArea (area) {
+          return {
+            top: `${area.y / this.h.imgHeight * 100}%`,
+            left: `${area.x / this.h.imgWidth * 100}%`,
+            width: `${area.width / this.h.imgWidth * 100}%`,
+            height: `${area.height / this.h.imgHeight * 100}%`,
+          }
+        },
+      },
+    })

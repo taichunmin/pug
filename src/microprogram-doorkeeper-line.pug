@@ -17,9 +17,9 @@ block style
         display: none
       body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
         font-family: 'Noto Sans TC', sans-serif
-      .input-group-prepend
-        .input-group-text
-          min-width: 6rem
+      .input-group-prepend .input-group-text
+        letter-spacing: -1px
+        min-width: 6rem
 
 block content
   #app.my-3.container-fluid(v-cloak, v-if="ready")

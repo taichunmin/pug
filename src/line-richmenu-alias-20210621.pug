@@ -5,28 +5,24 @@ block style
     :sass
       [v-cloak]
         display: none
-      .nav-tabs .nav-link
-        height: 128px
-        border-color: #e9ecef #e9ecef #dee2e6
-      a.nav-link
-        font-size: 2rem
-      h5.card-title
-        font-size: 1.9rem
-      .card-body button.btn
-        font-size: 2.5rem
+      #app
+        button.btn
+          font-size: 3rem
+        strong.text-muted
+          font-size: 1.6rem
 
 block content
-  #app.p-1.my-3.mx-auto(style="width: 800px")
-    .card.text-monospace
-      .card-header
-        ul.nav.nav-tabs.card-header-tabs.nav-fill
-          li.nav-item(v-for="i in ['A', 'B', 'C']")
-            a.nav-link.d-flex.justify-content-center.align-items-center(href="#", @click="page = i", :class="{active: (page === i)}") 切換選單 {{ i }}
-      .card-body
-        h5.card-title.mb-3 這是 Richmenu Alias 的範例，詳情請查看文章。
-        .row
-          .col: button.py-5.btn.btn-lg.btn-block.btn-outline-danger(type="button") #[i.mr-1.fa.fa-times-circle-o] 結束範例
-          .col: button.py-5.btn.btn-lg.btn-block.btn-outline-success(type="button") #[i.mr-1.fa.fa-external-link] 查看文章
+  #app.p-1.my-3.mx-auto.d-flex.flex-column.text-monospace(v-cloak, style="width: 800px; height: 400px")
+    .d-flex.flex-fill.mb-3
+      template(v-for="i in ['A', 'B', 'C']")
+        button.btn.btn-outline-success.flex-fill.mx-2(type="button", @click="page = `alias-${i}`", :class="{active: (page === `alias-${i}`)}") Alias {{ i }}
+    .d-flex.flex-fill.mb-3
+      template(v-for="i in ['A', 'B', 'C']")
+        button.btn.btn-outline-secondary.flex-fill.mx-2(type="button", @click="page = `link-${i}`", :class="{active: (page === `link-${i}`)}") Link {{ i }}
+    .d-flex.flex-fill.mb-3
+      button.btn.btn-outline-danger.flex-fill.mx-2(type="button") #[i.mr-1.fa.fa-times-circle-o] 結束範例
+      button.btn.btn-outline-info.flex-fill.mx-2(type="button") #[i.mr-1.fa.fa-external-link] 查看文章
+    strong.text-muted.text-center 這是 Richmenu Alias 的範例，詳細說明請點選「查看文章」。
 
 block script
   script.
