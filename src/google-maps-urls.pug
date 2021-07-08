@@ -1,0 +1,223 @@
+extends /layout/default
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.container.py-3.text-monospace(v-cloak)
+    h1.text-center.mb-2 Google 地圖跨平台網址產生器
+    .row
+      .col-md-6
+        .form-group.mb-2
+          label(for="gmaps-type") 請選擇網址類型
+          select#gmaps-type.form-control.form-control-sm(v-model="h.type")
+            option(value="v1-search") 地點搜尋 (v1 search)
+            option(value="v1-dir") 地點導航 (v1 dir)
+            option(value="v1-map") 顯示地圖 (v1 map)
+            option(value="v1-pano") 顯示街景 (v1 pano)
+          small.form-text.text-muted 請選擇網址類型。
+        template(v-if="h.type == 'v1-search'")
+          .form-group.was-validated.mb-2
+            label(for="gmaps-query") query #[code (必填)]
+            input#gmaps-query.form-control.form-control-sm(type="text", required, pattern=".+", v-model="h.query")
+            small.form-text.text-muted 請輸入「地點名稱」或以逗號分隔的「經緯度」#[code 緯度,經度]。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-query_place_id") query_place_id
+            input#gmaps-query_place_id.form-control.form-control-sm(type="text", pattern="[A-Za-z0-9_-]+", v-model="h.query_place_id")
+            small.form-text.text-muted 請輸入指定地點的 #[code place_id]，你可以#[a(target="_blank", href="https://developers.google.com/maps/documentation/places/web-service/place-id") 透過這個網頁]查詢。
+        template(v-if="h.type == 'v1-dir'")
+          .form-group.was-validated.mb-2
+            label(for="gmaps-origin") origin
+            input#gmaps-origin.form-control.form-control-sm(type="text", pattern=".+", v-model="h.origin")
+            small.form-text.text-muted 請輸入起點的「地點名稱」或以逗號分隔的起點「經緯度」#[code 緯度,經度]。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-origin_place_id") origin_place_id
+            input#gmaps-origin_place_id.form-control.form-control-sm(type="text", pattern="[A-Za-z0-9_-]+", v-model="h.origin_place_id")
+            small.form-text.text-muted 請輸入起點的 #[code place_id]，你可以#[a(target="_blank", href="https://developers.google.com/maps/documentation/places/web-service/place-id") 透過這個網頁]查詢。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-destination") destination
+            input#gmaps-destination.form-control.form-control-sm(type="text", pattern=".+", v-model="h.destination")
+            small.form-text.text-muted 請輸入目的地的「地點名稱」或以逗號分隔的目的地「經緯度」#[code 緯度,經度]。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-destination_place_id") destination_place_id
+            input#gmaps-destination_place_id.form-control.form-control-sm(type="text", pattern="[A-Za-z0-9_-]+", v-model="h.destination_place_id")
+            small.form-text.text-muted 請輸入目的地的 #[code place_id]，你可以#[a(target="_blank", href="https://developers.google.com/maps/documentation/places/web-service/place-id") 透過這個網頁]查詢。
+          .form-group.mb-2
+            label(for="gmaps-travelmode") travelmode
+            select#gmaps-travelmode.form-control.form-control-sm(v-model="h.travelmode")
+              option(value="") 不指定
+              option(value="driving") 開車 driving
+              option(value="walking") 步行 walking
+              option(value="bicycling") 騎單車 bicycling
+              option(value="transit") 大眾運輸 transit
+            small.form-text.text-muted 請選擇交通方式。
+          .form-group.mb-2
+            label(for="gmaps-dir_action") dir_action
+            select#gmaps-dir_action.form-control.form-control-sm(v-model="h.dir_action")
+              option(value="") 不指定
+              option(value="navigate") 詳細轉向步驟導航 navigate
+            small.form-text.text-muted 請選擇導航方式。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-waypoints") waypoints
+            input#gmaps-waypoints.form-control.form-control-sm(type="text", pattern=".+", v-model="h.waypoints")
+            small.form-text.text-muted 請輸入中間點的「地點名稱」或以逗號分隔的中間點「經緯度」#[code 緯度,經度]，若有多個中間點，請以絕對值符號 #[code |] 分隔。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-waypoint_place_ids") waypoint_place_ids
+            input#gmaps-waypoint_place_ids.form-control.form-control-sm(type="text", pattern="[A-Za-z0-9_|-]+", v-model="h.waypoint_place_ids")
+            small.form-text.text-muted 請輸入中間點的 #[code place_id]，你可以#[a(target="_blank", href="https://developers.google.com/maps/documentation/places/web-service/place-id") 透過這個網頁]查詢，若有多個中間點，請以絕對值符號 #[code |] 分隔。
+        template(v-if="h.type == 'v1-map'")
+          .form-group.was-validated.mb-2
+            label(for="gmaps-center") center
+            input#gmaps-center.form-control.form-control-sm(type="text", required, pattern="[0-9.]+,[0-9.]+", v-model="h.center")
+            small.form-text.text-muted 請輸入以逗號分隔的地圖中心「經緯度」#[code 緯度,經度]。
+          .form-group.mb-2
+            label(for="gmaps-zoom") zoom #[span.badge.badge-secondary {{ h.zoom }}]
+            input#gmaps-zoom.form-control-range(type="range", min="0", max="21", v-model.number="h.zoom")
+            small.form-text.text-muted 請輸入地圖的縮放等級，預設值 #[code 15]。
+          .form-group.mb-2
+            label(for="gmaps-basemap") basemap
+            select#gmaps-basemap.form-control.form-control-sm(v-model="h.basemap")
+              option(value="roadmap") 預設 roadmap
+              option(value="satellite") 衛星 satellite
+              option(value="terrain") 地球 terrain
+            small.form-text.text-muted 請選擇地圖類型。
+          .form-group.mb-2
+            label(for="gmaps-layer") layer
+            select#gmaps-layer.form-control.form-control-sm(v-model="h.layer")
+              option(value="none") 預設 none
+              option(value="transit") 大眾運輸 transit
+              option(value="traffic") 路況 traffic
+              option(value="bicycling") 騎單車 bicycling
+            small.form-text.text-muted 請選擇地圖圖層。
+        template(v-if="h.type == 'v1-pano'")
+          .form-group.was-validated.mb-2
+            label(for="gmaps-viewpoint") viewpoint
+            input#gmaps-viewpoint.form-control.form-control-sm(type="text", pattern="[0-9.]+,[0-9.]+", v-model="h.viewpoint")
+            small.form-text.text-muted 請輸入以逗號分隔的「經緯度」#[code 緯度,經度]。
+          .form-group.was-validated.mb-2
+            label(for="gmaps-viewpoint") pano
+            input#gmaps-viewpoint.form-control.form-control-sm(type="text", pattern="[A-Za-z0-9_-]+", v-model="h.viewpoint")
+            small.form-text.text-muted 請輸入圖片的 #[a(target="_blank", href="https://developers.google.com/maps/documentation/urls/get-started#pano-id") panorama ID] 來顯示。
+          .form-group.mb-2
+            label(for="gmaps-heading") heading #[span.badge.badge-secondary {{ h.heading }}]
+            input#gmaps-heading.form-control-range(type="range", min="-180", max="360", v-model.number="h.heading")
+            small.form-text.text-muted 請輸入攝影機所面對的角度，介於 #[code -180] 到 #[code 360] 之間，預設值 #[code 0]。
+          .form-group.mb-2
+            label(for="gmaps-pitch") pitch #[span.badge.badge-secondary {{ h.pitch }}]
+            input#gmaps-pitch.form-control-range(type="range", min="-90", max="90", v-model.number="h.pitch")
+            small.form-text.text-muted 請輸入攝影機的仰角，介於 #[code -90] 到 #[code 90] 之間，預設值 #[code 0]。
+          .form-group.mb-2
+            label(for="gmaps-fov") fov #[span.badge.badge-secondary {{ h.fov }}]
+            input#gmaps-fov.form-control-range(type="range", min="10", max="100", v-model.number="h.fov")
+            small.form-text.text-muted 請輸入攝影機的視野角度，介於 #[code 10] 到 #[code 100] 之間，預設值 #[code 90]。
+      .col-md-6
+        .form-group.mb-2
+          label(for="gmaps-url") 產生的跨平台網址
+          textarea#gmaps-url.form-control.form-control-sm(readonly, rows="15", ref="result", @click="btnCopy", :value="gmapsUrl")
+        .row.mx-n2
+          button.btn.btn-success.mx-2.my-1(type="button", @click="btnCopy") #[i.fa.fa-clipboard] 複製網址
+          a.btn.btn-primary.mx-2.my-1(:href="gmapsUrl", target="_blank") #[i.fa.fa-map] 測試網址
+          a.btn.btn-outline-info.mx-2.my-1(href="https://developers.google.com/maps/documentation/urls/get-started#search-action", target="_blank") #[i.fa.fa-book] 英文文件
+          button.btn.btn-danger.mx-2.my-1(type="button", @click="btnReset") #[i.fa.fa-repeat] 重設資料
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        configs: {
+          'v1-search': {
+            baseUrl: 'https://www.google.com/maps/search/',
+            defaults: { api: 1 },
+            fields: ['query', 'query_place_id'],
+          },
+          'v1-dir': {
+            baseUrl: 'https://www.google.com/maps/dir/',
+            defaults: { api: 1 },
+            fields: ['origin', 'origin_place_id', 'destination', 'destination_place_id', 'travelmode', 'dir_action', 'waypoints', 'waypoint_place_ids'],
+          },
+          'v1-map': {
+            baseUrl: 'https://www.google.com/maps/@',
+            defaults: { api: 1, map_action: 'map' },
+            fields: ['center', 'zoom', 'basemap', 'layer'],
+          },
+          'v1-pano': {
+            baseUrl: 'https://www.google.com/maps/@',
+            defaults: { api: 1, map_action: 'pano' },
+            fields: ['viewpoint', 'pano', 'heading', 'pitch', 'fov'],
+          },
+        },
+        h: {
+          type: 'v1-search',
+          query: '',
+          query_place_id: '',
+          origin: '',
+          origin_place_id: '',
+          destination: '',
+          destination_place_id: '',
+          travelmode: '',
+          dir_action: '',
+          waypoints: '',
+          waypoint_place_ids: '',
+          center: '',
+          zoom: 15,
+          basemap: 'roadmap',
+          layer: 'none',
+          viewpoint: '',
+          pano: '',
+          heading: 0,
+          pitch: 0,
+          fov: 90,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        gmapsUrl () {
+          const config = _.get(this.configs, this.h.type)
+          if (!config) return '程式錯誤，請重設資料'
+          return `${config.baseUrl}${Qs.stringify({
+            ...config.defaults,
+            ..._.omitBy(_.pick(this.h, config.fields), v => _.isString(v) && !v.length),
+          }, { addQueryPrefix: true })}`
+        },
+      },
+      methods: {
+        async btnCopy () {
+          const copyText = this.$refs.result
+          copyText.select()
+          copyText.setSelectionRange(0, 999999) // For mobile devices
+          document.execCommand('copy')
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設資料',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否重設本頁面的資料？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+      },
+    })
