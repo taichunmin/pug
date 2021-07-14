@@ -55,10 +55,10 @@ block content
       .text-center.py-3 載入名片資料中，請稍候…
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/crypto-js@3/crypto-js.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@3/crypto-js.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     const errorToJson = (() => {
       const ERROR_KEYS = [

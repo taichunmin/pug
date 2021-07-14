@@ -25,8 +25,8 @@ block content
     pre.my-3 #[code.language-none {{ gmap }}]
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     const vConsole = new VConsole() // eslint-disable-line
     const genGoogleMapUrl = (query, queryPlaceId) => {

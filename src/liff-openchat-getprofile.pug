@@ -36,9 +36,9 @@ block content
       pre.language-json(v-html="prismjs(JSON.stringify(error, null, 2))")
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/vconsole/dist/vconsole.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole/dist/vconsole.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     /* global Prism */
     const vConsole = new VConsole() // eslint-disable-line

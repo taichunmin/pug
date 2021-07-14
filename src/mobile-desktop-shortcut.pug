@@ -67,7 +67,7 @@ block content
       a.btn.btn-primary.my-2.mr-2(:href="shortcut", target="_blank") 測試
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js")
   script.
     /* global UAParser */
     const vm = new Vue({ // eslint-disable-line

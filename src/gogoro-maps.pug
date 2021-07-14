@@ -63,11 +63,11 @@ block content
     #map
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script.
     /* global _, L, Qs, Papa, moment */
     const httpBuildQuery = obj => Qs.stringify(obj, { arrayFormat: 'brackets' })

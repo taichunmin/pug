@@ -22,8 +22,8 @@ block content
     button.btn.btn-block.btn-primary.my-3(type="button", @click="btnGmap(true)") external: true
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     window.vConsole = new VConsole()
     const genGoogleMapUrl = (query, queryPlaceId) => {

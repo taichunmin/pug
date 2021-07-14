@@ -48,9 +48,9 @@ block content
       button.btn.btn-lg.btn-block.btn-success(type="button", @click="btnSubmit") 送出
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
-  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
   script.
     const loginPromise = (async () => {
       await liff.init({ liffId: '#{liffId}' })

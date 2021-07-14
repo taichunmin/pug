@@ -28,8 +28,8 @@ block content
       a.btn.btn-block.btn-lg.btn-success(href="https://line.me/R/ti/p/%40336zwcug", target="_blank") 開啟 LINE
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     const vConsole = new VConsole() // eslint-disable-line
     const vm = new Vue({ // eslint-disable-line

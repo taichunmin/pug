@@ -40,9 +40,9 @@ block content
         input.form-control(type="url", v-model="i.image")
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
   script.
     /* global gapi */
     const SPREADSHEET_ID = '1dJhB5_auh5Fzqy7VfUnmFPpiT7OYF5BvpZ6nmrV9RJo'
@@ -271,6 +271,6 @@ block script
         },
       },
     })
-  script(src="https://apis.google.com/js/api.js", async, defer,
+  script(crossorigin="anonymous", src="https://apis.google.com/js/api.js", async, defer,
     onload="this.onload=function(){}; vm.gapiOnInit()",
     onreadystatechange="if (this.readyState === 'complete') this.onload()")

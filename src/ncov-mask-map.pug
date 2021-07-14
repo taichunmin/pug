@@ -38,8 +38,8 @@ block content
   #app(v-cloak)
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
   script.
     /* global _, L, Qs, Papa */
     const httpBuildQuery = obj => Qs.stringify(obj, { arrayFormat: 'brackets' })

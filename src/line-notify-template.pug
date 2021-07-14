@@ -63,8 +63,8 @@ block content
         a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/en/docs/messaging-api/sticker-list/", target="_blank") Sticker 清單
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
-  script(src="https://static.line-scdn.net/liff/edge/2/sdk.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(crossorigin="anonymous", src="https://static.line-scdn.net/liff/edge/2/sdk.js")
   script.
     const loginPromise = (async () => {
       await liff.init({ liffId: '1654046335-L8mO8BYy' })

@@ -36,8 +36,8 @@ block content
             td {{ _.get(beacon, k, '無資料') }}
 
 block script
-  script(src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
-  script(src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script.
     const bluetooth = _.get(navigator, 'bluetooth')
     const vm = new Vue({ // eslint-disable-line no-unused-vars
