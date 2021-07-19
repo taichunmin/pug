@@ -14,9 +14,9 @@ block content
     h2.text-center.my-3= title
     h4.my-3 請將此連結複製到聊天視窗內貼上再打開
     .input-group.my-3
-      input.form-control(type="url", ref="liff", :value="liff", readonly)
+      input.form-control(type="url", :value="liff", readonly)
       .input-group-append
-        button.btn.btn-outline-success(type="button", @click="btnCopy") 複製
+        button.btn.btn-outline-success(type="button", @click="btnCopy(liff)") 複製
         a.btn.btn-outline-success(:href="liff") 開啟
     h4.my-3 參數帶入結果 {{ version }}
     pre.my-3 #[code.language-json {{ code }}]
@@ -67,15 +67,16 @@ block script
           url.searchParams.set('u', u)
           return url.href
         },
-        async btnCopy () {
-          const copyText = this.$refs.liff
-          copyText.select()
-          copyText.setSelectionRange(0, 99999) // For mobile devices
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
           document.execCommand('copy')
-          await Swal.fire({
-            icon: 'success',
-            title: '複製成功',
-          })
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
         },
       },
     })

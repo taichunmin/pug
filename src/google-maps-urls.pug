@@ -116,9 +116,9 @@ block content
       .col-md-6
         .form-group.mb-2
           label(for="gmaps-url") 產生的跨平台網址
-          textarea#gmaps-url.form-control.form-control-sm(readonly, rows="15", ref="result", @click="btnCopy", :value="gmapsUrl")
+          textarea#gmaps-url.form-control.form-control-sm(readonly, rows="15", @click="btnCopy(gmapsUrl)", :value="gmapsUrl")
         .row.mx-n2
-          button.btn.btn-success.mx-2.my-1(type="button", @click="btnCopy") #[i.fa.fa-clipboard] 複製網址
+          button.btn.btn-success.mx-2.my-1(type="button", @click="btnCopy(gmapsUrl)") #[i.fa.fa-clipboard] 複製網址
           a.btn.btn-primary.mx-2.my-1(:href="gmapsUrl", target="_blank") #[i.fa.fa-map] 測試網址
           a.btn.btn-outline-info.mx-2.my-1(href="https://developers.google.com/maps/documentation/urls/get-started#search-action", target="_blank") #[i.fa.fa-book] 英文文件
           button.btn.btn-danger.mx-2.my-1(type="button", @click="btnReset") #[i.fa.fa-repeat] 重設資料
@@ -194,11 +194,15 @@ block script
         },
       },
       methods: {
-        async btnCopy () {
-          const copyText = this.$refs.result
-          copyText.select()
-          copyText.setSelectionRange(0, 999999) // For mobile devices
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
           document.execCommand('copy')
+          container.removeChild(dom)
           await Swal.fire({ icon: 'success', title: '複製成功' })
         },
         async btnReset (confirm = true) {

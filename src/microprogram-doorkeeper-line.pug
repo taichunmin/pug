@@ -40,9 +40,9 @@ block content
           input.form-control(type="tel", inputmode="tel", required, pattern="[0-9-]{3,}", v-model="h.uid")
           .input-group-append: span.input-group-text {{ _.get(employees, [h.uid], '未知') }}
       .input-group.input-group-sm.mt-2
-        input.form-control(type="text", :value="urlRegister", ref="result", readonly, @click="btnCopy")
+        input.form-control(type="text", :value="urlRegister", readonly, @click="btnCopy(urlRegister)")
         .input-group-append
-          button.btn.btn-outline-secondary.d-flex.justify-content-center.align-items-center(type="button", @click="btnCopy") #[i.fa.mr-2.fa-clipboard] 複製網址
+          button.btn.btn-outline-secondary.d-flex.justify-content-center.align-items-center(type="button", @click="btnCopy(urlRegister)") #[i.fa.mr-2.fa-clipboard] 複製網址
     .row.mx-n1
       .col.px-1: button.mt-2.btn.btn-block.btn-danger(type="button", @click="btnReset") #[i.fa.fa-fw.fa-trash-o] 清除資料
       .col.px-1: button.mt-2.btn.btn-block.btn-success(type="button", @click="btnShare") #[i.fa.fa-fw.fa-paper-plane-o] 傳送連結
@@ -159,11 +159,15 @@ block script
           }
         },
 
-        async btnCopy () {
-          const copyText = this.$refs.result
-          copyText.select()
-          copyText.setSelectionRange(0, 999999) // For mobile devices
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
           document.execCommand('copy')
+          container.removeChild(dom)
           await Swal.fire({ icon: 'success', title: '複製成功' })
         },
 

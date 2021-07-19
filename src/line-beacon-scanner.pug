@@ -24,9 +24,9 @@ block content
         button.btn.btn-block.btn-warning(v-else, type="button", @click="btnToggleScan") 停止掃描
     template(v-if="!_.keys(beacons).length")
       .input-group.input-group-sm
-        input.form-control(type="url", ref="liff", value="chrome://flags/#enable-experimental-web-platform-features", readonly)
+        input.form-control(type="url", value="chrome://flags/#enable-experimental-web-platform-features", readonly)
         .input-group-append
-          button.btn.btn-outline-success(type="button", @click="btnCopy") 複製網址
+          button.btn.btn-outline-success(type="button", @click="btnCopy('chrome://flags/#enable-experimental-web-platform-features')") 複製網址
       small.text-muted 如果無法掃描，請嘗試使用 macOS 和 Android 系統的 Google Chrome（版本大於 79）開啟，並且前往上方網址啟用 Experimental Web Platform features 功能。
     .row
       .col-12.col-sm-6.col-md-4.my-2(v-for="beacon of beacons", :key="beacon.id")
@@ -99,15 +99,16 @@ block script
           }
           this.$set(this.beacons, beacon.id, beacon)
         },
-        async btnCopy () {
-          const copyText = this.$refs.liff
-          copyText.select()
-          copyText.setSelectionRange(0, 99999) // For mobile devices
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
           document.execCommand('copy')
-          await Swal.fire({
-            icon: 'success',
-            title: '複製成功',
-          })
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
         },
         updateScanning () {
           this.scanning = _.get(this, 'scan.active', false)

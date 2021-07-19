@@ -14,16 +14,10 @@ block style
 block content
   #app.my-3.container(v-cloak)
     h2.mb-3.text-center YBCR HEX Viewer
-    .row.mb-3
-      .col
-        .input-group
-          .input-group-prepend: span.input-group-text Fieldset
-          select.form-control(v-model="i.fieldset")
-            option(v-for="v, k in fieldsetConfig", :value="k") {{ k }} ({{ _.sum(_.map(v, '1')) }})
-      .col
-        .input-group
-          .input-group-prepend: span.input-group-text For Copy
-          input.form-control(type="text", :value="copyText", ref="result", readonly)
+    .input-group.mb-3
+      .input-group-prepend: span.input-group-text Fieldset
+      select.form-control(v-model="i.fieldset")
+        option(v-for="v, k in fieldsetConfig", :value="k") {{ k }} ({{ _.sum(_.map(v, '1')) }})
     .form-group
       label HEX #[span.badge.badge-pill.badge-secondary {{ i.hex.length / 2 }}]
       textarea.form-control.text-monospace(v-model="i.hex", style="height: 300px")
@@ -203,16 +197,25 @@ block script
         },
       },
       methods: {
-        async btnCopy (text) {
+        async btnCopy (text, container = null) {
           const activeElement = document.activeElement
-          this.copyText = text
-          await sleep(100)
-          const copyText = this.$refs.result
-          copyText.select()
-          copyText.setSelectionRange(0, Number.MAX_SAFE_INTEGER) // For mobile devices
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
           document.execCommand('copy')
-          await sleep(100)
+          container.removeChild(dom)
           activeElement.focus()
+          await Swal.fire({
+            backdrop: false,
+            html: '<i class="fa fa-fw fa-check text-success"></i> 已複製',
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 500,
+            width: 150,
+          })
         },
         decodeBytes (hex) {
           return _.map(_.chunk(_.toUpper(hex), 2), v => v.join('')).reverse()
