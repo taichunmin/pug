@@ -14,7 +14,7 @@ block content
     #page-step1(v-if="page === 'step1'")
       h1.my-3.text-center Step 1
       p 請點選以下按鈕，讓程式可以順利呼叫 getProfile。
-      button.btn.btn-primary.btn-block(type="button", @click="btnOpenExternal") getProfile
+      button.btn.btn-primary.btn-block(type="button", @click="btnReloadWithoutContext") getProfile
     #page-step2(v-if="page === 'step2'")
       h1.my-3.text-center Step 2
       p 成功呼叫 getProfile，接下來請回到 Open Chat 中再次開啟 LIFF。
@@ -79,6 +79,9 @@ block script
       },
       async mounted () {
         try {
+          alert(location.href)
+          alert(`localStorage keys = ${JSON.stringify(_.keys(localStorage), null, 2)}`)
+          alert(`sessionStorage keys = ${JSON.stringify(_.keys(sessionStorage), null, 2)}`)
           await liff.init({ liffId: '1654046335-BWEQYWM1' })
           this.context = liff.getContext()
 
@@ -122,14 +125,11 @@ block script
           const val = new URL(location).searchParams.get(key)
           return _.isNil(val) ? defaultValue : val
         },
-        async btnOpenExternal () {
+        async btnReloadWithoutContext () {
           try {
             const url = new URL('https://liff.line.me/1654046335-BWEQYWM1/')
             url.searchParams.set('cid', this.getCid())
-            liff.openWindow({
-              url: url.href,
-              external: true,
-            })
+            location.href = url.href
             return await new Promise(resolve => {}) // 永遠不會結束的 Promise
           } catch (err) {
             this.handleError(err)
