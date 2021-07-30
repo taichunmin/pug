@@ -184,7 +184,7 @@ block script
           if (_.get(blob, 'byteLength', 0) !== 210) throw new Error('尚未進入工程模式')
           const version = blob.getUint8(0)
           if (version !== 1) throw new Error(`version should be 1, received ${version}.`)
-          const enabled = blob.getUint8(1).toString(2)
+          const enabled = _.padStart(blob.getUint8(1).toString(2), 8, '0')
           const ts = blob.getBigUint64(2, true)
           const beacons = _.times(8, i => ({
             enabled: enabled[i] === '1',
