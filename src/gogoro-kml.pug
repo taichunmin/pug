@@ -78,28 +78,10 @@ block script
           }), 'data', [])
         },
         placeToKml ({ name, places }) {
-          const fn1 = (tag, text) => {
-            const tmp = document.createElement(tag)
-            tmp.appendChild(document.createTextNode(text))
-            return tmp
-          }
-          const dom = document.createElement('div')
-
-          // name
-          dom.appendChild(fn1('name', name))
-
-          // places
-          for (const place of places) {
-            const domPlace = document.createElement('Placemark')
-            domPlace.appendChild(fn1('name', place.name))
-            domPlace.appendChild(fn1('description', place.description))
-            const domPlacePoint = document.createElement('Point')
-            domPlacePoint.appendChild(fn1('coordinates', place.coordinates))
-            domPlace.appendChild(domPlacePoint)
-            dom.appendChild(domPlace)
-          }
-
-          return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>${dom.innerHTML.replace(/<(\/?)p(lacemark|oint)>/g, '<$1P$2>')}</Document></kml>`
+          const ecmap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }
+          const e = str => str.replace(/[&<>"']/g, c => ecmap[c])
+          const ptok = p => `<Placemark><name>${e(p.name)}</name><description><![CDATA[${p.description}]]></description><Point><coordinates>${p.coordinates}</coordinates></Point></Placemark>`
+          return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${e(name)}</name>${_.join(_.map(places, ptok), '')}</Document></kml>`
         },
         strToObjectURL (str, options) {
           return URL.createObjectURL(new Blob([str], options))

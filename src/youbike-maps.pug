@@ -166,8 +166,7 @@ block script
           return _.filter(await Promise.all(_.map(stations, async s => {
             try {
               s = await verifyStationRealtime(s)
-              s.is_open = (s.is_open === 1 && (s.empty + s.full) > 0 && (nowts - s.updated_at) < 864e5) ? 1 : 0
-              return s
+              return _.includes([1, 2], s.is_open) ? s : null
             } catch (err) {
               return null
             }
