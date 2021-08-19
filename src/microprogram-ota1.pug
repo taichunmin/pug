@@ -1,0 +1,466 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '微程式韌體藍牙更新'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="微程式韌體藍牙更新")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/microprogram-ota1.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .card .input-group-sm .input-group-text
+        letter-spacing: -1px
+        min-width: 4.5rem
+
+block content
+  #app.my-3.container-fluid(v-cloak, style="max-width: 760px")
+    h3.mb-3.text-center= title
+    .card.mb-4
+      .card-body.text-monospace
+        h5.card-title 韌體設定
+        .was-validated
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 硬體型號
+            input.form-control(type="text", maxlength="16", inputmode="email", pattern="\\w{1,12}", required, v-model="h.model")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 韌體版本
+            input.form-control(type="text", maxlength="12", inputmode="email", pattern="\\w{1,12}", required, v-model="h.version")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 韌體網址
+            textarea.form-control(rows="4", inputmode="email", pattern=".+", required, v-model="h.fw")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end UUID服務
+            input.form-control(type="text", maxlength="36", inputmode="email", pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", required, v-model="h.uuidService")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end UUID寫入
+            input.form-control(type="text", maxlength="36", inputmode="email", pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", required, v-model="h.uuidWrite")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end UUID通知
+            input.form-control(type="text", maxlength="36", inputmode="email", pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", required, v-model="h.uuidNotify")
+        .d-flex.mx-n2.mt-2
+          .input-group.input-group-sm.flex-fill.mx-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 封包大小
+            input.form-control(type="number", inputmode="number", v-model.number="h.blockSize")
+          .input-group.input-group-sm.flex-fill.mx-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 確認頻率
+            input.form-control(type="number", inputmode="number", v-model.number="h.ackCnt")
+    .card.mb-4
+      .card-body.text-monospace
+        h5.card-title 操作
+        button.mt-2.btn.btn-block.btn-outline-info(type="button", @click="btnGetFwInfo") #[span.fa.fa-fw.fa-info-circle] 取得裝置資訊
+        button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnUploadFw") #[span.fa.fa-fw.fa-upload] 執行韌體更新
+        button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 重設本頁資料
+
+block script
+  script.
+    const ERRCODE = {
+      '2001': '低電量無法更新',
+      '2002': '韌體型號不符',
+      '2003': '資料傳輸方式有誤',
+      '2004': '更新流程有誤',
+      '4001': '更新檔寫入失敗',
+      '4002': '更新檔讀取失敗',
+      '4003': '資料清除失敗',
+      '8001': '更新檔驗證失敗 8001',
+      '8002': '更新檔驗證失敗 8002',
+      '8003': '更新檔驗證失敗 8003',
+    }
+    window.errToPlainObj = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.pick(err, ERROR_KEYS)
+    })()
+    window.htmlEscape = (() => {
+      const ecmap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }
+      return str => str.replace(/[&<>"']/g, c => ecmap[c])
+    })()
+    const sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        bleCharNotify: null,
+        bleCharWrite: null,
+        bleService: null,
+        device: null,
+        h: {
+          ackCnt: 16,
+          blockSize: 16,
+          fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/mb2004a-firmwares/hash_MA2004B_v1_0_r3.bin',
+          model: 'MB2004A',
+          uuidService: '7e400001-b5a3-f393-e0a9-e50e24dcca9e',
+          uuidWrite: '7e400002-b5a3-f393-e0a9-e50e24dcca9e',
+          uuidNotify: '7e400003-b5a3-f393-e0a9-e50e24dcca9e',
+          version: 'v1_0_r3',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnGetFwInfo () {
+          try {
+            this.showLoading('請稍候', '選擇裝置中…')
+            await this.bleConnect()
+
+            this.showLoading('請稍候', '取得裝置資訊中…')
+            const info = await this.bleGetFwInfo()
+
+            await Swal.fire({ icon: 'success', title: '裝置資訊取得成功', html: `<pre class="d-inline-block text-left">更新次數: ${info.updatedCnt}\n韌體版本: ${window.htmlEscape(info.version)}</pre>` })
+          } catch (err) {
+            console.error(window.errToPlainObj(err))
+            await Swal.fire({ icon: 'error', title: '裝置資訊取得失敗', text: err.message })
+          }
+        },
+        async btnUploadFw () {
+          try {
+            this.showLoading('請稍候', '下載韌體中…')
+            const fw = await _.get(await axios.get(this.h.fw, {
+              params: { cachebust: _.floor(Date.now() / 864e5) },
+              responseType: 'blob',
+            }), 'data').arrayBuffer()
+            this.logTime(`更新檔下載成功，檔案大小為 ${fw.byteLength} Bytes`)
+
+            this.showLoading('請稍候', '選擇裝置中…')
+            await this.bleConnect()
+
+            this.showLoading('請稍候', '取得裝置資訊中…')
+            const info = await this.bleGetFwInfo()
+            if (info.version === this.h.version) {
+              confirm = await Swal.fire({
+                cancelButtonColor: '#3085d6',
+                cancelButtonText: '取消更新',
+                confirmButtonColor: '#d33',
+                confirmButtonText: '強制更新',
+                focusCancel: true,
+                icon: 'warning',
+                reverseButtons: true,
+                showCancelButton: true,
+                text: `韌體版本已經是 ${info.version}，是否強制更新？`,
+              })
+              if (!confirm.value) return
+            }
+
+            this.showLoading('請稍候', '正在上傳韌體…')
+            await this.bleUploadFw({
+              fw,
+              onProgress: ({ den, max, percent }) => {
+                this.showLoading('請稍候', `韌體更新進度 ${den} / ${max} (${percent}%)`)
+              },
+            })
+
+            await Swal.fire({ icon: 'success', title: '韌體更新成功' })
+          } catch (err) {
+            console.error(window.errToPlainObj(err))
+            await Swal.fire({ icon: 'error', title: '韌體更新失敗', text: err.message })
+          }
+        },
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設資料',
+              focusCancel: true,
+              icon: 'warning',
+              reverseButtons: true,
+              showCancelButton: true,
+              text: '是否重設本頁面的資料？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+        async bleGetFwInfo () {
+          const buf = (new TextEncoder()).encode(this.h.model).buffer
+          const resf0 = await this.bleWriteCmd({ buf, cmd: 'f0' }) // 取得裝置資訊
+          if (!resf0) throw new Error(`指令 f0 沒有回傳值`)
+          const lenResf0 = resf0.getUint16(1, true) & 0x3fff
+          if (lenResf0 === 20) {
+            // 檢查是否為專案判斷失敗
+            const errhex = _.join(_.map(new Uint8Array(resf0.buffer.slice(4)), num => _.padStart(num.toString(16), 2, '0')), '')
+            if (errhex === _.padStart('', 40, 'f')) throw new Error('錯誤的裝置型號')
+          }
+          return {
+            updatedCnt: resf0.getUint32(4),
+            version: (new TextDecoder()).decode(resf0.buffer.slice(8)),
+          }
+        },
+        async bleUploadFw ({ fw, onProgress }) {
+          const { ackCnt, blockSize } = this.h
+          if (!fw instanceof ArrayBuffer) throw new Error('fw 的型態不是 ArrayBuffer')
+          if (!_.inRange(ackCnt, 0x1, 0x100)) throw new Error('ackCnt 必須介於 0x1 和 0xff 之間')
+          if (!_.inRange(blockSize, 0x4, 0x4000)) throw new Error('blockSize 必須介於 0x4 和 0x3fff 之間')
+          if (fw.byteLength % blockSize > 0) {
+            const padSize = blockSize - (fw.byteLength % blockSize)
+            this.logTime(`韌體更新檔後面填充了 ${padSize} bytes`)
+            fw = this.bufferConcat(fw, new Uint8Array(padSize).fill(0xff).buffer)
+          }
+          const blockCnt = _.toSafeInteger(fw.byteLength / blockSize)
+          const onCounter = (() => {
+            const cached = {
+              max: blockCnt,
+              onProgress: _.isFunction(onProgress) ? onProgress : () => {},
+            }
+            return den => {
+              const nowts = Date.now()
+              if (_.toSafeInteger(cached.expiredAt) >= nowts) return
+              cached.expiredAt = nowts + 5e3
+              den = Math.min(Math.max(0, den), cached.max)
+              const percent = den === cached.max ? 100 : _.floor(den / cached.max * 100)
+              this.logTime(`韌體更新進度 ${den} / ${cached.max} (${percent}%)`)
+              cached.onProgress({ den, max: cached.max, percent })
+            }
+          })()
+
+          // f1: 設定韌體傳輸參數並啟動更新模式
+          this.logTime(`設定韌體傳輸參數: 每個封包 ${blockSize} bytes，每 ${ackCnt} 個封包核對一次，共 ${blockCnt} 個封包`)
+          const f1buf = this.bufferConcat(...[
+            // Byte 4: 更新模式開關, Byte 5: 每幾次封包進行一次 ACK
+            new Uint8Array([0x01, ackCnt]).buffer,
+
+            // Byte 6~7: 每次封包大小
+            (() => {
+              const tmp = new DataView(new ArrayBuffer(2))
+              tmp.setUint16(0, blockSize)
+              return tmp.buffer
+            })(),
+
+            // Byte 8~11: 封包總數
+            (() => {
+              const tmp = new DataView(new ArrayBuffer(4))
+              tmp.setUint32(0, blockCnt)
+              return tmp.buffer
+            })(),
+          ])
+          const f1dv = await this.bleWriteCmd({ buf: f1buf, cmd: 'f1', timeout: 22e3 })
+          if (!f1dv) throw new Error(`指令 f1 沒有回傳值`)
+
+          // 解讀 f1 的回傳值
+          const f1res = {
+            code: _.padStart(f1dv.getUint16(4).toString(16), 4, '0'), // 回覆代碼
+            ackCnt: f1dv.getUint8(6), // 每幾次封包進行一次 ACK
+            blockSize: f1dv.getUint16(7), // 每次封包大小
+            blockCnt: f1dv.getUint32(9), // 封包總數
+          }
+          if (f1res.code !== '0001') throw new Error(ERRCODE[f1res.code] || `未知錯誤 ${f1res.code}`)
+          if (ackCnt !== f1res.ackCnt) throw new Error('每幾次封包進行一次 ACK 有誤')
+          if (blockSize !== f1res.blockSize) throw new Error('每次封包大小有誤')
+          if (blockCnt !== f1res.blockCnt) throw new Error('封包總數有誤')
+
+          // f2: 上傳更新檔
+          let crc = 0
+          for (let i = 0; i < blockCnt; i++) {
+            onCounter(i)
+            const f2buf = fw.slice(i * blockSize, (i + 1) * blockSize)
+            const f2wait = (i + 1) % ackCnt === 0
+            _.each(new Uint8Array(f2buf), u8 => { crc ^= u8 }) // 計算 crc
+            const f2dv = await this.bleWriteCmd({ buf: f2buf, cmd: 'f2', verbose: false, wait: f2wait })
+            if (!f2wait) continue
+            if (!f2dv) throw new Error(`指令 f2 沒有回傳值`)
+
+            // 解讀 f2 的回傳值
+            const f2res = {
+              code: _.padStart(f2dv.getUint16(4).toString(16), 4, '0'), // 回覆代碼
+              crc: f2dv.getUint8(6),
+            }
+            if (f2res.code !== '0001') throw new Error(ERRCODE[f2res.code] || `未知錯誤 ${f2res.code}`)
+            if (crc !== f2res.crc) throw new Error(`更新檔校驗碼驗證錯誤: crc = ${crc}, f2res.crc = ${f2res.crc}`)
+            crc = 0
+          }
+          onCounter(blockCnt)
+
+          // f3: 更新重新啟動
+          const f3dv = await this.bleWriteCmd({ cmd: 'f3' })
+          if (!f3dv) throw new Error(`指令 f3 沒有回傳值`)
+
+          const f3res = {
+            code: _.padStart(f3dv.getUint16(4).toString(16), 4, '0'), // 回覆代碼
+          }
+          if (f3res.code !== '0001') throw new Error(ERRCODE[f3res.code] || `未知錯誤 ${f3res.code}`)
+        },
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability')
+        },
+        async bleConnect () {
+          if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
+          this.device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [this.h.uuidService] }],
+          })
+          if (!this.device) throw new Error('未選擇裝置')
+          this.logTime('裝置選擇成功')
+
+          for (let i = 0; !_.get(this, 'device.gatt.connected') && i < 3; i++) {
+            try {
+              this.logTime(`嘗試連線至裝置 (第 ${i+1} 次)`)
+              await this.device.gatt.connect()
+              await sleep(500)
+            } catch (err) {
+              console.error(window.errToPlainObj(err))
+            }
+          }
+          if (!_.get(this, 'device.gatt.connected')) throw new Error('裝置連線失敗')
+          this.logTime('裝置連線成功')
+
+          this.device.addEventListener('gattserverdisconnected', this.bleOnDisconnect)
+          this.bleService = await this.device.gatt.getPrimaryService(this.h.uuidService)
+          this.bleCharWrite = await this.bleService.getCharacteristic(this.h.uuidWrite)
+          this.bleCharNotify = await this.bleService.getCharacteristic(this.h.uuidNotify)
+          this.bleCharNotify.addEventListener('characteristicvaluechanged', this.bleOnNotify)
+          await this.bleCharNotify.startNotifications()
+        },
+        async bleOnDisconnect () {
+          this.logTime('裝置斷線')
+          if (this.bleCharNotify) {
+            this.bleCharNotify.removeEventListener('characteristicvaluechanged', this.bleOnNotify)
+            this.bleCharNotify = null
+          }
+          if (this.bleCharWrite) this.bleCharWrite = null
+          if (this.bleService) this.bleService = null
+          if (this.device) {
+            this.device.removeEventListener('gattserverdisconnected', this.bleOnDisconnect)
+            if (_.get(this, 'device.gatt.connected')) this.device.gatt.disconnect()
+            this.device = null
+          }
+        },
+        async bleOnNotify (event) {
+          const dv = _.get(event, 'target.value') // DataView
+          this.logTime(`收到回應 ${this.inspectBuf(dv.buffer)}`)
+
+          const sof = dv.getUint8(0)
+          if (sof !== 0x08) throw new Error(`錯誤的 SOF: ${sof}`)
+
+          const cmd = _.padStart(dv.getUint8(3).toString(16), 2, '0')
+          const pendingKey = `pending.bleWriteCmd.${cmd}`
+          if (!_.hasIn(window, pendingKey)) throw new Error(`找不到 ${pendingKey}`)
+
+          const lendv = dv.getUint16(1, true) & 0x3fff
+          if (lendv + 4 !== dv.buffer.byteLength) throw new Error(`指令 ${cmd} 的回傳值長度有誤: ${lendv}`)
+
+          _.invoke(window, `${pendingKey}.resolve`, dv) // 呼叫 resolve
+        },
+        async bleWriteCmd ({ buf = null, cmd, timeout = 3000, verbose = true, wait = true }) {
+          if (!_.isString(cmd) || cmd.length !== 2) throw new Error(`invalid cmd: ${cmd}`)
+          cmd = _.toLower(cmd)
+          const pendingKey = `pending.bleWriteCmd.${cmd}`
+          try {
+            return await Promise.race([
+              (async () => {
+                await sleep(timeout)
+                throw new Error(`無回應 (${timeout}ms)`)
+              })(),
+              (async () => {
+                // 把 resolve 丟到全域去
+                if (wait) wait = new Promise((resolve, reject) => _.set(window, pendingKey, { resolve, reject }))
+
+                // 驗證並重組資料
+                buf = ArrayBuffer.isView(buf) ? buf.buffer : buf
+                const lenBuf = _.get(buf, 'byteLength', 0)
+                buf = this.bufferConcat(...[
+                  // Byte 0: sof
+                  new Uint8Array([0x80]).buffer,
+
+                  // Byte 1~2: len + flag
+                  (() => {
+                    const tmp = new DataView(new ArrayBuffer(2))
+                    tmp.setUint16(0, (wait ? 0x8000 : 0) + lenBuf, true)
+                    return tmp.buffer
+                  })(),
+
+                  // Byte 3: cmd
+                  new Uint8Array([_.parseInt(cmd, 16)]).buffer,
+
+                  // Byte 4~n: buf
+                  ...(() => {
+                    if (!lenBuf) return [] // 長度為 0
+                    if (!buf instanceof ArrayBuffer) throw new Error('buf 的型態不是 ArrayBuffer')
+                    return [buf]
+                  })(),
+                ])
+
+                // 嘗試寫入 device
+                const bleCharWrite = this.bleCharWrite
+                if (!bleCharWrite) throw new Error('尚未連線到裝置')
+                if (verbose) this.logTime(`送出指令 ${this.inspectBuf(buf)}`)
+                await bleCharWrite.writeValue(buf)
+
+                // 等候回應
+                if (wait) return await wait
+              })(),
+            ])
+          } finally {
+            _.set(window, pendingKey, null)
+          }
+        },
+        inspectBuf (buf) {
+          buf = ArrayBuffer.isView(buf) ? buf.buffer : buf
+          return _.join(_.map(new Uint8Array(buf), num => _.padStart(num.toString(16), 2, '0')), ' ')
+        },
+        bufferConcat (...bufs) {
+          bufs = _.map(bufs, buf => ArrayBuffer.isView(buf) ? buf.buffer : buf)
+          const tmp = new Uint8Array(_.sumBy(bufs, buf => buf.byteLength))
+          _.reduce(bufs, (offset, buf) => {
+            tmp.set(new Uint8Array(buf), offset)
+            return offset + buf.byteLength
+          }, 0)
+          return tmp.buffer
+        },
+        logTime (text) {
+          console.log(`[${dayjs().format('HH:mm:ss.SSS')}] ${text}`)
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

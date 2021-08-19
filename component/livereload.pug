@@ -10,5 +10,8 @@ if NODE_ENV !== 'production'
       } else {
         livereload.searchParams.set('port', url.port || 80)
       }
-      document.write(`<script src="${livereload.href}"></` + 'script>')
+      const s = document.createElement('script')
+      s.src = livereload.href
+      const h = document.getElementsByTagName('head')[0]
+      h.appendChild(s)
     })()
