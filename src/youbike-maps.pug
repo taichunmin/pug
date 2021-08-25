@@ -162,7 +162,6 @@ block script
       methods: {
         async getStations () {
           const stations = await this.getCsv(this.src)
-          const nowts = +new Date()
           return _.filter(await Promise.all(_.map(stations, async s => {
             try {
               s = await verifyStationRealtime(s)

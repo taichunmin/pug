@@ -24,12 +24,12 @@
     "uglify-js": "^3.14.1"
   },
   "devDependencies": {
-    "eslint": "^7.31.0",
+    "eslint": "^7.32.0",
     "eslint-config-standard": "^16.0.3",
-    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-import": "^2.24.2",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.1.0",
-    "eslint-plugin-pug": "^1.2.3",
+    "eslint-plugin-pug": "^1.2.4",
     "finalhandler": "^1.1.2",
     "livereload": "^0.9.3",
     "node-watch": "^0.7.1",
