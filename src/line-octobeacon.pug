@@ -154,12 +154,12 @@ block script
         async btnWrite () {
           try {
             this.showLoading('請稍候', '上傳到裝置中…')
-            const blob = this.settingStringify()
+            const dv = this.settingStringify()
             if (!this.device) this.device = await this.bleGetDevice()
             await this.device.gatt.connect()
             const service = await this.device.gatt.getPrimaryService('89798198-0000-0000-0000-000000000000')
             const characteristic = await service.getCharacteristic('89798198-249d-48bd-894e-db156f1a70e6')
-            await characteristic.writeValue(blob.buffer)
+            await characteristic.writeValue(dv.buffer)
             this.device.gatt.disconnect()
             await sleep(500) // 裝置重新廣播的時間是 0.5 秒
             await Swal.fire({ icon: 'success', title: '上傳到裝置成功' })
@@ -179,49 +179,49 @@ block script
           })
         },
 
-        settingParse (blob) {
-          console.log('settingParse: ', blob)
-          if (_.get(blob, 'byteLength', 0) !== 210) throw new Error('尚未進入工程模式')
-          const version = blob.getUint8(0)
+        settingParse (dv) {
+          console.log('settingParse: ', dv)
+          if (_.get(dv, 'byteLength', 0) !== 210) throw new Error('尚未進入工程模式')
+          const version = dv.getUint8(0)
           if (version !== 1) throw new Error(`version should be 1, received ${version}.`)
-          const enabled = _.padStart(blob.getUint8(1).toString(2), 8, '0')
-          const ts = blob.getBigUint64(2, true)
+          const enabled = _.padStart(dv.getUint8(1).toString(2), 8, '0')
+          const ts = dv.getBigUint64(2, true)
           const beacons = _.times(8, i => ({
             enabled: enabled[i] === '1',
-            offset: _.padStart((blob.getBigUint64(25 * i + 10, true) + ts).toString(16), 16, '0'),
-            hwid: this.blob2hex(blob, 25 * i + 18, 5),
-            vendor: this.blob2hex(blob, 25 * i + 23, 4),
-            lot: this.blob2hex(blob, 25 * i + 27, 8),
+            offset: _.padStart((dv.getBigUint64(25 * i + 10, true) + ts).toString(16), 16, '0'),
+            hwid: this.dvGetHex(dv, 25 * i + 18, 5),
+            vendor: this.dvGetHex(dv, 25 * i + 23, 4),
+            lot: this.dvGetHex(dv, 25 * i + 27, 8),
           }))
           this.$set(this.i, 'beacons', beacons)
         },
 
         settingStringify () {
-          const buffer = new ArrayBuffer(210)
-          const blob = new DataView(buffer)
+          const dv = new DataView(new ArrayBuffer(210))
           const beacons = this.i.beacons
-          blob.setUint8(0, 1) // version
-          blob.setUint8(1, _.parseInt(_.map(beacons, bc => '01'[+bc.enabled]).join(''), 2)) // enabled
-          blob.setBigUint64(2, BigInt(0), true)
+          dv.setUint8(0, 1) // version
+          dv.setUint8(1, _.parseInt(_.map(beacons, bc => '01'[+bc.enabled]).join(''), 2)) // enabled
+          dv.setBigUint64(2, BigInt(0), true)
           for (let i = 0; i < 8; i++) {
             const beacon = beacons[i]
             if (!/^[0-9a-fA-F]{16}$/.test(beacon.offset)) throw new Error(`beacon[${i}].offset 資料格式有誤`)
             if (!/^[0-9a-fA-F]{10}$/.test(beacon.hwid)) throw new Error(`beacon[${i}].hwid 資料格式有誤`)
             if (!/^[0-9a-fA-F]{8}$/.test(beacon.vendor)) throw new Error(`beacon[${i}].vendor 資料格式有誤`)
             if (!/^[0-9a-fA-F]{16}$/.test(beacon.lot)) throw new Error(`beacon[${i}].lot 資料格式有誤`)
-            blob.setBigUint64(25 * i + 10, BigInt(`0x${beacon.offset}`), true)
-            this.hex2blob(`${beacon.hwid}${beacon.vendor}${beacon.lot}`, blob, 25 * i + 18, 17)
+            dv.setBigUint64(25 * i + 10, BigInt(`0x${beacon.offset}`), true)
+            this.dvSetHex(dv, 25 * i + 18, `${beacon.hwid}${beacon.vendor}${beacon.lot}`)
           }
-          console.log('settingStringify: ', blob)
-          return blob
+          console.log('settingStringify: ', dv)
+          return dv
         },
 
-        blob2hex (blob, start, len) {
-          return _.chain(len).times(i => _.padStart(blob.getUint8(start + i).toString(16), 2, '0')).join('').value()
+        dvGetHex (dv, start, len) {
+          return _.map(new Uint8Array(dv.buffer, start, len), u8 => `0${u8.toString(16)}`.slice(-2)).join('')
         },
 
-        hex2blob (hex, blob, start, len) {
-          for (let i = 0; i < len; i++) blob.setUint8(start + i, _.parseInt(`${hex[2 * i]}${hex[2 * i + 1]}`, 16))
+        dvSetHex (dv, start, hex) {
+          if (!_.isString(hex) || !hex.length || hex.length % 2) throw new Error('錯誤的 hex')
+          new Uint8Array(dv.buffer, start).set(new Uint8Array(_.map(hex.match(/.{2}/g), h => _.parseInt(h, 16))))
         },
       },
     })

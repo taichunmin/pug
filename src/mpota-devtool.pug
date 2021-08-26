@@ -122,8 +122,8 @@ block script
         h: {
           ackFreq: 16,
           blockSize: 16,
-          fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/mb2004a-firmwares/hash_MA2004B_v1_0_r3.bin',
-          model: 'MB2004A',
+          fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_r3.bin',
+          model: 'MA2004B',
           showConfig: false,
           uuidNotify: '7e400003-b5a3-f393-e0a9-e50e24dcca9e',
           uuidService: '7e400001-b5a3-f393-e0a9-e50e24dcca9e',
@@ -150,36 +150,40 @@ block script
             this.showLoading('請稍候', '取得裝置資訊中…')
             const info = await this.bleGetFirmwareInfo(this.h.model)
 
-            await this.bleDisconnect()
             await Swal.fire({ icon: 'success', title: '裝置資訊取得成功', html: `<pre class="d-inline-block text-left">更新次數: ${info.updatedCnt}\n韌體版本: ${window.htmlEscape(info.version)}</pre>` })
           } catch (err) {
             console.error(`btnGetFirmwareInfo = ${JSON.stringify(window.errToPlainObj(err))}`)
             await Swal.fire({ icon: 'error', title: '裝置資訊取得失敗', text: err.message })
+          } finally {
+            await this.bleDisconnect()
           }
         },
         async btnUploadFirmware () {
           try {
-            this.showLoading('請稍候', '下載韌體中…')
+            this.showLoading('請稍候', '搜尋裝置及下載韌體中…')
             const { ackFreq, blockSize } = this.h
             if (!_.inRange(blockSize, 0x4, 0x4000)) throw new Error('blockSize 必須介於 0x4 和 0x3fff 之間')
-            let fw = await _.get(await axios.get(this.h.fw, {
-              params: { cachebust: _.floor(Date.now() / 864e5) },
-              responseType: 'blob',
-            }), 'data').arrayBuffer()
-            this.logTime(`韌體更新檔下載成功，大小為 ${fw.byteLength} bytes`)
+            let fw
+            await Promise.all([
+              this.bleSearchDevice(),
+              (async () => {
+                fw = await _.get(await axios.get(this.h.fw, {
+                  params: { cachebust: _.floor(Date.now() / 864e5) },
+                  responseType: 'blob',
+                }), 'data').arrayBuffer()
+                this.logTime(`韌體更新檔下載成功，大小為 ${fw.byteLength} bytes`)
 
-            // padFF
-            const fwPadLen = blockSize - (fw.byteLength % blockSize)
-            if (fwPadLen < blockSize) {
-              const fwNew = new ArrayBuffer(fw.byteLength + fwPadLen)
-              new Uint8Array(fwNew).set(new Uint8Array(fw))
-              new Uint8Array(fwNew, fw.byteLength).fill(0xff)
-              fw = fwNew
-              this.logTime(`韌體更新檔後面填充了 ${fwPadLen} bytes`)
-            }
-
-            this.showLoading('請稍候', '搜尋裝置中…')
-            await this.bleSearchDevice()
+                // padFF
+                const fwPadLen = blockSize - (fw.byteLength % blockSize)
+                if (fwPadLen < blockSize) {
+                  const fwNew = new ArrayBuffer(fw.byteLength + fwPadLen)
+                  new Uint8Array(fwNew).set(new Uint8Array(fw))
+                  new Uint8Array(fwNew, fw.byteLength).fill(0xff)
+                  fw = fwNew
+                  this.logTime(`韌體更新檔後面填充了 ${fwPadLen} bytes`)
+                }
+              })(),
+            ])
 
             this.showLoading('請稍候', '取得裝置資訊中…')
             const info = await this.bleGetFirmwareInfo(this.h.model)
@@ -228,11 +232,12 @@ block script
             }
 
             await this.bleUploadFirmwareStep3()
-            await this.bleDisconnect()
             await Swal.fire({ icon: 'success', title: '韌體更新成功' })
           } catch (err) {
             console.error(`btnUploadFirmware = ${JSON.stringify(window.errToPlainObj(err))}`)
             await Swal.fire({ icon: 'error', title: '韌體更新失敗', text: err.message })
+          } finally {
+            await this.bleDisconnect()
           }
         },
         async btnReset (confirm = true) {

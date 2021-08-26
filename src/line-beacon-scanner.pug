@@ -31,7 +31,7 @@ block content
     .row
       .col-12.col-sm-6.col-md-4.my-2(v-for="beacon of beacons", :key="beacon.id")
         table.table.table-dark.table-bordered.table-sm.mb-0.text-right.beacon
-          tr(v-for="k in ['id', 'rssi', 'hwid', 'dm', 'authenticationCode', 'maskedTimestamp', 'batteryLevel', 'scannedAt']")
+          tr(v-for="k in ['id', 'name', 'rssi', 'hwid', 'dm', 'auth', 'maskedTimestamp', 'batteryLevel', 'mbid', 'scannedAt']")
             th {{ k }}
             td {{ _.get(beacon, k, '無資料') }}
 
@@ -40,6 +40,7 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script.
     const bluetooth = _.get(navigator, 'bluetooth')
+    const UUID_LINE = '0000fe6f-0000-1000-8000-00805f9b34fb'
     const vm = new Vue({ // eslint-disable-line no-unused-vars
       el: '#app',
       data: {
@@ -62,7 +63,9 @@ block script
             this.updateScanning()
             if (!this.scanning) { // 開始掃描
               if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
-              this.scan = await bluetooth.requestLEScan({ acceptAllAdvertisements: true })
+              this.scan = await bluetooth.requestLEScan({
+                filters: [{ services: [UUID_LINE] }],
+              })
             } else { // 停止掃描
               this.scan.stop()
               this.scan = null
@@ -76,26 +79,26 @@ block script
           }
         },
         async onAdvertisementReceived (event) {
+          const dv = event.serviceData.get(UUID_LINE)
+          if (!ArrayBuffer.isView(dv) || dv.byteLength < 6) return
           const beacon = {
             id: _.trim(_.get(event, 'device.id'), '='),
-            manufacturerData: _.map([...event.manufacturerData], v => [v[0], this.dataViewStringify(v[1])]),
             name: _.get(event, 'device.name'),
             rssi: _.get(event, 'rssi'),
-            serviceData: _.map([...event.serviceData], v => [v[0], this.dataViewStringify(v[1])]),
             txPower: _.get(event, 'txPower'),
             uuids: _.get(event, 'uuids'),
-          }
-          if (!_.includes(beacon.uuids, '0000fe6f-0000-1000-8000-00805f9b34fb')) return
-          const payload = _.get(_.find(beacon.serviceData, d => d[0] === '0000fe6f-0000-1000-8000-00805f9b34fb'), 1)
-          if (!_.isArray(payload) || payload.length < 6) return
-          beacon.frameType = _.parseInt(payload[0], 16)
-          beacon.hwid = payload.slice(1, 6).join('')
-          beacon.dm = payload.slice(7).join('')
-          beacon.scannedAt = moment().format('HH:mm:ss')
-          if (payload.length === 14) {
-            beacon.authenticationCode = payload.slice(7, 11).join('')
-            beacon.maskedTimestamp = payload.slice(11, 13).join('')
-            beacon.batteryLevel = payload[13]
+            frameType: this.dvGetHex(dv, 0, 1),
+            hwid: this.dvGetHex(dv, 1, 5),
+            dm: this.dvGetHex(dv, 7),
+            scannedAt: moment().format('HH:mm:ss'),
+            ...(!_.includes([14, 19], dv.byteLength) ? {} : {
+              auth: this.dvGetHex(dv, 7, 4),
+              maskedTimestamp: `${dv.getUint16(11)} (${this.dvGetHex(dv, 11, 2)})`,
+              batteryLevel: this.dvGetHex(dv, 13, 1),
+            }),
+            ...(dv.byteLength !== 19 ? {} : {
+              mbid: this.dvGetHex(dv, 14, 5),
+            }),
           }
           this.$set(this.beacons, beacon.id, beacon)
         },
@@ -116,8 +119,8 @@ block script
         btnClear () {
           this.$set(this, 'beacons', {})
         },
-        dataViewStringify (valueDataView) {
-          return _.map([...new Uint8Array(valueDataView.buffer)], b => _.padStart(b.toString(16), 2, '0'))
+        dvGetHex (dv, start, len) {
+          return _.map(new Uint8Array(dv.buffer, start, len), u8 => `0${u8.toString(16)}`.slice(-2)).join('')
         },
       },
     })

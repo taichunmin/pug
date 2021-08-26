@@ -1,7 +1,7 @@
 extends /layout/dark
 
 block beforehtml
-  - const title = 'EasyCard M1 Card Viewer'
+  - const title = 'NFC EasyCard Viewer'
 
 block style
   style
@@ -16,7 +16,7 @@ block style
         textarea.form-control
           font-size: 12px
         .input-group-prepend .input-group-text
-          letter-spacing: -1px
+          letter-spacing: -2px
           min-width: 80px
 
 block content
@@ -40,7 +40,7 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 預設加值
               input.form-control(readonly, :value="card?.autoload")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 銀行編號
+              .input-group-prepend: span.input-group-text.justify-content-center 加值銀行
               input.form-control(readonly, :value="card?.bank")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 每日限額
@@ -72,39 +72,42 @@ block content
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 卡片效期
               input.form-control(readonly, :value="card?.exp")
-        .form-group(v-if="card.xfer")
-          label 轉乘紀錄
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 功能開關
+              input.form-control(readonly, :value="card?.usageControl")
+        .form-group(v-for="xfer in card.xfers")
+          label 轉乘紀錄 {{ xfer.tsqn }}
           .row.mx-n1
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 交易序號
-              input.form-control(readonly, :value="card.xfer?.tsqn")
+              input.form-control(readonly, :value="xfer?.tsqn")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 時間
-              input.form-control(readonly, :value="card.xfer?.time")
+              input.form-control(readonly, :value="xfer?.time")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 優惠方式
-              input.form-control(readonly, :value="card.xfer?.xferType")
+              input.form-control(readonly, :value="xfer?.type")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 扣款
-              input.form-control(readonly, :value="card.xfer?.amount")
+              input.form-control(readonly, :value="xfer?.amount")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 餘額
-              input.form-control(readonly, :value="card.xfer?.ev")
+              input.form-control(readonly, :value="xfer?.ev")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘前群組
-              input.form-control(readonly, :value="card.xfer?.xfer1")
+              input.form-control(readonly, :value="xfer?.before")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘後群組
-              input.form-control(readonly, :value="card.xfer?.xfer2")
+              input.form-control(readonly, :value="xfer?.after")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 業者
-              input.form-control(readonly, :value="card.xfer?.provider")
+              .input-group-prepend: span.input-group-text.justify-content-center 舊轉乘群組
+              input.form-control(readonly, :value="xfer?.oldXferGroup")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 場站
-              input.form-control(readonly, :value="card.xfer?.location")
+              input.form-control(readonly, :value="xfer?.location")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 設備編號
-              input.form-control(readonly, :value="card.xfer?.device")
+              input.form-control(readonly, :value="xfer?.device")
         .form-group(v-for="txn of [card.credit]")
           label 最近加值交易
           .row.mx-n1
@@ -174,256 +177,243 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 區段編號
               input.form-control(readonly, :value="bus?.zone")
         .form-group
-          label 捷運進出站紀錄
-      .form-group(style="min-width: 240px")
+          label 進出站紀錄
+          .table-responsive
+            table.table.table-sm.table-bordered.table-striped.text-center
+              thead: tr.text-nowrap
+                th 時間
+                th 進出站
+                th 業者
+                th 場站
+                th 累計次數
+                th 累計金額
+              tbody
+                tr(v-for="mrt of card.mrts")
+                  td {{ mrt?.time }}
+                  td {{ mrt?.type }}
+                  td {{ mrt?.provider }}
+                  td {{ mrt?.location }}
+                  td {{ mrt?.count }}
+                  td {{ mrt?.amount }}
+      .form-group(style="min-width: 250px")
         label EML (HEX)
-        textarea.form-control.form-control-sm(rows="65", v-model="i.eml")
+        textarea.form-control.form-control-sm(rows="65", v-model="h.eml")
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script.
-    /* global vm */
-    const ECC_PROFILES = {
-      '00': '一般',
-      '01': '敬老一',
-      '02': '敬老二',
-      '03': '愛心',
-      '04': '愛陪',
-      '05': '學生',
-      '06': '軍人',
-      '07': '警察',
-      '08': '孩童',
+    const URL_GIST = 'https://gist.githubusercontent.com/taichunmin/f4699905e583354b2cbd1a6e67484235/raw'
+    window.createGetMappingOrHexFn = (key, byteLength = 1) => {
+      return function (byteOffset) {
+        const hex = window.vm.getHex(byteOffset, byteLength)
+        return _.get(window, `vm.${key}.${hex}`, `0x${hex}`)
+      }
     }
-    const ECC_CARD_TYPES = {
-      '00': '一般卡',
-      '01': '強制記名卡',
-      '02': '一般記名卡',
-      '03': '紀念卡',
-      '04': '替代卡',
-      '05': '特製卡',
-      '06': 'IC商品',
-      '07': '測試卡',
-      '08': '聯名卡',
-      '09': '特種票',
-      '0A': '數位學生證',
-      '0B': '代幣卡',
-      '0C': '腳踏車',
-      '0D': 'iCash卡',
-    }
-    const ECC_XFER_TYPES = {
-      '00': '刷進 (原價)',
-      '01': '刷進 (打折)', // 有打折
-      '02': '刷進 (抵免)', // 抵免或社福點數
-      '03': '刷進 (定期票)', // 旅遊票或月票
-      10: '刷出 (原價)',
-      11: '刷出 (打折)', // 有打折
-      12: '刷出 (抵免)', // 抵免或社福點數
-      13: '刷出 (定期票)', // 旅遊票或月票
-    }
-    const ECC_TXN_TYPES = {
-      '00': '刷進扣款',
-      '02': '加值',
-      10: '刷出扣款',
-      20: '小額扣款',
-      40: '自動加值',
-    }
-    const ECC_AREA_CODE = {
-      '01': '台北市',
-      '02': '新北市',
-      '03': '基隆市',
-      '04': '桃園縣',
-      '05': '宜蘭縣',
-      '06': '連江縣',
-      '07': '金門縣',
-      '08': '新竹市',
-      '09': '新竹縣',
-      '0A': '台中市',
-      '0C': '高雄市',
-      '0E': '台北市愛心2',
-      '0F': '新北市愛心2',
-      10: '嘉義市',
-      11: '嘉義縣',
-      12: '雲林縣',
-      13: '台南市',
-      15: '苗栗縣',
-      16: '南投縣',
-      17: '澎湖縣',
-      18: '屏東縣',
-      19: '台東縣',
-      '1A': '花蓮縣',
-      '1B': '高雄外島',
-      '1C': '宜蘭外島',
-      '1D': '彰化縣',
-    }
-    const ECC_XFER_CODE = {
-      '00': '無轉乘',
-      '01': '北捷(享捷運優惠)',
-      '02': '公車(享捷運優惠)',
-      '03': '公車(無轉乘優惠)',
-      '04': '台中公車',
-      '05': '停車場(享捷運優惠)',
-      '06': '停車場(無轉乘優惠)',
-      '07': '貓纜(享捷運優惠)',
-      '08': '台鐵',
-      '09': '公路客運',
-      '0A': '高鐵',
-      '0B': '桃捷',
-      '0C': '新北公車(享捷運優惠)',
-      '0D': '台北公車(無轉乘優惠)',
-      '0E': '公車(享市民小巴公車轉乘優惠)',
-      10: '無轉乘優惠',
-      11: '台南公車',
-      12: '高雄渡輪',
-      13: '高雄市區',
-      14: '高捷',
-      15: '台中BRT',
-      16: '中捷',
-      17: '淡水輕軌',
-      18: '動物園',
-      19: '宜蘭國道',
-      '1A': '宜蘭市區公車',
-      '1B': '高雄國道',
-      '1D': '宜蘭公路',
-      '1E': '花蓮市區公車',
-      '1F': '花蓮公路',
-      20: '台東市區',
-      21: '台東公路',
-      22: '高雄輕軌',
-      23: '新北 YouBike',
-    }
-    const arrJoin = arr => arr.join('')
-    const arrRevJoin = arr => arr.reverse().join('')
-    const btoArea = byte => _.get(ECC_AREA_CODE, byte, `0x${byte}`)
-    const btoCardType = byte => _.get(ECC_CARD_TYPES, byte, `0x${byte}`)
-    const btoDatetimeStr = bytes => dayjs.unix(btoUint(bytes) - 28800).format('YYYY-MM-DD HH:mm:ss')
-    const btoProfile = byte => _.get(ECC_PROFILES, byte, `0x${byte}`)
-    const btoTxnType = byte => _.get(ECC_TXN_TYPES, byte, `0x${byte}`)
-    const btoUint = bytes => _.parseInt(arrRevJoin(bytes), 16)
-    const btoXfer = byte => _.get(ECC_XFER_CODE, byte, `0x${byte}`)
-    const btoXferType = byte => _.get(ECC_XFER_TYPES, byte, `0x${byte}`)
-    const uintToB = uint => _.toUpper(_.padStart(_.parseInt(uint).toString(16), 2, '0'))
-    const btoDateStr = bytes => {
-      const u = btoUint(bytes)
-      return u <= 0 ? '未知' : dayjs(`${1980 + (u >> 9)}-${(u >> 5) & 0xF}-${u & 0x1F}`).format('YYYY-MM-DD')
-    }
-    const btoBus = bytes => ({
-      agent: `0x${arrRevJoin(bytes.slice(3, 5))}`,
-      line: `0x${arrJoin(bytes.slice(5, 7))}`,
-      time: btoDatetimeStr(bytes.slice(7, 11)),
-      station: btoUint([bytes[11]]),
-      zone: btoUint([bytes[12]]),
-    })
-    const btoInt = bytes => {
-      const mask = 2 ** (bytes.length * 8 - 1)
-      const uint = btoUint(bytes)
-      return (mask & uint) ? (uint - mask - mask) : uint
-    }
-    const getCsv = async (url, cachetime = 3e4) => {
-      const csv = _.trim(_.get(await axios.get(url, {
-        params: { cachebust: _.floor(Date.now() / cachetime) },
-      }), 'data'))
-      return _.get(Papa.parse(csv, {
-        encoding: 'utf8',
-        header: true,
-      }), 'data', [])
-    }
-    const btoSpLoc = (sp, loc) => {
-      const sploc = _.get(vm, 'cached.sploc', {})
-      return sploc[`${sp}${loc}`] || sploc[`${sp}00`] || { provider: `0x${sp}`, location: `0x${loc}` }
-    }
-    const btoTxn = bytes => ({
-      ...btoSpLoc(bytes[10], bytes[11]),
-      amount: btoInt(bytes.slice(6, 8)),
-      device: `0x${arrRevJoin(bytes.slice(12, 16))}`,
-      ev: btoInt(bytes.slice(8, 10)),
-      time: btoDatetimeStr(bytes.slice(1, 5)),
-      tsqn: `0x${bytes[0]}`,
-      tsqnUint: btoUint([bytes[0]]),
-      type: btoTxnType(bytes[5]),
-      xferType: btoXferType(bytes[5]),
-    })
     window.vm = new Vue({
       el: '#app',
       data: {
         ready: false,
-        i: {
+        cached: {},
+        h: {
           eml: '',
-        },
-        cached: {
-          sploc: {},
         },
       },
       async mounted () {
         // 自動儲存功能
         try {
           const saved = JSON5.parse(localStorage.getItem(location.pathname))
-          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
         } catch (err) {}
-        this.$watch('i', () => {
-          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
         }, { deep: true })
-        // 讀取 sploc CSV
-        await this.initSploc()
+
+        await this.init()
         this.ready = true
       },
       computed: {
-        bytes () {
-          const bytes = _.toUpper(this.i.eml).replace(/-/g, '0').replace(/[^0-9A-F]/g, '')
-          if (bytes.length !== 2048) return
-          return _.chunk(bytes, 2).map(arrJoin)
+        dv () {
+          try {
+            const hex = this.h.eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
+            if (hex.length !== 2048) throw new Error('eml 長度有誤')
+            return new DataView(new Uint8Array(_.map(hex.match(/.{2}/g), b => _.parseInt(b, 16))).buffer)
+          } catch (err) {
+            return null
+          }
         },
         card () {
-          if (!this.bytes || !this.ready) return {}
-          const bytes = this.bytes
-          const credit = btoTxn(bytes.slice(160, 176)) // 最近加值交易
-          const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16))), ['time'])
+          if (!this.dv || !this.ready) return {}
+          const dv = this.dv
+          const credit = this.getTxn(160) // 最近加值交易
+          const deducts = _.sortBy(_.map([16, 17, 18, 20, 21, 22], blk => this.getTxn(blk << 4)), ['time'])
 
-          // 轉乘交易紀錄 Usage TXN Record for Transfer
-          const xfers = _.map([13, 14], blk => btoTxn(bytes.slice(blk * 16, blk * 16 + 16)))
-          const xfer = {
-            ..._.maxBy(xfers, 'tsqnUint'),
-            xfer1: btoXfer(bytes[205]), // 轉乘前群組
-            xfer2: btoXfer(bytes[204]), // 轉乘後群組
-          }
+          // 轉乘群組
+          const xferGroups = _.keyBy(_.map([12, 26], blk => this.getXferGroup(blk << 4)), 'tsqn')
+          // 轉乘交易紀錄 Usage TXN Record for Transfer (S3B0, S6B2)
+          const xfers = _.sortBy(_.map([
+            { txn: 13, group: 12 },
+            { txn: 14, group: 26 },
+          ], blk => ({
+            ...this.getXferGroup((blk.group << 4) + 12),
+            ...this.getTxn(blk.txn << 4),
+          })), ['time'])
 
           // 公車上下車紀錄
-          const buses = _.map([45, 46], blk => btoBus(bytes.slice(blk * 16, blk * 16 + 16)))
+          const buses = _.map([45, 46], blk => this.getBus(blk << 4))
+          // 台北捷運
+          const mrts = _.sortBy(_.filter(_.map([29, 30, 49, 50], blk => this.getMrts(blk << 4))), 'time')
 
           return {
-            area: btoArea(bytes[90]), // 區碼
-            autoload: btoUint(bytes.slice(81, 83)), // 自動加值
-            balance: btoInt(bytes.slice(144, 147)), // 餘額
-            bank: `0x${bytes[91]}`, // 銀行編號
+            area: this.getAreaCode(90), // 區碼
+            autoload: dv.getUint16(81, true), // 自動加值
+            balance: this.getInt24(144, true), // 餘額
+            bank: this.getBankCode(91), // 加值銀行
             buses, // 公車上下車紀錄
             credit, // 最近加值交易
             deducts, // 最近扣款交易
-            exp: btoDatetimeStr(bytes.slice(73, 77)), // 有效時間
-            issued: btoDatetimeStr(bytes.slice(69, 73)), // 製造時間
-            tsqn: `0x${arrRevJoin(bytes.slice(192, 194))} (${btoUint(bytes.slice(192, 194))})`, // 交易序號
-            type: btoCardType(bytes[93]), // 卡別
-            uid: arrRevJoin(bytes.slice(0, 4)), // 卡片編號
-            xfer, // 轉乘交易紀錄
+            exp: this.unixToStr(dv.getUint32(73, true) - 28800), // 有效時間
+            issued: this.unixToStr(dv.getUint32(69, true) - 28800), // 製造時間
+            mrts, // 捷運進出站紀錄
+            tsqn: `0x${this.getHex(192, 2, true)} (${dv.getUint16(192, true)})`, // 交易序號
+            type: this.getCardType(93), // 卡別
+            uid: this.getHex(0, 4, true), // 卡片編號
+            usageControl: this.getUsageControl(24), // 票卡功能開關
+            xfers, // 轉乘交易紀錄
             quota: {
-              daily: btoUint(bytes.slice(83, 85)), // 日限額金額
-              date: btoDateStr(bytes.slice(1003, 1005)), // 日限額日期
-              once: btoUint(bytes.slice(85, 87)), // 日限額金額
-              used: btoUint(bytes.slice(1005, 1008)), // 日限額金額
+              daily: dv.getUint16(83, true), // 日限額金額
+              date: this.easycardDateToStr(dv.getUint16(1003, true)), // 日限額日期
+              once: dv.getUint16(85, true), // 日限額金額
+              used: this.getUint24(1005, true), // 日限額金額
             },
             profile: { // 身份別與到期時間
-              exp: btoDatetimeStr(bytes.slice(961, 965)),
-              type: btoProfile(bytes[960]),
+              exp: this.unixToStr(dv.getUint32(961, true) - 28800),
+              type: this.getProfile(960),
             },
           }
         },
       },
       methods: {
-        async initSploc () {
-          const rows = await getCsv('https://gist.githubusercontent.com/taichunmin/f4699905e583354b2cbd1a6e67484235/raw/sp_loc_mapping.csv')
-          this.$set(this.cached, 'sploc', _.fromPairs(_.map(rows, r => [`${uintToB(r.spId)}${uintToB(r.locId)}`, {
-            provider: _.trim(r.spName),
-            location: _.trim(r.locName),
-          }])))
+        async init () {
+          try {
+            await Promise.all([
+              this.initSploc(), // 讀取 sp_loc_mapping.csv
+              this.initMappingJson5(), // 讀取 mapping.json5
+            ])
+          } catch (err) {
+            console.error(err)
+            Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
         },
+        async initSploc () {
+          const rows = await this.getCsv(`${URL_GIST}/sp_loc_mapping.csv`)
+          const sploc = {}
+          _.each(rows, row => {
+            _.setWith(sploc, `${row.spId}.${row.locId}`, { provider: _.trim(row.spName), location: _.trim(row.locName) }, Object)
+          })
+          this.$set(this.cached, 'sploc', sploc)
+        },
+        async initMappingJson5 () {
+          const json5 = JSON5.parse(_.get(await axios.get(`${URL_GIST}/mapping.json5`), 'data'))
+          _.each(json5, (val, key) => this.$set(this.cached, key, val))
+        },
+        async getCsv (url, cachetime = 3e4) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: _.floor(Date.now() / cachetime) },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        getHex (byteOffset, byteLength, littleEndian = false) {
+          const arr = [...new Uint8Array(this.dv.buffer, byteOffset, byteLength)] // reverse 不可以改到原始資料
+          if (littleEndian) arr.reverse()
+          return _.map(arr, b => `0${b.toString(16)}`.slice(-2)).join('')
+        },
+        getInt24 (byteOffset, littleEndian = false) {
+          return Number(BigInt.asIntN(24, BigInt(`0x${this.getHex(byteOffset, 3, littleEndian)}`)))
+        },
+        getUint24 (byteOffset, littleEndian = false) {
+          return Number(BigInt.asUintN(24, BigInt(`0x${this.getHex(byteOffset, 3, littleEndian)}`)))
+        },
+        getTxn (byteOffset) { // 16 bytes
+          const dv = this.dv
+          return {
+            ...this.getSpLoc(byteOffset + 10, byteOffset + 11),
+            amount: dv.getInt16(byteOffset + 6, true),
+            device: `0x${this.getHex(byteOffset + 12, 4, true)}`,
+            ev: dv.getInt16(byteOffset + 8, true),
+            oldXferGroup: `0x${this.getHex(byteOffset + 10, 1)}`,
+            time: this.unixToStr(dv.getUint32(byteOffset + 1, true) - 28800),
+            tsqn: `0x${this.getHex(byteOffset, 1)}`,
+            tsqnUint: dv.getUint8(byteOffset),
+            type: this.getTxnType(byteOffset + 5),
+          }
+        },
+        getBus (byteOffset) {
+          const dv = this.dv
+          return {
+            agent: `0x${this.getHex(byteOffset + 3, 2, true)}`,
+            line: `0x${this.getHex(byteOffset + 5, 2)}`,
+            time: this.unixToStr(dv.getUint32(byteOffset + 7, true) - 28800),
+            station: dv.getUint8(byteOffset + 11),
+            zone: dv.getUint8(byteOffset + 12),
+          }
+        },
+        getMrts (byteOffset) { // 捷運
+          const dv = this.dv
+          const unix = dv.getUint32(byteOffset + 9, true)
+          if (!unix) return
+          const sploc = {
+            0: _.get(this.cached, 'sploc.2', {}),
+            100: _.get(this.cached, 'sploc.100', {}),
+            103: _.get(this.cached, 'sploc.103', {}),
+            105: _.get(this.cached, 'sploc.105', {}),
+            107: _.get(this.cached, 'sploc.107', {}),
+            200: _.get(this.cached, 'sploc.200', {}),
+          }
+          const sp = dv.getUint8(byteOffset + 15)
+          const loc = dv.getUint8(byteOffset + 4)
+          return {
+            ..._.get(sploc, `${sp}.${loc}`, { provider: `${sp}`, location: `${loc}` }), // 業者 + 站點
+            amount: dv.getUint16(byteOffset + 6), // 捷運累計金額
+            count: dv.getUint8(byteOffset + 5), // 捷運累計次數
+            time: this.unixToStr(unix - 28800),
+            type: '出進'[dv.getUint8(byteOffset + 3)] + '站', // 進出站
+          }
+        },
+        unixToStr (unix) {
+          return dayjs.unix(unix).format('YYYY-MM-DD HH:mm:ss')
+        },
+        easycardDateToStr (u16) {
+          if (u16 < 1) return '無資料'
+          return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
+        },
+        getSpLoc (byteOffsetSp, byteOffsetLoc) {
+          const sploc = _.get(this.cached, 'sploc', {})
+          const dv = this.dv
+          const [sp, loc] = [dv.getUint8(byteOffsetSp), dv.getUint8(byteOffsetLoc)]
+          return _.get(sploc, `${sp}.${loc}`) || _.get(sploc, `${sp}.0`) || { provider: `${sp}`, location: `${loc}` }
+        },
+        getUsageControl (byteOffset) {
+          const dv = this.dv
+          const FLAG_NAMES = ['已啟用', '被封鎖', '已退卡', '自動加值', 'Credit']
+          const flags = `00000${dv.getUint8(byteOffset).toString(2)}`.slice(-5).split('').reverse()
+          return _.join(_.filter(FLAG_NAMES, (v, k) => flags[k] === '1'))
+        },
+        getXferGroup (byteOffset) {
+          return {
+            before: this.getXferCode(byteOffset), // LSB byte 轉乘前群組
+            after: this.getXferCode(byteOffset + 1), // MSB byte 轉乘後群組
+          }
+        },
+        getAreaCode: window.createGetMappingOrHexFn('cached.areaCodes'),
+        getAuthProfile: window.createGetMappingOrHexFn('cached.authProfiles'),
+        getBankCode: window.createGetMappingOrHexFn('cached.bankCodes'),
+        getCardType: window.createGetMappingOrHexFn('cached.cardTypes'),
+        getProfile: window.createGetMappingOrHexFn('cached.profiles'),
+        getTxnType: window.createGetMappingOrHexFn('cached.txnTypes'),
+        getXferCode: window.createGetMappingOrHexFn('cached.xferCodes'),
       },
     })

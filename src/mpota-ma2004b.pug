@@ -1,0 +1,806 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '微程式 OTA 工具 MA2004B'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content=title)
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/mpota-ma2004b.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .card .input-group-sm .input-group-text
+        letter-spacing: -1px
+        min-width: 4.5rem
+
+block content
+  #app.my-3.container-fluid(v-cloak, style="max-width: 760px")
+    h3.mb-3.text-center= title
+    .card.mb-4
+      .card-body.text-monospace
+        h5.card-title.my-0 設定值
+        .was-validated
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 參數清單#[br]CSV
+            textarea.form-control(rows="4", inputmode="url", pattern=".+", required, v-model="h.ma2004bCsv")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 回報金鑰
+            input.form-control(type="password", maxlength="32", inputmode="url", pattern="\\w{32}", required, v-model="h.secret", placeholder="Beacon 安裝回報所需的金鑰")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend
+              span.input-group-text.justify-content-end 產品序號
+            input.form-control(type="text", maxlength="13", inputmode="url", pattern="\\w{13}", required, v-model="h.sn", placeholder="留空代表從藍牙讀取")
+        .form-check.mt-2
+          input.form-check-input(type="checkbox", id="h-autoNext", v-model="h.autoNext", :disabled="!h.sn")
+          label.form-check-label(for="h-autoNext") 產品參數更新成功後自動換下一筆
+    .card.mb-4
+      .card-body.text-monospace
+        h5.card-title 操作
+        button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnUploadFirmware") #[span.fa.fa-fw.fa-cloud-upload] 執行韌體更新
+        button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnUpdateSetting") #[span.fa.fa-fw.fa-cogs] 更新產品參數
+        button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 重設本頁資料
+    .card.mb-4
+      .card-header #[span.fa.fa-fw.fa-flag] Beacon 安裝回報
+      ul.list-group.list-group-flush.text-monospace(v-if="h.registers.length")
+        li.list-group-item.px-3.py-2.d-flex.flex-column(v-for="row in h.registers", :key="row.sn")
+          small.text-muted {{ row.time }}
+          .mb-2 產品序號 {{ row.sn }}
+          a.mb-2.btn.btn-outline-primary(v-for="hwid in row.hwids", :key="hwid", target="_blank", :href="getBeaconRegisterUrl(hwid)") 回報 {{ hwid }}
+      .card-body(v-else) 無資料
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script.
+    const ERRCODE_08 = {
+      2001: '低電量無法更新',
+      2002: '韌體型號不符',
+      2003: '資料傳輸方式有誤',
+      2004: '更新流程有誤',
+      4001: '更新檔寫入失敗',
+      4002: '更新檔讀取失敗',
+      4003: '資料清除失敗',
+      8001: '更新檔驗證失敗 8001',
+      8002: '更新檔驗證失敗 8002',
+      8003: '更新檔驗證失敗 8003',
+    }
+    window.errToPlainObj = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.pick(err, ERROR_KEYS)
+    })()
+    window.htmlEscape = (() => {
+      const ecmap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }
+      return str => str.replace(/[&<>"']/g, c => ecmap[c])
+    })()
+    window.encodeBase64url = str => {
+      if (!_.isInteger(str.sigBytes)) str = CryptoJS.enc.Utf8.parse(`${str}`)
+      return CryptoJS.enc.Base64.stringify(str).replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_', '=': '' }, c))
+    }
+    window.hs256Base64url = (msg, secret) => {
+      if (!_.isString(msg)) throw new Error('invalid msg')
+      if (!_.isString(secret) || !secret) throw new Error('invalid secret')
+      return window.encodeBase64url(CryptoJS.HmacSHA256(msg, secret))
+    }
+    const sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        bleCharNotify: null,
+        bleCharWrite: null,
+        bleService: null,
+        device: null,
+        fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_r3.bin',
+        model: 'MA2004B',
+        otaEntered: 0,
+        uuidNotify: '7e400003-b5a3-f393-e0a9-e50e24dcca9e',
+        uuidService: '7e400001-b5a3-f393-e0a9-e50e24dcca9e',
+        uuidWrite: '7e400002-b5a3-f393-e0a9-e50e24dcca9e',
+        version: 'v1_0_r3',
+        h: {
+          autoNext: true,
+          ma2004bCsv: '',
+          registers: [],
+          secret: '',
+          sn: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnUploadFirmware () {
+          try {
+            this.showLoading('請稍候', '搜尋裝置及下載韌體中…')
+            const [ackFreq, blockSize] = [16, 16]
+            let fw
+            await Promise.all([
+              this.bleSearchDevice(),
+              (async () => {
+                fw = await _.get(await axios.get(this.fw, {
+                  params: { cachebust: _.floor(Date.now() / 864e5) },
+                  responseType: 'blob',
+                }), 'data').arrayBuffer()
+                this.logTime(`韌體更新檔下載成功，大小為 ${fw.byteLength} bytes`)
+
+                // padFF
+                const fwPadLen = blockSize - (fw.byteLength % blockSize)
+                if (fwPadLen < blockSize) {
+                  const fwNew = new ArrayBuffer(fw.byteLength + fwPadLen)
+                  new Uint8Array(fwNew).set(new Uint8Array(fw))
+                  new Uint8Array(fwNew, fw.byteLength).fill(0xff)
+                  fw = fwNew
+                  this.logTime(`韌體更新檔後面填充了 ${fwPadLen} bytes`)
+                }
+              })(),
+            ])
+
+            this.showLoading('請稍候', '取得裝置資訊中…')
+            const info = await this.bleGetFirmwareUpdateInfo(this.model)
+            if (info.version === this.version) {
+              const confirm = await Swal.fire({
+                cancelButtonColor: '#3085d6',
+                cancelButtonText: '取消更新',
+                confirmButtonColor: '#d33',
+                confirmButtonText: '強制更新',
+                focusCancel: true,
+                icon: 'warning',
+                reverseButtons: true,
+                showCancelButton: true,
+                text: `韌體版本已經是 ${info.version}，是否強制更新？`,
+              })
+              if (!confirm.value) return
+            }
+
+            this.showLoading('請稍候', '正在上傳韌體…')
+            const blockCnt = fw.byteLength / blockSize
+            this.logTime(`設定韌體傳輸參數: 確認頻率 ${ackFreq}，每個封包 ${blockSize} bytes，共 ${blockCnt} 個封包`)
+            await this.bleUploadFirmwareStep1(ackFreq, blockSize, blockCnt)
+
+            const fnUpdateProgress = (() => {
+              const cached = { max: blockCnt }
+              return den => {
+                const nowts = Date.now()
+                if (_.toSafeInteger(cached.expiredAt) >= nowts) return
+                cached.expiredAt = nowts + 5e3
+                den = Math.min(Math.max(0, den), cached.max)
+                const percent = den === cached.max ? 100 : _.floor(den / cached.max * 100)
+                this.showLoading('韌體更新進度', `${den} / ${cached.max} (${percent}%)`)
+              }
+            })()
+            for (let i = 0; i < blockCnt; i++) {
+              fnUpdateProgress(i)
+              const isAck = (i + 1) % ackFreq === 0
+              const res = await this.bleUploadFirmwareStep2(fw, i * blockSize, blockSize, isAck)
+              if (!isAck) continue
+
+              // 檢查 crc
+              const crcLen = ackFreq * blockSize
+              const crcStart = (i + 1 - ackFreq) * blockSize
+              const crc = _.reduce(new Uint8Array(fw, crcStart, crcLen), (crc, u) => crc ^ u, 0)
+              if (crc !== res.crc) throw new Error(`crc 驗證失敗: crcStart = ${crcStart}, crcLen = ${crcLen}, crc = ${crc}, res.crc = ${res.crc}`)
+            }
+
+            await this.bleUploadFirmwareStep3()
+            await Swal.fire({ icon: 'success', title: '韌體更新成功' })
+          } catch (err) {
+            console.error(window.errToPlainObj(err))
+            await Swal.fire({ icon: 'error', title: '韌體更新失敗', text: err.message })
+          } finally {
+            await this.bleDisconnect()
+          }
+        },
+        async btnUpdateSetting () {
+          const ctx = {}
+          try {
+            this.showLoading('請稍候', '搜尋裝置及下載參數清單中…')
+            let ma2004bs = []
+            await Promise.all([
+              this.bleSearchDevice(),
+              (async () => {
+                ma2004bs = await this.fetchMa2004bs()
+                this.logTime(`參數清單中有 ${ma2004bs.length} 筆紀錄`)
+              })(),
+            ])
+
+            // 檢查產品序號
+            this.showLoading('請稍候', '核對產品序號中…')
+            let sn = this.h.sn
+            if (!this.isValidSn(sn)) {
+              this.logTime('嘗試從藍牙讀取產品序號')
+              sn = await this.bleGetSn() // 嘗試從藍牙讀取
+            }
+            if (!this.isValidSn(sn)) throw new Error(`產品序號有誤: ${sn}`)
+            this.logTime(`產品序號為 ${sn}`)
+            ctx.after = _.find(ma2004bs, item => item.sn === sn)
+            if (!ctx.after) throw new Error('參數清單中找不到該產品序號')
+
+            // 讀取之前的產品參數
+            this.showLoading('請稍候', '更新參數中…')
+            ctx.before = await this.bleGetBeacons()
+            // 如果 beacon 參數一樣就繼承 timestamp
+            for (let i = 0; i < 3; i++) {
+              let isEqual = true
+              _.each(['hwid', 'vendorKey', 'lotKey'], k => {
+                if (ctx.after[`${k}${i}`] !== ctx.before[`${k}${i}`]) isEqual = false
+              })
+              if (!isEqual || BigInt('0x' + ctx.before[`timestamp${i}`]) < BigInt('0x' + ctx.after[`timestamp${i}`])) continue
+              this.logTime(`繼承 timestamp${i}`)
+              ctx.after[`timestamp${i}`] = ctx.before[`timestamp${i}`]
+            }
+            await this.bleSetBeacons(ctx.after)
+            await this.bleSetTxPower(0) // +4 dbm
+            await this.bleSetAdvInterval(243) // 243 * 0.625 = 151 ms
+            this.logTime(`產品序號 ${sn} 參數更新成功`)
+
+            // 安裝回報
+            const registers = [
+              {
+                sn: ctx.after.sn,
+                time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                hwids: _.filter(_.times(3, i => {
+                  const mode = _.toSafeInteger(_.get(ctx, `after.mode${i}`))
+                  const hwid = mode === 2 ? _.get(ctx, `after.lotKey${i}`).slice(0, 10) : _.get(ctx, `after.hwid${i}`)
+                  if (!hwid || hwid === '0000000000') return
+                  return hwid
+                })),
+              },
+              ..._.get(this, 'h.registers', []),
+            ]
+            this.$set(this.h, 'registers', _.uniqBy(registers, 'sn').slice(0, 3))
+
+            // 自動換下一筆
+            if (this.h.sn && this.h.autoNext) {
+              const idx = ma2004bs.indexOf(ctx.after)
+              const nextSn = _.get(ma2004bs, [idx + 1, 'sn'])
+              if (nextSn) this.h.sn = nextSn
+            }
+
+            await Swal.fire({ icon: 'success', title: '參數更新成功', text: `產品序號 ${sn}` })
+          } catch (err) {
+            console.error(window.errToPlainObj(err))
+            await Swal.fire({ icon: 'error', title: '參數更新失敗', text: err.message })
+          } finally {
+            await this.bleDisconnect()
+            console.log('ctx = ', ctx)
+            // TODO: 燒錄紀錄到 Google Forms
+          }
+        },
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設資料',
+              focusCancel: true,
+              icon: 'warning',
+              reverseButtons: true,
+              showCancelButton: true,
+              text: '是否重設本頁面的資料？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+        fetchMa2004bs: (function () {
+          const cached = {}
+          return async function () {
+            const nowts = Date.now()
+            if (!this.h.ma2004bCsv) throw new Error('請填寫參數清單 CSV 網址')
+            if (cached.url !== this.h.ma2004bCsv || _.toSafeInteger(cached.expiredAt) < nowts) {
+              cached.cache = await this.fetchCsvCors(this.h.ma2004bCsv)
+              cached.url = this.h.ma2004bCsv
+              cached.expired = nowts + 36e5 // 1hr
+            }
+            return cached.cache
+          }
+        })(),
+        async fetchCsvCors (url, cachetime = 3e5) {
+          url = new URL(url)
+          url.searchParams.set('cachebust', _.floor(Date.now() / cachetime))
+          const csv = _.trim(_.get(await axios.get('https://us-central1-youbike2-linebot.cloudfunctions.net/cors-anywhere', {
+            params: { u: url.href },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        bleNewRequest80 ({ ack = true, cmd, len = 0 }) {
+          if (!_.inRange(cmd, 0, 0x100)) throw new Error('cmd 有誤')
+          if (!_.inRange(len, 0, 0x4000)) throw new Error('len 有誤')
+          const buffer = new ArrayBuffer(len + 4)
+          const req = {
+            ack,
+            body: new DataView(buffer, 4),
+            buffer,
+            frame: new DataView(buffer),
+            len,
+          }
+          req.frame.setUint8(0, 0x80) // Byte 0: sof
+          req.frame.setUint16(1, (ack ? 0x8000 : 0) + len, true) // Byte 1~2: len + flag, littleEndian
+          req.frame.setUint8(3, cmd)
+          return req
+        },
+        async bleGetFirmwareUpdateInfo (model) {
+          if (!_.isString(model)) throw new Error('model 有誤')
+          const bufModel = (new TextEncoder()).encode(model).buffer
+          const req = this.bleNewRequest80({ cmd: 0xf0, len: bufModel.byteLength })
+          new Uint8Array(req.buffer, 4).set(new Uint8Array(bufModel)) // 複製 model
+          const res = await this.bleSendRequest({ req })
+          if (res.len === 20 && _.sumBy(new Uint8Array(res.buffer, 4), n => n === 0xff) === 20) throw new Error('錯誤的裝置型號')
+          return {
+            updatedCnt: res.body.getUint32(0),
+            version: (new TextDecoder()).decode(res.buffer.slice(8)),
+          }
+        },
+        async bleUploadFirmwareStep1 (ackFreq, blockSize, blockCnt) {
+          if (!_.inRange(ackFreq, 0, 0x100)) throw new Error('ackFreq 必須介於 0x1 和 0xff 之間')
+          if (!_.inRange(blockSize, 0x4, 0x4000)) throw new Error('blockSize 必須介於 0x4 和 0x3fff 之間')
+          if (!_.inRange(blockCnt, 0, 0x100000000)) throw new Error('blockCnt 有誤')
+          const req = this.bleNewRequest80({ cmd: 0xf1, len: 8 })
+          req.body.setUint8(0, 0x01) // Byte 4: 啟用更新模式，固定值
+          req.body.setUint8(1, ackFreq) // Byte 5: 確認頻率
+          req.body.setUint16(2, blockSize) // Byte 6~7: 每次封包大小
+          req.body.setUint32(4, blockCnt) // Byte 8~11: 封包總數
+          const res = await this.bleSendRequest({ req, timeout: 22e3 })
+          const parsed = {
+            code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
+            ackFreq: res.body.getUint8(2), // 確認頻率
+            blockSize: res.body.getUint16(3), // 每次封包大小
+            blockCnt: res.body.getUint32(5), // 封包總數
+          }
+          if (parsed.code !== '0001') throw new Error(ERRCODE_08[parsed.code] || `未知錯誤 ${parsed.code}`)
+          if (ackFreq !== parsed.ackFreq) throw new Error('ackFreq 設定失敗')
+          if (blockSize !== parsed.blockSize) throw new Error('blockSize 設定失敗')
+          if (blockCnt !== parsed.blockCnt) throw new Error('blockCnt 設定失敗')
+          return parsed
+        },
+        bleUploadFirmwareStep2: (() => {
+          const cached = {}
+          return async function (file, start, len, ack) {
+            if (!(file instanceof ArrayBuffer)) throw new Error('file 的型態有誤')
+            if (!_.isSafeInteger(start) || start < 0) throw new Error('file 的 start 有誤')
+            if (!_.isSafeInteger(len) || len < 1) throw new Error('file 的 len 有誤')
+            if (start + len > file.byteLength) throw new Error('start + len 超過 file 的大小')
+            // 把 req 快取
+            const cachedKey = `reqs.${ack ? 'y' : 'n'}${len}`
+            if (!_.get(cached, cachedKey)) _.set(cached, cachedKey, this.bleNewRequest80({ ack, cmd: 0xf2, len }))
+            const req = _.get(cached, cachedKey)
+            new Uint8Array(req.buffer, 4).set(new Uint8Array(file, start, len)) // 複製 file 中指定的範圍
+            const res = await this.bleSendRequest({ req, verbose: false })
+            if (!ack) return
+            const parsed = {
+              code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
+              crc: res.body.getUint8(2),
+            }
+            if (parsed.code !== '0001') throw new Error(ERRCODE_08[parsed.code] || `未知錯誤 ${parsed.code}`)
+            return parsed
+          }
+        })(),
+        async bleUploadFirmwareStep3 () {
+          const req = this.bleNewRequest80({ cmd: 0xf3 })
+          const res = await this.bleSendRequest({ req })
+          const parsed = {
+            code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
+          }
+          if (parsed.code !== '0001') throw new Error(ERRCODE_08[parsed.code] || `未知錯誤 ${parsed.code}`)
+          return parsed
+        },
+        bleNewRequest25 ({ cmd, len = 0 }) {
+          if (!_.inRange(cmd, 0, 0x100)) throw new Error('cmd 有誤')
+          if (!_.isSafeInteger(len) || len < 0) throw new Error('len 有誤')
+          const buffer = new ArrayBuffer(len + 3)
+          const req = {
+            ack: true, // ack 固定為 true
+            body: new DataView(buffer, 2, len),
+            buffer,
+            frame: new DataView(buffer),
+            len,
+          }
+          req.frame.setUint8(0, 0x25) // Byte 0: sof
+          req.frame.setUint8(1, cmd) // Byte 1: cmd
+          req.frame.setUint8(len + 2, 0x2b) // Byte len + 2: etx
+          return req
+        },
+        async bleGetFirmwareVersion () {
+          const req = this.bleNewRequest25({ cmd: 0x3b })
+          const res = await this.bleSendRequest({ req })
+          return (new TextDecoder()).decode(res.buffer.slice(2, res.buffer.byteLength - 1))
+        },
+        async bleGetTxPower () {
+          const req = this.bleNewRequest25({ cmd: 0x35 })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('txPower 讀取失敗')
+          return res.body.getUint8(0) // txPower
+        },
+        async bleGetAdvInterval () {
+          const req = this.bleNewRequest25({ cmd: 0x36 })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('advInterval 讀取失敗')
+          return res.body.getUint32(0) // advInterval 的實際數值為讀取之數值乘上 0.625
+        },
+        async bleGetSn () {
+          const req = this.bleNewRequest25({ cmd: 0x37 })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('sn 讀取失敗')
+          return (new TextDecoder()).decode(res.buffer.slice(2, res.buffer.byteLength - 2)).replace(/_/g, '')
+        },
+        async bleGetHwidV1 () {
+          const req = this.bleNewRequest25({ cmd: 0x38 })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('hwid 讀取失敗')
+          return _.times(5, i => _.padStart(res.body.getUint8(i).toString(16), 2, '0')).join('')
+        },
+        async bleGetLotKeyV1 () {
+          const req = this.bleNewRequest25({ cmd: 0x39 })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 讀取失敗')
+          return _.times(8, i => _.padStart(res.body.getUint8(i).toString(16), 2, '0')).join('')
+        },
+        async bleGetVendorKeyV1 () {
+          const req = this.bleNewRequest25({ cmd: 0x3a })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 讀取失敗')
+          return _.times(4, i => _.padStart(res.body.getUint8(i).toString(16), 2, '0')).join('')
+        },
+        async bleGetModeV1 () {
+          const req = this.bleNewRequest25({ cmd: 0x3d })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('mode 讀取失敗')
+          return res.body.getUint8(0)
+        },
+        async bleGetHwidV2 (channel) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          const req = this.bleNewRequest25({ cmd: 0x51, len: 1 })
+          req.body.setUint8(0, channel)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('hwid 讀取失敗')
+          if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
+          return _.times(5, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+        },
+        async bleGetLotKeyV2 (channel) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          const req = this.bleNewRequest25({ cmd: 0x52, len: 1 })
+          req.body.setUint8(0, channel)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 讀取失敗')
+          if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
+          return _.times(8, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+        },
+        async bleGetVendorKeyV2 (channel) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          const req = this.bleNewRequest25({ cmd: 0x53, len: 1 })
+          req.body.setUint8(0, channel)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('vendorKey 讀取失敗')
+          if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
+          return _.times(4, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+        },
+        async bleGetTimestampV2 (channel) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          const req = this.bleNewRequest25({ cmd: 0x54, len: 1 })
+          req.body.setUint8(0, channel)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('timestamp 讀取失敗')
+          if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
+          return _.times(8, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+        },
+        async bleGetModeV2 () {
+          const req = this.bleNewRequest25({ cmd: 0x55 })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('mode 讀取失敗')
+          return _.times(5, i => res.body.getUint8(i))
+        },
+        async bleGetBeacons () {
+          const setting = { sn: await this.bleGetSn() }
+          const modes = await this.bleGetModeV2()
+          for (let i = 0; i < 3; i++) {
+            setting[`hwid${i}`] = await this.bleGetHwidV2(i)
+            setting[`lotKey${i}`] = await this.bleGetLotKeyV2(i)
+            setting[`mode${i}`] = _.get(modes, i, 0)
+            setting[`timestamp${i}`] = await this.bleGetTimestampV2(i)
+            setting[`vendorKey${i}`] = await this.bleGetVendorKeyV2(i)
+          }
+          return setting
+        },
+        async bleGetBatteryVoltage () {
+          const req = this.bleNewRequest25({ cmd: 0x3c })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('battery voltage 讀取失敗')
+          return {
+            voltage: res.body.getUint16(0),
+            battery: res.body.getUint8(2),
+          }
+        },
+        async bleSetTxPower (txPower) {
+          if (!_.inRange(txPower, 0, 8)) throw new Error('txPower 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x25, len: 1 })
+          req.body.setUint8(0, txPower)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('txPower 設定失敗')
+        },
+        async bleSetAdvInterval (advInterval) {
+          if (!_.isSafeInteger(advInterval)) throw new Error('advInterval 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x26, len: 4 })
+          req.body.setUint32(0, advInterval)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('advInterval 設定失敗')
+        },
+        async bleSetSn (sn) {
+          if (!this.isValidSn(sn)) throw new Error('sn 有誤')
+          sn = sn.replace(/^(.{7})(.{2})(.{4})$/, '$1_$2_$3')
+          const req = this.bleNewRequest25({ cmd: 0x27, len: 15 })
+          new Uint8Array(req.buffer, 2).set(new Uint8Array((new TextEncoder()).encode(sn).buffer))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('sn 設定失敗')
+        },
+        async bleSetHwidV1 (hwid) {
+          if (!_.isString(hwid) || hwid.length !== 10) throw new Error('hwid 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x28, len: hwid.length / 2 })
+          _.each(hwid.match(/.{2}/g), (hex, i) => req.body.setUint8(i, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('hwid 設定失敗')
+        },
+        async bleSetLotKeyV1 (lotKey) {
+          if (!_.isString(lotKey) || lotKey.length !== 16) throw new Error('lotKey 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x29, len: lotKey.length / 2 })
+          _.each(lotKey.match(/.{2}/g), (hex, i) => req.body.setUint8(i, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 設定失敗')
+        },
+        async bleSetVendorKeyV1 (vendorKey) {
+          if (!_.isString(vendorKey) || vendorKey.length !== 8) throw new Error('vendorKey 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x2a, len: vendorKey.length / 2 })
+          _.each(vendorKey.match(/.{2}/g), (hex, i) => req.body.setUint8(i, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('vendorKey 設定失敗')
+        },
+        async bleSetModeV1 (mode) {
+          if (!_.inRange(mode, 0, 3)) throw new Error('mode 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x2d, len: 4 })
+          req.body.setUint32(0, mode)
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('mode 設定失敗')
+        },
+        async bleSetHwidV2 (channel, hwid) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          if (!_.isString(hwid) || hwid.length !== 10) throw new Error('hwid 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x41, len: 1 + hwid.length / 2 })
+          req.body.setUint8(0, channel)
+          _.each(hwid.match(/.{2}/g), (hex, i) => req.body.setUint8(i + 1, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('hwid 設定失敗')
+        },
+        async bleSetLotKeyV2 (channel, lotKey) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          if (!_.isString(lotKey) || lotKey.length !== 16) throw new Error('lotKey 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x42, len: 1 + lotKey.length / 2 })
+          req.body.setUint8(0, channel)
+          _.each(lotKey.match(/.{2}/g), (hex, i) => req.body.setUint8(i + 1, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 設定失敗')
+        },
+        async bleSetVendorKeyV2 (channel, vendorKey) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          if (!_.isString(vendorKey) || vendorKey.length !== 8) throw new Error('vendorKey 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x43, len: 1 + vendorKey.length / 2 })
+          req.body.setUint8(0, channel)
+          _.each(vendorKey.match(/.{2}/g), (hex, i) => req.body.setUint8(i + 1, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('vendorKey 設定失敗')
+        },
+        async bleSetTimestampV2 (channel, timestamp) {
+          if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
+          if (!_.isString(timestamp) || timestamp.length !== 16) throw new Error('timestamp 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x44, len: 1 + timestamp.length / 2 })
+          req.body.setUint8(0, channel)
+          _.each(timestamp.match(/.{2}/g), (hex, i) => req.body.setUint8(i + 1, _.parseInt(hex, 16)))
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('timestamp 設定失敗')
+        },
+        async bleSetModeV2 (modes) {
+          if (!_.isArray(modes) || modes.length !== 5) throw new Error('modes 有誤')
+          const req = this.bleNewRequest25({ cmd: 0x45, len: modes.length })
+          _.each(modes, (mode, i) => {
+            if (!_.inRange(mode, 0, 3)) throw new Error(`modes[${i}] 必須介於 0 到 2 之間`)
+            req.body.setUint8(i, mode)
+          })
+          const res = await this.bleSendRequest({ req })
+          if (!res.body.getUint8(res.len - 1)) throw new Error('modes 設定失敗')
+        },
+        async bleSetBeacons (setting) {
+          await this.bleSetSn(setting.sn)
+          const modes = Array(5).fill(0)
+          for (let i = 0; i < 3; i++) {
+            await this.bleSetHwidV2(i, setting[`hwid${i}`])
+            await this.bleSetLotKeyV2(i, setting[`lotKey${i}`])
+            await this.bleSetTimestampV2(i, setting[`timestamp${i}`])
+            await this.bleSetVendorKeyV2(i, setting[`vendorKey${i}`])
+            modes[i] = setting[`mode${i}`]
+          }
+          await this.bleSetModeV2(modes)
+        },
+        isValidSn (sn) {
+          return _.isString(sn) && sn.length === 13
+        },
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability')
+        },
+        async bleSearchDevice () {
+          if (this.device) return
+          if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
+          this.device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [this.uuidService] }],
+          })
+          if (!this.device) throw new Error('未選擇裝置')
+          this.logTime(`裝置選擇成功, name = ${this.device.name}, id = ${this.device.id}`)
+        },
+        async bleEnsureConnected () {
+          const isConnected = () => _.get(this, 'device.gatt.connected')
+          if (isConnected()) return
+          const { uuidService, uuidWrite, uuidNotify } = this
+          await this.bleSearchDevice()
+
+          for (let i = 0; !isConnected() && i < 3; i++) {
+            try {
+              this.logTime(`嘗試連線至裝置 (第 ${i + 1} 次)`)
+              await this.device.gatt.connect()
+              await sleep(500)
+            } catch (err) {
+              console.error(window.errToPlainObj(err))
+            }
+          }
+          if (!isConnected()) throw new Error('裝置連線失敗')
+
+          this.device.addEventListener('gattserverdisconnected', this.bleOnDisconnect)
+          this.bleService = await this.device.gatt.getPrimaryService(uuidService)
+          this.bleCharWrite = await this.bleService.getCharacteristic(uuidWrite)
+          this.bleCharNotify = await this.bleService.getCharacteristic(uuidNotify)
+          this.bleCharNotify.addEventListener('characteristicvaluechanged', this.bleOnNotify)
+          await this.bleCharNotify.startNotifications()
+          this.logTime('裝置連線成功')
+        },
+        async bleDisconnect () {
+          if (!this.device) return
+          this.device.gatt.disconnect()
+          this.device = null
+        },
+        async bleOnDisconnect () {
+          this.logTime('裝置斷線')
+          this.otaEntered = 0
+          if (this.bleCharNotify) {
+            this.bleCharNotify.removeEventListener('characteristicvaluechanged', this.bleOnNotify)
+            this.bleCharNotify = null
+          }
+          if (this.bleCharWrite) this.bleCharWrite = null
+          if (this.bleService) this.bleService = null
+          if (this.device) {
+            this.device.removeEventListener('gattserverdisconnected', this.bleOnDisconnect)
+            if (_.get(this, 'device.gatt.connected')) this.device.gatt.disconnect()
+          }
+        },
+        getBeaconRegisterUrl (hwid) {
+          const secret = this.h.secret
+          if (!secret) return '#'
+          const json = JSON.stringify({ hwid })
+          const state = `${window.encodeBase64url(json)}.${window.hs256Base64url(json, secret)}`
+          return `https://lihi1.com/fHbeb/${state}`
+        },
+        bleOnNotify: (() => {
+          const responseParser = {
+            0x08: res => {
+              res.len = res.frame.getUint16(1, true) & 0x3fff
+              res.body = new DataView(res.buffer, 4)
+              if (res.len !== res.body.byteLength) throw new Error(`回傳資料長度有誤: len = ${res.len}, body.length = ${res.body.byteLength}`)
+              return res
+            },
+            0x26: res => {
+              res.len = res.buffer.byteLength - 3
+              res.body = new DataView(res.buffer, 2, res.len)
+              return res
+            },
+          }
+          return async function (event) {
+            const pendingKey = 'pending.bleSendRequest'
+            const buffer = _.get(event, 'target.value.buffer')
+            this.logTime(`收到回應 ${this.inspectBuffer(buffer)}`)
+            const res = { buffer, frame: new DataView(buffer) }
+            try {
+              const sof = res.frame.getUint8(0)
+              const parser = _.get(responseParser, sof)
+              if (!_.isFunction(parser)) throw new Error(`未知的 SOF: ${sof}`)
+              _.invoke(window, `${pendingKey}.resolve`, parser(res)) // 呼叫 resolve
+            } catch (err) {
+              err.response = res
+              this.logTime(err.message)
+              _.invoke(window, `${pendingKey}.reject`, err) // 呼叫 resolve
+            }
+          }
+        })(),
+        async bleSendRequest ({ req, timeout = 3000, verbose = true }) {
+          if (!(_.get(req, 'buffer') instanceof ArrayBuffer)) throw new Error('invalid req.buffer')
+          if (!(_.get(req, 'frame') instanceof DataView)) throw new Error('invalid req.frame')
+          const pendingKey = 'pending.bleSendRequest'
+          await this.bleEnsureConnected()
+          if (!this.otaEntered && req.frame.getUint8(0) === 0x25 && req.frame.getUint8(1) !== 0x3b) {
+            // 進入工程模式
+            const version = await this.bleGetFirmwareVersion()
+            if (version !== `${this.model}_${this.version}`) throw new Error(`韌體版本有誤: ${version}`)
+            for (let i = 1; i < 3; i++) await this.bleGetFirmwareVersion()
+            this.otaEntered = 1
+          }
+          if (verbose) this.logTime(`正在送出指令 ${this.inspectBuffer(req.buffer)}`)
+          try {
+            return await Promise.race([
+              (async () => {
+                await sleep(timeout)
+                throw new Error(`無回應 (${timeout}ms)`)
+              })(),
+              (async () => {
+                if (_.get(window, pendingKey)) throw new Error('有其他 BLE 指令正在執行')
+                const pending = req.ack ? new Promise((resolve, reject) => _.set(window, pendingKey, { resolve, reject })) : null // 把 resolve 跟 reject 丟到全域去
+                await this.bleCharWrite.writeValue(req.buffer) // 嘗試寫入 device
+                return await pending
+              })(),
+            ])
+          } finally {
+            _.set(window, pendingKey, null)
+          }
+        },
+        inspectBuffer (buf) {
+          buf = ArrayBuffer.isView(buf) ? buf.buffer : buf
+          return _.join(_.map(new Uint8Array(buf), num => _.padStart(num.toString(16), 2, '0')), ' ')
+        },
+        logTime (text) {
+          console.log(`[${dayjs().format('HH:mm:ss.SSS')}] ${text}`)
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

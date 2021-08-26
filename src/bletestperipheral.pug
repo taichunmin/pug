@@ -1,0 +1,121 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'ble-test-peripheral'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content=title)
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/bletestperipheral.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container-fluid(v-cloak, style="max-width: 760px")
+    h3.mb-3.text-center: a(target="_blank", href="https://play.google.com/store/apps/details?id=io.github.webbluetoothcg.bletestperipheral")= title
+    .card.mb-4
+      h5.card-header.text-white.bg-primary Battery Service
+      .card-body
+        .input-group.mb-3
+          .input-group-prepend: span.input-group-text Battery Level
+          input.form-control.text-right(readonly, :value="battery.level")
+        button.btn.btn-block.btn-outline-primary(type="button", v-if="!battery.device", @click="batteryRequestDevice") #[span.fa.fa-fw.fa-bluetooth] 搜尋裝置
+        button.btn.btn-block.btn-outline-danger(type="button", v-else, @click="batteryDisconnect") #[span.fa.fa-fw.fa-ban] 中斷連線
+
+block script
+  script.
+    window.errToPlainObj = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.pick(err, ERROR_KEYS)
+    })()
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        battery: {
+          device: null,
+          level: null,
+        },
+      },
+      methods: {
+        async batteryRequestDevice () {
+          try {
+            if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
+            this.showLoading('請稍候', '搜尋裝置中…')
+            const ctx = this.battery
+            ctx.device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['battery_service'] }] })
+            if (!ctx.device) throw new Error('未選擇裝置')
+            ctx.device.addEventListener('gattserverdisconnected', this.batteryOnDisconnect)
+            const server = await ctx.device.gatt.connect()
+            const service = await server.getPrimaryService('battery_service')
+            const characteristic = await service.getCharacteristic('battery_level')
+            const value = await characteristic.readValue()
+            ctx.level = value.getUint8(0)
+            characteristic.addEventListener('characteristicvaluechanged', this.batteryOnLevelNotify)
+            characteristic.startNotifications()
+            Swal.close()
+          } catch (err) {
+            console.error(window.errToPlainObj(err))
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async batteryOnLevelNotify (event) {
+          const ctx = this.battery
+          const value = _.get(event, 'target.value')
+          ctx.level = value.getUint8(0)
+          console.log(`batteryOnLevelNotify = ${ctx.level}`)
+        },
+        async batteryDisconnect () {
+          try {
+            const ctx = this.battery
+            if (_.get(ctx, 'device.gatt.connected')) ctx.device.gatt.disconnect()
+          } catch (err) {
+            console.error(window.errToPlainObj(err))
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async batteryOnDisconnect () {
+          const ctx = this.battery
+          ctx.device = null
+        },
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability')
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
