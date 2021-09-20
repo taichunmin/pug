@@ -1,0 +1,92 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'WebBLE Chameleon Tiny'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content=title)
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/webble-chameleon-tiny.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container-fluid(v-cloak, style="max-width: 760px")
+    h3.mb-3.text-center= title
+    .card.mb-4
+      .card-body.text-monospace
+        h5.card-title 操作
+        button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnTest") #[span.fa.fa-fw.fa-cogs] 執行測試
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        uuidCtrl: '51510004-7969-6473-6f40-6b6f6c6c6957',
+        uuidRecv: '51510003-7969-6473-6f40-6b6f6c6c6957',
+        uuidSend: '51510002-7969-6473-6f40-6b6f6c6c6957',
+        uuidServ: '51510001-7969-6473-6f40-6b6f6c6c6957',
+        h: {
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnTest () {},
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability')
+        },
+        async bleSearchDevice () {
+          if (this.device) return
+          if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
+          this.device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [this.uuidServ] }],
+          })
+          if (!this.device) throw new Error('未選擇裝置')
+          this.logTime(`裝置選擇成功, name = ${this.device.name}, id = ${this.device.id}`)
+        },
+        async bleEnsureConnected () {
+          const isConnected = () => _.get(this, 'device.gatt.connected')
+          if (isConnected()) return
+          const { uuidServ, uuidSend, uuidRecv } = this
+          await this.bleSearchDevice()
+
+          for (let i = 0; !isConnected() && i < 3; i++) {
+            try {
+              this.logTime(`嘗試連線至裝置 (第 ${i + 1} 次)`)
+              await this.device.gatt.connect()
+              await sleep(500)
+            } catch (err) {
+              console.error(window.errToPlainObj(err))
+            }
+          }
+          if (!isConnected()) throw new Error('裝置連線失敗')
+
+          this.device.addEventListener('gattserverdisconnected', this.bleOnDisconnect)
+          this.bleServ = await this.device.gatt.getPrimaryService(uuidServ)
+          this.bleCharSend = await this.bleServ.getCharacteristic(uuidSend)
+          this.bleCharRecv = await this.bleServ.getCharacteristic(uuidRecv)
+          this.bleCharRecv.addEventListener('characteristicvaluechanged', this.bleOnRecv)
+          await this.bleCharRecv.startNotifications()
+          this.logTime('裝置連線成功')
+        },
+        async bleOnRecv () {},
+      },
+    })
