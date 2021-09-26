@@ -1,0 +1,27 @@
+script.
+  // require lodash
+  class PN532 {
+    constructor () {
+      this.device = null
+      this.cmdPromise = null
+    }
+
+    newCommand (len = 0) {
+      if (!_.inRange(len, 0, 65)) throw new Error('invalid len')
+      const buffer = new ArrayBuffer(len + 3)
+      const cmd = {
+        buffer,
+        body: new DataView(buffer, 3),
+        len,
+        packet: new DataView(buffer),
+      }
+      return cmd
+    }
+
+    async execCommand ({ cmd, timeout = 1000 }) {
+      cmd.packet.setUint16(1, timeout)
+      const tmp = new Uint8Array(cmd.buffer)
+      tmp[0] = 0
+      for (let i = 0; i < tmp.length; i++) tmp[0] -= tmp[i]
+    }
+  }
