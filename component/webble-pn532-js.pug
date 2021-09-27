@@ -3,7 +3,48 @@ script.
   class PN532 {
     constructor () {
       this.device = null
-      this.cmdPromise = null
+      this.pending = null
+      this.uuidRecv = '6E400003-920D-490D-89D4-27EC924B558F'
+      this.uuidSend = '6E400002-920D-490D-89D4-27EC924B558F'
+      this.uuidServ = '6E400001-920D-490D-89D4-27EC924B558F'
+    }
+
+    async deviceSelect () {
+      if (this.device) return
+      if (!await this.getBluetoothAvailability()) throw new Error('WebBLE not supported')
+      this.device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [this.uuidServ] }],
+      })
+      if (!this.device) throw new Error('no device')
+      this.logTime(`device selected, name = ${this.device.name}, id = ${this.device.id}`)
+    }
+
+    deviceOnDisconnect () {}
+
+    async gattConnect () {
+      const isConnected = () => _.get(this, 'device.gatt.connected')
+      if (isConnected()) return
+
+      const { uuidServ, uuidSend, uuidRecv } = this
+      await this.deviceSelect()
+
+      for (let i = 0; !isConnected() && i < 3; i++) {
+        try {
+          this.logTime(`try to connect gatt (${i + 1})`)
+          await this.device.gatt.connect()
+          await sleep(500)
+        } catch (err) {
+          console.error(window.errToPlainObj(err))
+        }
+      }
+      if (!isConnected()) throw new Error('Failed to connect gatt')
+
+      this.device.addEventListener('gattserverdisconnected', this.onDisconnect)
+      this.service = await this.device.gatt.getPrimaryService(uuidServ)
+      this.charSend = await this.service.getCharacteristic(uuidSend)
+      this.charRecv = await this.service.getCharacteristic(uuidRecv)
+      this.charRecv.addEventListener('characteristicvaluechanged', this.onReceive)
+      await this.charRecv.startNotifications()
     }
 
     newCommand (len = 0) {
@@ -19,6 +60,8 @@ script.
     }
 
     async execCommand ({ cmd, timeout = 1000 }) {
+      await this.gattConnect()
+      // checksum
       cmd.packet.setUint16(1, timeout)
       const tmp = new Uint8Array(cmd.buffer)
       tmp[0] = 0
