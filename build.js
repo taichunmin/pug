@@ -18,6 +18,7 @@ exports.build = async () => {
     basedir: path.resolve(__dirname),
     baseurl: getBaseurl(),
     NODE_ENV: getenv('NODE_ENV', 'production'),
+    liffidFull: getenv('LIFFID_FULL', '1654046335-4BDKExAV'),
   }
 
   const htmlMinifierOptions = {

@@ -1,0 +1,96 @@
+extends /layout/liffv2
+
+block beforehtml
+  -
+    title = 'liff.scanCodeV2()'
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .form-group.mb-3
+      label liff.scanCode() 測試
+      .row.mx-n1.mb-3.d-flex
+        button.btn.flex-fill.mx-1.my-1(type="button", @click="btnScanCode", :class="btns[tests[0]]") #[i.fa.mr-1(:class="icons[tests[0]]")] V1
+        button.btn.flex-fill.mx-1.my-1(type="button", @click="btnScanCodeV2", :class="btns[tests[1]]") #[i.fa.mr-1(:class="icons[tests[1]]")] V2
+    .form-group.mb-3
+      label liff
+      .input-group.input-group-sm.mb-1(v-for="val, key in sdk")
+        .input-group-prepend: .input-group-text {{ key }}
+        input.form-control.text-right(readonly, :value="val")
+    .form-group.mb-3
+      label navigator.userAgent
+      textarea.form-control.form-control-sm(readonly, rows="6", :value="_.get(window, 'navigator.userAgent')")
+
+block script
+  script.
+    window.loginPromise = (async () => {
+      await liff.init({ liffId: '#{liffidFull}' })
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        await new Promise(resolve => {}) // 永遠不會結束的 Promise
+      }
+    })()
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        sdk: {
+          getLineVersion: '',
+          getOS: '',
+          getVersion: '',
+          isInClient: '',
+        },
+        tests: [0, 0],
+        icons: ['fa-question-circle', 'fa-check-circle', 'fa-times-circle'],
+        btns: ['btn-outline-dark', 'btn-success', 'btn-danger'],
+      },
+      async mounted () {
+        this.showLoading('請稍候', '網頁載入中')
+        await window.loginPromise
+        _.each([
+          ['getLineVersion'],
+          ['getOS'],
+          ['getVersion'],
+          ['isInClient'],
+        ], fn => {
+          this.$set(this.sdk, fn[0], JSON.stringify(_.invoke(liff, ...fn)))
+        })
+        Swal.close()
+      },
+      methods: {
+        async btnScanCode () {
+          try {
+            if (!liff.scanCode) throw new Error('liff.scanCode 不存在')
+            this.showLoading('請稍候', 'liff.scanCode()')
+            const text = _.get(await liff.scanCode(), 'value')
+            this.$set(this.tests, 0, 1)
+            await Swal.fire({ icon: 'success', title: '掃碼成功 V1', text })
+          } catch (err) {
+            console.log(err)
+            this.$set(this.tests, 0, 2)
+            await Swal.fire({ icon: 'error', title: '掃碼失敗 V1', text: err.message })
+          }
+        },
+        async btnScanCodeV2 () {
+          try {
+            if (!liff.scanCodeV2) throw new Error('liff.scanCodeV2 不存在')
+            this.showLoading('請稍候', 'liff.scanCodeV2()')
+            const text = _.get(await liff.scanCodeV2(), 'value')
+            this.$set(this.tests, 1, 1)
+            await Swal.fire({ icon: 'success', title: '掃碼成功 V2', text })
+          } catch (err) {
+            console.log(err)
+            this.$set(this.tests, 1, 2)
+            await Swal.fire({ icon: 'error', title: '掃碼失敗 V2', text: err.message })
+          }
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
