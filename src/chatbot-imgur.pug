@@ -1,0 +1,129 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'Imgur 上傳結果'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content=title)
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/webble-chameleon-tiny.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .input-group-sm
+        .form-control
+          letter-spacing: -1px
+        .input-group-text
+          letter-spacing: -1px
+          min-width: 5rem
+
+block content
+  #app.my-3.container-fluid.text-monospace(v-cloak, style="max-width: 760px")
+    .card.mb-3(v-if="imgur")
+      .card-body
+        h5.card-title= title
+        .input-group.input-group-sm.mt-2(v-for="val, name in copyables", @click="btnCopy(val)")
+          .input-group-prepend: span.input-group-text.justify-content-center {{ name }}
+          input.form-control.text-right(type="text", readonly, :value="val")
+      img.card-img-bottom(:src="imgur.link")
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-base64@2/base64.min.js")
+  script.
+    window.parseJsonOrDefault = (str, defaultValue) => {
+      try {
+        if (!_.isString(str) && !_.isBuffer(str)) return defaultValue
+        return JSON5.parse(str)
+      } catch (err) {
+        return defaultValue
+      }
+    }
+    window.errToPlainObj = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.pick(err, ERROR_KEYS)
+    })()
+    window.encodeBase64url = str => Base64.encode(str).replace(/[+/=]/g, c => _.get({ '+': '-', '/': '_', '=': '' }, c))
+    window.decodeBase64url = str => Base64.decode(str.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c)))
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        imgur: null,
+      },
+      async mounted () {
+        await this.init()
+      },
+      computed: {
+        copyables () {
+          const imgur = this.imgur
+          if (!imgur) return {}
+          return {
+            圖片網址: imgur.link,
+            Markdown: `![](${imgur.link})`,
+            HTML: `<img src="${imgur.link}">`,
+            圖片比例: `${imgur.width}:${imgur.height}`,
+            圖片大小: this.formatSize(imgur.size),
+            上傳時間: dayjs.unix(imgur.datetime).format('YYYY-MM-DD HH:mm:ss ZZ'),
+          }
+        },
+      },
+      methods: {
+        async init () {
+          try {
+            const imgur = this.paramBase64url('imgur')
+            if (imgur) this.$set(this, 'imgur', window.parseJsonOrDefault(imgur))
+          } catch (err) {
+            console.log(window.errToPlainObj(err))
+          }
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '已複製到剪貼簿' })
+        },
+        paramBase64url (key, defaultValue) {
+          const val = new URL(location).searchParams.get(key)
+          return _.isNil(val) ? defaultValue : window.decodeBase64url(val)
+        },
+        formatSize (size) {
+          const units = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+          for (let i = 0; i < units.length; i++) {
+            if (size < 1024) return `${_.round(size, 2)} ${units[i]}`
+            size /= 1024
+          }
+          return '錯誤'
+        },
+      },
+    })
