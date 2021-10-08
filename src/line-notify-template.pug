@@ -90,11 +90,11 @@ block script
     })(joi)
     window.joiMsg = (Joi => {
       const schema = Joi.object({
-        imageFullsize: Joi.string().trim().custom(window.joiCustomUrl).optional(),
-        imageThumbnail: Joi.string().trim().custom(window.joiCustomUrl).optional(),
+        imageFullsize: Joi.string().trim().custom(window.joiCustomUrl).empty('').optional(),
+        imageThumbnail: Joi.string().trim().custom(window.joiCustomUrl).empty('').optional(),
         message: Joi.string().min(1).max(1000).required(),
-        stickerId: Joi.number().integer().min(1).optional(),
-        stickerPackageId: Joi.number().integer().min(1).optional(),
+        stickerId: Joi.number().integer().min(1).empty('').optional(),
+        stickerPackageId: Joi.number().integer().min(1).empty('').optional(),
       }).and('imageFullsize', 'imageThumbnail').and('stickerId', 'stickerPackageId')
       const options = { abortEarly: false, stripUnknown: true }
       return value => schema.validateAsync(value, options)
