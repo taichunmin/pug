@@ -1,0 +1,83 @@
+extends /layout/liffv2
+
+block beforehtml
+  -
+    title = 'isMultiple 測試'
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .form-group.mb-3
+      label liff.shareTargetPicker()
+      button.btn.btn-block.btn-outline-dark.mt-2(type="button", @click="btnMultiple(true)") #[i.fa.fa-fw.fa-users] isMultiple: &nbsp;true
+      button.btn.btn-block.btn-outline-dark.mt-2(type="button", @click="btnMultiple(false)") #[i.fa.fa-fw.fa-user] isMultiple: false
+    .form-group.mb-3
+      label liff
+      .input-group.input-group-sm.mb-1(v-for="val, key in sdk")
+        .input-group-prepend: .input-group-text {{ key }}
+        input.form-control.text-right(readonly, :value="val")
+    .form-group.mb-3
+      label navigator.userAgent
+      textarea.form-control.form-control-sm(readonly, rows="6", :value="_.get(window, 'navigator.userAgent')")
+
+block script
+  script.
+    window.loginPromise = (async () => {
+      await liff.init({ liffId: '#{liffidFull}' })
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        await new Promise(resolve => {}) // 永遠不會結束的 Promise
+      }
+    })()
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        sdk: {
+          getLineVersion: '',
+          getOS: '',
+          getVersion: '',
+          isInClient: '',
+        },
+      },
+      async mounted () {
+        this.showLoading('請稍候', '網頁載入中')
+        await window.loginPromise
+        _.each([
+          ['getLineVersion'],
+          ['getOS'],
+          ['getVersion'],
+          ['isInClient'],
+        ], fn => {
+          this.$set(this.sdk, fn[0], JSON.stringify(_.invoke(liff, ...fn)))
+        })
+        Swal.close()
+      },
+      methods: {
+        async btnMultiple (isMultiple) {
+          try {
+            this.showLoading('請稍候', 'liff.shareTargetPicker()')
+            await window.loginPromise
+            if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 liff.shareTargetPicker()')
+            const res = await liff.shareTargetPicker([{
+              type: 'text',
+              text: `isMultiple: ${isMultiple}`,
+            }], {
+              isMultiple,
+            })
+            await Swal.fire({ icon: 'success', title: '執行結果', text: JSON.stringify(res) || 'undefined' })
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
