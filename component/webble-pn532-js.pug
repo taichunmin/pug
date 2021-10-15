@@ -1,12 +1,245 @@
 script.
   // require lodash
+  window.PN532_ACK = new Uint8Array([0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00])
+  window.PN532_ERROR_CODE = _.fromPairs([
+    ['01', 'Time Out, the target has not answered'],
+    ['02', 'A CRC error has been detected by the CIU'],
+    ['03', 'A Parity error has been detected by the CIU'],
+    ['04', 'During an anti-collision/select operation (ISO/IEC14443-3 Type A and ISO/IEC18092 106 kbps passive mode), an erroneous Bit Count has been detected'],
+    ['05', 'Framing error during Mifare operation'],
+    ['06', 'An abnormal bit-collision has been detected during bit wise anti-collision at 106 kbps'],
+    ['07', 'Communication buffer size insufficient'],
+    ['09', 'RF Buffer overflow has been detected by the CIU (bit BufferOvfl of the register CIU_Error)'],
+    ['0a', 'In active communication mode, the RF field has not been switched on in time by the counterpart (as defined in NFCIP-1 standard)'],
+    ['0b', 'RF Protocol error (description of the CIU_Error register)'],
+    ['0d', 'Temperature error: the internal temperature sensor has detected overheating, and therefore has automatically switched off the antenna drivers'],
+    ['0e', 'Internal buffer overflow'],
+    ['10', 'Invalid parameter (range, format, ...)'],
+    ['12', 'DEP Protocol: The PN532 configured in target mode does not support the command received from the initiator (the command received is not one of the following: ATR_REQ, WUP_REQ, PSL_REQ, DEP_REQ, DSL_REQ, RLS_REQ)'],
+    ['13', 'DEP Protocol, Mifare or ISO/IEC14443-4: The data format does not match to the specification. Depending on the RF protocol used, it can be: Bad length of RF received frame, Incorrect value of PCB or PFB, Invalid or unexpected RF received frame, NAD or DID incoherence.'],
+    ['14', 'Mifare: Authentication error'],
+    ['23', 'ISO/IEC14443-3: UID Check byte is wrong'],
+    ['25', 'DEP Protocol: Invalid device state, the system is in a state which does not allow the operation'],
+    ['26', 'Operation not allowed in this configuration (host controller interface)'],
+    ['27', 'This command is not acceptable due to the current context of the PN532 (Initiator vs. Target, unknown target number, Target not in the good state, ...)'],
+    ['29', 'The PN532 configured as target has been released by its initiator'],
+    ['2a', 'PN532 and ISO/IEC14443-3B only: the ID of the card does not match, meaning that the expected card has been exchanged with another one.'],
+    ['2b', 'PN532 and ISO/IEC14443-3B only: the card previously activated has disappeared.'],
+    ['2c', 'Mismatch between the NFCID3 initiator and the NFCID3 target in DEP 212/424 kbps passive.'],
+    ['2d', 'An over-current event has been detected'],
+    ['2e', 'NAD missing in DEP frame'],
+  ])
+  window.errToPlainObj = (() => {
+    const ERROR_KEYS = [
+      'address',
+      'code',
+      'data',
+      'dest',
+      'errno',
+      'info',
+      'message',
+      'name',
+      'path',
+      'port',
+      'reason',
+      'response.data',
+      'response.headers',
+      'response.status',
+      'stack',
+      'status',
+      'statusCode',
+      'statusMessage',
+      'syscall',
+    ]
+    return err => _.pick(err, ERROR_KEYS)
+  })()
   class PN532 {
     constructor () {
+      this.ackHandlers = null
+      this.charRecv = null
+      this.charSend = null
       this.device = null
-      this.pending = null
-      this.uuidRecv = '6E400003-920D-490D-89D4-27EC924B558F'
-      this.uuidSend = '6E400002-920D-490D-89D4-27EC924B558F'
-      this.uuidServ = '6E400001-920D-490D-89D4-27EC924B558F'
+      this.resHandlers = null
+      this.service = null
+      this.uuidRecv = '0000ff01-0000-1000-8000-00805f9b34fb'
+      this.uuidSend = '0000ff02-0000-1000-8000-00805f9b34fb'
+      this.uuidServ = '0000ff00-0000-1000-8000-00805f9b34fb'
+      this.verbose = false
+    }
+
+    async getFirmwareVersion () {
+      const frame = this.frameCreateNormal(2) // include len of TFI
+      frame.data.setUint8(0, 0x02)
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame })
+      return {
+        ic: `PN5${this.dvGetHex(res.data, 1)}`,
+        ver: res.data.getUint8(2),
+        rev: res.data.getUint8(3),
+        support: res.data.getUint8(4),
+      }
+    }
+
+    async readRegisters (adrs = []) {
+      if (!_.isArray(adrs) || !adrs.length) throw new Error('invalid adrs')
+      const frame = this.frameCreateNormal(adrs.length * 2 + 2) // include len of TFI
+      frame.data.setUint8(0, 0x06)
+      for (let i = 0; i < adrs.length; i++) frame.data.setUint16(i * 2 + 1, adrs[i])
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame })
+      return _.zipObject(adrs, new Uint8Array(res.buffer, res.data.byteOffset + 1, res.len - 2))
+    }
+
+    async writeRegisters (regs) {
+      if (_.isPlainObject(regs)) regs = _.toPairs(regs)
+      if (!_.isArray(regs) || !regs.length) throw new Error('invalid regs')
+      const frame = this.frameCreateNormal(regs.length * 3 + 2) // include len of TFI
+      frame.data.setUint8(0, 0x08)
+      for (let i = 0; i < regs.length; i++) {
+        frame.data.setUint16(i * 3 + 1, _.parseInt(_.get(regs, `${i}.0`, 0)))
+        frame.data.setUint8(i * 3 + 3, _.parseInt(_.get(regs, `${i}.1`, 0)))
+      }
+      this.frameGenerateDCS(frame)
+      await this.frameExec({ frame })
+    }
+
+    async samConfiguration ({ mode = 1, timeout = 0x14, irq = 1 } = {}) {
+      const frame = this.frameCreateNormal(5) // include len of TFI
+      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x14, mode, timeout, irq]))
+      this.frameGenerateDCS(frame)
+      await this.frameExec({ frame })
+    }
+
+    async inListPassiveTarget ({ maxTg = 1, brTy = 0, data = null, timeout = 3e4 } = {}) {
+      const frame = this.frameCreateNormal(4 + _.get(data, 'byteLength', 0)) // include len of TFI
+      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x4a, maxTg, brTy]))
+      if (data) { // initiator data
+        if (data instanceof ArrayBuffer) data = new Uint8Array(data)
+        if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+        new Uint8Array(frame.buffer, frame.data.byteOffset + 3).set(data)
+      }
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame, resTimeout: timeout })
+      return {
+        nbTg: res.data.getUint8(1),
+        ...(res.len <= 3 ? {} : {
+          data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
+        }),
+      }
+      // TODO: parse response
+    }
+
+    async inDataExchange ({ tg = 1, data = null, timeout = 2e3 } = {}) {
+      const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
+      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x40, tg]))
+      if (data) { // data out
+        if (data instanceof ArrayBuffer) data = new Uint8Array(data)
+        if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+        new Uint8Array(frame.buffer, frame.data.byteOffset + 2).set(data)
+      }
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame, resTimeout: timeout })
+      const status = res.data.getUint8(1)
+      this.throwStatusIfFailed(status)
+      return {
+        status,
+        ...(res.len <= 3 ? {} : {
+          data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
+        }),
+      }
+    }
+
+    async inCommunicateThru ({ data = null, timeout = 3e3 } = {}) {
+      if (!data) throw new Error('invalid data')
+      const frame = this.frameCreateNormal(2 + _.get(data, 'byteLength', 0)) // include len of TFI
+      frame.data.setUint8(0, 0x42)
+      if (data instanceof ArrayBuffer) data = new Uint8Array(data)
+      if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      new Uint8Array(frame.buffer, frame.data.byteOffset + 1).set(data)
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame, resTimeout: timeout })
+      const status = res.data.getUint8(1)
+      this.throwStatusIfFailed(status)
+      return {
+        status,
+        ...(res.len <= 3 ? {} : {
+          data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
+        }),
+      }
+    }
+
+    async inDeselect ({ tg = 0 }) {
+      if (!tg) throw new Error('invalid tg')
+      const frame = this.frameCreateNormal(3) // include len of TFI
+      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x44, tg]))
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame })
+      const status = res.data.getUint8(1)
+      this.throwStatusIfFailed(status)
+    }
+
+    async inRelease ({ tg = 0 }) {
+      if (!tg) throw new Error('invalid tg')
+      const frame = this.frameCreateNormal(3) // include len of TFI
+      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x52, tg]))
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame })
+      const status = res.data.getUint8(1)
+      this.throwStatusIfFailed(status)
+    }
+
+    async inSelect ({ tg }) {
+      if (!tg) throw new Error('invalid tg')
+      const frame = this.frameCreateNormal(3) // include len of TFI
+      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x54, tg]))
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame })
+      const status = res.data.getUint8(1)
+      this.throwStatusIfFailed(status)
+    }
+
+    async inAutoPoll ({ pollNr, period, types = [], timeout } = {}) {
+      if (!_.isArray(types) || !types.length) throw new Error('invalid types')
+      const frame = this.frameCreateNormal(4 + types.length) // include len of TFI
+      frame.u8.set(new Uint8Array([0x60, pollNr, period, ...types]), frame.data.byteOffset)
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame, resTimeout: timeout })
+      // TODO: parse response
+      return {
+        nbTg: res.data.getUint8(1),
+        ...(res.len <= 3 ? {} : {
+          data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
+        }),
+      }
+    }
+
+    async magicMifareSetUid () {
+      console.log(await window.pn532.inListPassiveTarget({ maxTg: 1, brTy: 0 }))
+      // 08 63 02 00 63 03 00 (0x6302 CIU_TxMode bit7 TxCRCEn, 0x6303 CIU_RxMode bit7 RxCRCEn)
+      await this.writeRegisters({ 0x6302: 0x00, 0x6303: 0x00 })
+      // 42 50 00 57 CD (halt)
+      await this.inCommunicateThru({ data: this.u8FromHex('500057CD') })
+      // 08 63 3D 07 (0x633d CIU_BitFraming TxLastBits 7)
+      await this.writeRegisters({ 0x633d: 0x07 })
+      // 42 40
+      await this.inCommunicateThru({ data: new Uint8Array([0x40]) })
+      // 08 63 3D 00 (0x633d CIU_BitFraming TxLastBits 0)
+      await this.writeRegisters({ 0x633d: 0x00 })
+      // 42 43
+      await this.inCommunicateThru({ data: new Uint8Array([0x43]) })
+      // 08 63 02 80 63 03 80
+      await this.writeRegisters({ 0x6302: 0x80, 0x6303: 0x80 })
+      // 40 01 A0 00 F2 35 06 1B DA 08 04 00 02 7D 1B 3B 60 73 86 1D
+      await this.inDataExchange({ tg: 1, data: this.u8FromHex('A000F235061BDA080400027D1B3B6073861D') })
+      //
+      await this.inDeselect({ tg: 1 })
+      // 4A 01 00 (InListPassiveTarget)
+      console.log(await window.pn532.inListPassiveTarget({ maxTg: 1, brTy: 0 }))
+    }
+
+    async wakeup () {
+      const frame = this.frameCreateFromHex('55550000000000000000000000000000ff03fdd414011700')
+      await this.frameExec({ frame })
     }
 
     async deviceSelect () {
@@ -19,52 +252,248 @@ script.
       this.logTime(`device selected, name = ${this.device.name}, id = ${this.device.id}`)
     }
 
-    deviceOnDisconnect () {}
+    deviceOnDisconnect () {
+      this.logTime('device disconnected')
+      if (this.charRecv) {
+        this.charRecv.stopNotifications()
+        this.charRecv.removeEventListener('characteristicvaluechanged', this.gattOnReceive)
+        this.charRecv = null
+      }
+      if (this.charSend) this.charSend = null
+      if (this.service) this.service = null
+      if (this.device) {
+        this.device.removeEventListener('gattserverdisconnected', this.deviceOnDisconnect)
+        if (this.isGattConnected()) this.device.gatt.disconnect()
+      }
+    }
 
     async gattConnect () {
-      const isConnected = () => _.get(this, 'device.gatt.connected')
-      if (isConnected()) return
+      if (this.isGattConnected()) return
 
       const { uuidServ, uuidSend, uuidRecv } = this
       await this.deviceSelect()
 
-      for (let i = 0; !isConnected() && i < 3; i++) {
+      for (let i = 0; !this.isGattConnected() && i < 3; i++) {
         try {
           this.logTime(`try to connect gatt (${i + 1})`)
           await this.device.gatt.connect()
-          await sleep(500)
+          await this.sleep(500)
         } catch (err) {
           console.error(window.errToPlainObj(err))
         }
       }
-      if (!isConnected()) throw new Error('Failed to connect gatt')
+      if (!this.isGattConnected()) throw new Error('Failed to connect gatt')
 
-      this.device.addEventListener('gattserverdisconnected', this.onDisconnect)
+      this.device.addEventListener('gattserverdisconnected', this.deviceOnDisconnect.bind(this))
       this.service = await this.device.gatt.getPrimaryService(uuidServ)
       this.charSend = await this.service.getCharacteristic(uuidSend)
       this.charRecv = await this.service.getCharacteristic(uuidRecv)
-      this.charRecv.addEventListener('characteristicvaluechanged', this.onReceive)
+      this.charRecv.addEventListener('characteristicvaluechanged', this.gattOnReceive.bind(this))
       await this.charRecv.startNotifications()
+      await this.wakeup()
     }
 
-    newCommand (len = 0) {
-      if (!_.inRange(len, 0, 65)) throw new Error('invalid len')
-      const buffer = new ArrayBuffer(len + 3)
-      const cmd = {
+    isGattConnected () {
+      return _.get(this, 'device.gatt.connected')
+    }
+
+    frameCreateNormal (len) {
+      if (!_.inRange(len, 1, 0x100)) throw new Error('invalid len')
+      const buffer = new ArrayBuffer(len + 7)
+      const frame = {
         buffer,
-        body: new DataView(buffer, 3),
+        data: new DataView(buffer, 6, len - 1), // exclude TFI
+        dv: new DataView(buffer),
         len,
-        packet: new DataView(buffer),
+        u8: new Uint8Array(buffer),
       }
-      return cmd
+      // Octet 0: PREAMBLE
+      // Octet 1~2: Start Code
+      // Octet 3: len
+      // Octet 4: LCS
+      // Octet 5: TFI
+      new Uint8Array(buffer, 2).set(new Uint8Array([0xFF, len, -len, 0xD4]))
+      return frame
     }
 
-    async execCommand ({ cmd, timeout = 1000 }) {
+    frameCreateExtended (len) {
+      if (!_.inRange(len, 0x100, 0x10000)) throw new Error('invalid len')
+      const buffer = new ArrayBuffer(len + 10)
+      const frame = {
+        buffer,
+        data: new DataView(buffer, 9, len - 1), // exclude TFI
+        dv: new DataView(buffer),
+        len,
+        u8: new Uint8Array(buffer),
+      }
+      // Octet 0: PREAMBLE
+      // Octet 1~2: Start Code
+      // Octet 3~4: Fixed 0xFF
+      // Octet 5~6: LenM, LenL
+      // Octet 7: LCS
+      // Octet 8: TFI
+      const lenM = (len >> 8); const lenL = (len & 0xFF)
+      new Uint8Array(buffer, 2).set(new Uint8Array([0xFF, 0xFF, 0xFF, lenM, lenL, (0 - lenM - lenL), 0xD4]))
+      return frame
+    }
+
+    frameCreateFromHex (hex) {
+      const u8 = this.u8FromHex(hex)
+      return {
+        buffer: u8.buffer,
+        dv: new DataView(u8.buffer),
+        u8,
+      }
+    }
+
+    frameGenerateDCS (frame) {
+      // DCS: data checksum
+      const dcs = frame.u8.length - 2
+      frame.u8[dcs] = 0
+      for (let i = 0; i < frame.len; i++) frame.u8[dcs] -= frame.u8[dcs - i - 1]
+    }
+
+    async frameExec ({ frame, ackTimeout = 1000, resTimeout = 1000 }) {
       await this.gattConnect()
-      // checksum
-      cmd.packet.setUint16(1, timeout)
-      const tmp = new Uint8Array(cmd.buffer)
-      tmp[0] = 0
-      for (let i = 0; i < tmp.length; i++) tmp[0] -= tmp[i]
+      // 避免重複執行
+      if (this.ackHandlers || this.resHandlers) throw new Error('有其他 BLE 指令正在執行')
+      // 把 resolve 跟 reject 丟到全域去
+      const pending = { ack: null, res: null }
+      if (ackTimeout) pending.ack = new Promise((resolve, reject) => { this.ackHandlers = { resolve, reject } })
+      if (resTimeout) pending.res = new Promise((resolve, reject) => { this.resHandlers = { resolve, reject } })
+      try {
+        // logTime
+        this.logTime(`傳送: ${this.inspectFrameBuffer(frame.buffer)}`)
+        await this.charSend.writeValue(frame.buffer)
+        await this.timeout(pending.ack, ackTimeout, '傳送超時')
+        if (resTimeout) return await this.timeout(pending.res, resTimeout, '回應超時')
+      } finally {
+        this.ackHandlers = null
+        this.resHandlers = null
+      }
+    }
+
+    u8FromHex (hex) {
+      return new Uint8Array(_.map(hex.match(/.{2}/g), b => _.parseInt(b, 16)))
+    }
+
+    async gattOnReceive (event) {
+      const buffer = _.get(event, 'target.value.buffer')
+      const res = { buffer, dv: new DataView(buffer), u8: new Uint8Array(buffer) }
+
+      // ack / nack frame
+      if (buffer.byteLength === 6) {
+        const isAck = (this.bufferCmp(buffer, window.PN532_ACK) === 0)
+        if (isAck) _.invoke(this, 'ackHandlers.resolve', res)
+        else {
+          const err = new Error('invalid ack')
+          _.set(err, 'data.res', res)
+          this.logTime(err.message)
+          _.invoke(this, 'ackHandlers.reject', err)
+        }
+        return
+      }
+
+      this.logTime(`收到: ${this.inspectFrameBuffer(buffer)}`)
+      try {
+        const isNormalFrame = buffer.byteLength <= 262
+        // LCS: len checksum
+        if (isNormalFrame) { // 255 + 7
+          res.u8[4] += res.u8[3]
+          if (res.u8[4]) throw new Error('invalid lcs')
+        } else { // 256 + 10
+          res.u8[7] += res.u8[5] + res.u8[6]
+          if (res.u8[7]) throw new Error('invalid lcs')
+        }
+        res.len = isNormalFrame ? res.u8[3] : (res.u8[5] * 256 + res.u8[6])
+        // DCS: data checksum
+        const dcs = res.u8.length - 2
+        for (let i = 0; i < res.len; i++) res.u8[dcs] += res.u8[dcs - i - 1]
+        if (res.u8[dcs]) throw new Error('invalid dcs')
+        res.data = new DataView(buffer, res.u8.length - res.len - 1, res.len - 1)
+        // Error frame
+        if (buffer.byteLength === 8) {
+          const tfi = res.u8[res.u8.length - res.len - 2] // TFI
+          const code = `0${(tfi & 0x3f).toString(16)}`.slice(-2)
+          throw new Error(`NAD = ${(tfi & 0x80) ? 1 : 0}, MI = ${(tfi & 0x40) ? 1 : 0}, code = ${code}, msg = ` + window.PN532_ERROR_CODE['s' + code])
+        }
+        return _.invoke(this, 'resHandlers.resolve', res)
+      } catch (err) {
+        _.set(err, 'data.res', res)
+        this.logTime(err.message)
+        return _.invoke(this, 'resHandlers.reject', err)
+      }
+    }
+
+    sleep (t) {
+      return new Promise(resolve => setTimeout(resolve, t))
+    }
+
+    async timeout (promise, timeout, message) {
+      return await Promise.race([
+        promise,
+        (async () => {
+          await this.sleep(timeout)
+          throw new Error(`${message} (${timeout}ms)`)
+        })(),
+      ])
+    }
+
+    logTime (text) {
+      console.log(`[${new Date().toTimeString().slice(0, 8)}] ${text}`)
+    }
+
+    inspectBuffer (buf) {
+      if (buf instanceof ArrayBuffer) buf = new Uint8Array(buf)
+      if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+      return _.join(_.map(buf, num => `0${num.toString(16)}`.slice(-2)), ' ')
+    }
+
+    inspectFrameBuffer (buf) {
+      if (this.verbose) return this.inspectBuffer(buf)
+      const u8 = new Uint8Array(buf)
+      const dv = new DataView(buf)
+      const lcs = new Uint8Array(1)
+      // find frame start
+      let st = 0
+      while (st < buf.byteLength - 1 && dv.getUint16(st) !== 0x00FF) st++
+      // start not found
+      if (st === buf.byteLength - 1) return this.inspectBuffer(buf)
+      // normal frame
+      lcs[0] = u8[st + 2] + u8[st + 3]
+      if (!lcs[0]) return this.inspectBuffer(new Uint8Array(buf, st + 5, u8[st + 2] - 1))
+      // extened frame
+      lcs[0] = u8[st + 4] + u8[st + 5] + u8[st + 6]
+      if (u8[st + 2] === 0xFF && u8[st + 3] === 0xFF && !lcs[0]) return this.inspectBuffer(new Uint8Array(buf, st + 8, dv.getUint16(5) - 1))
+      // other
+      return this.inspectBuffer(buf)
+    }
+
+    async getBluetoothAvailability () {
+      return await _.invoke(navigator, 'bluetooth.getAvailability')
+    }
+
+    bufferCmp (a, b) {
+      if (a instanceof ArrayBuffer) a = new Uint8Array(a)
+      if (!(a instanceof Uint8Array)) a = new Uint8Array(a.buffer, a.byteOffset, a.byteLength)
+      if (b instanceof ArrayBuffer) b = new Uint8Array(b)
+      if (!(b instanceof Uint8Array)) b = new Uint8Array(b.buffer, b.byteOffset, b.byteLength)
+
+      if (a.byteLength !== b.byteLength) return a.byteLength - b.byteLength
+      let i = a.byteLength
+      while (i--) if (a[i] !== b[i]) return a[i] - b[i]
+      return 0
+    }
+
+    dvGetHex (dv, byteOffset) {
+      if (dv instanceof ArrayBuffer) dv = new DataView(dv)
+      if (!(dv instanceof DataView)) dv = new DataView(dv.buffer, dv.byteOffset, dv.byteLength)
+      return `0${dv.getUint8(byteOffset).toString(16)}`.slice(-2)
+    }
+
+    throwStatusIfFailed (status = 0) {
+      const hex = `0${status.toString(16)}`.slice(-2)
+      if (window.PN532_ERROR_CODE[hex]) throw new Error(window.PN532_ERROR_CODE[hex])
     }
   }
+  window.PN532 = PN532

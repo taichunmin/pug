@@ -1,7 +1,7 @@
 extends /layout/default
 
 block beforehtml
-  - const title = 'WebBLE Chameleon Tiny'
+  - const title = 'WebBLE PN532'
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
@@ -10,7 +10,7 @@ block style
   meta(property="og:site_name", content="筆記國度")
   meta(property="og:title", content=title)
   meta(property="og:type", content="website")
-  meta(property="og:url", content="https://taichunmin.idv.tw/pug/webble-chameleon-tiny.html")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/webble-pn532.html")
   style
     :sass
       [v-cloak]
@@ -27,13 +27,13 @@ block content
         button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnTest") #[span.fa.fa-fw.fa-cogs] 執行測試
 
 block script
+  include ../component/webble-pn532-js
   script.
+    /* global PN532 */
+    window.pn532 = new PN532()
     window.vm = new Vue({
       el: '#app',
       data: {
-        uuidRecv: '6E400003-920D-490D-89D4-27EC924B558F',
-        uuidSend: '6E400002-920D-490D-89D4-27EC924B558F',
-        uuidServ: '6E400001-920D-490D-89D4-27EC924B558F',
         h: {
         },
       },
@@ -48,44 +48,19 @@ block script
         }, { deep: true })
       },
       methods: {
-        async btnTest () {},
-        async getBluetoothAvailability () {
-          return await _.invoke(navigator, 'bluetooth.getAvailability')
+        async btnTest () {
+          //- console.log(await window.pn532.getFirmwareVersion())
+          //- console.log(await window.pn532.readRegisters([0x6302, 0x6303, 0x633d]))
+          console.log(await window.pn532.magicMifareSetUid())
         },
-        async bleSearchDevice () {
-          if (this.device) return
-          if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
-          this.device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [this.uuidServ] }],
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
           })
-          if (!this.device) throw new Error('未選擇裝置')
-          this.logTime(`裝置選擇成功, name = ${this.device.name}, id = ${this.device.id}`)
         },
-        async bleEnsureConnected () {
-          const isConnected = () => _.get(this, 'device.gatt.connected')
-          if (isConnected()) return
-          const { uuidServ, uuidSend, uuidRecv } = this
-          await this.bleSearchDevice()
-
-          for (let i = 0; !isConnected() && i < 3; i++) {
-            try {
-              this.logTime(`嘗試連線至裝置 (第 ${i + 1} 次)`)
-              await this.device.gatt.connect()
-              await sleep(500)
-            } catch (err) {
-              console.error(window.errToPlainObj(err))
-            }
-          }
-          if (!isConnected()) throw new Error('裝置連線失敗')
-
-          this.device.addEventListener('gattserverdisconnected', this.bleOnDisconnect)
-          this.bleServ = await this.device.gatt.getPrimaryService(uuidServ)
-          this.bleCharSend = await this.bleServ.getCharacteristic(uuidSend)
-          this.bleCharRecv = await this.bleServ.getCharacteristic(uuidRecv)
-          this.bleCharRecv.addEventListener('characteristicvaluechanged', this.bleOnRecv)
-          await this.bleCharRecv.startNotifications()
-          this.logTime('裝置連線成功')
-        },
-        async bleOnRecv () {},
       },
     })

@@ -1,0 +1,139 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '振興5倍加碼券速查'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="本程式查詢結果僅供參考，若有疑問請以振興5倍券官網中籤獎號為主。")
+  meta(property="og:image:height", content="640")
+  meta(property="og:image:width", content="1280")
+  meta(property="og:image", content="https://i.imgur.com/ub1eJr1.png")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/20211015-5000-vhpi.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .aspect-ratio-100
+        display: block
+        height: 0
+        overflow: hidden
+        padding-top: 100%
+        position: relative
+        > div
+          height: 100%
+          left: 0
+          position: absolute
+          top: 0
+          width: 100%
+
+block content
+  #app.my-3.container.text-monospace(v-cloak)
+    h3.text-center= title
+    .form-group.form-check.mb-0.mt-3
+      input#censored.form-check-input(type="checkbox", v-model="h.censored")
+      label.form-check-label(for="censored") 隱藏身份證 (方便截圖)
+    .form-group.mb-0.mt-2(v-if="!h.censored")
+      label 身份證
+      textarea.form-control.form-control-sm(v-model="h.uids")
+      small.text-muted 至少輸入後 3 碼，以空格隔開可輸入多筆
+    .card.border-warning.mt-3(v-for="uid in uids")
+      .card-header.py-2.bg-warning #[i.fa.fa-fw.fa-id-card] {{ h.censored ? 'XXX' : uid.uid3 }}
+      ul.list-group.list-group-flush
+        li.list-group-item.py-1(v-for="award in awardsWinned(uid)") {{ award.name }}
+    hr.mt-3.mb-1
+    small.text-muted 已更新「{{ _.last(awards).name }}」的中籤獎號，本程式查詢結果僅供參考，若有疑問請以 #[a(target="_blank", href="https://vhpi.5000.gov.tw/") 振興5倍券官網中籤獎號] 為主。
+    .card.mt-3(style="max-width: 30rem")
+      .card-header.py-2 #[i.fa.fa-bar-chart] 身份證後 2 碼中籤次數
+      .card-body.p-0
+        .aspect-ratio-100: .d-block.text-center
+          table.h-100.table.table-bordered.table-sm
+            tr(v-for="row of _.chunk(uid2CountPairs, 10)")
+              td.align-middle.p-0(v-for="[uid, cnt] of row", :class="uid2CountBg[cnt]"): strong {{ uid }}
+      .card-footer.d-flex.justify-content-between.p-2
+        .d-flex.align-items-center(v-for="bg, i in uid2CountBg")
+          .d-block.border.border-dark(style="width: 1rem; height: 1rem", :class="bg") &nbsp;
+          small.ml-1 中{{ _.parseInt(i) }}籤
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          censored: false,
+          uids: '',
+        },
+        uid2CountBg: ['', 'table-primary', 'table-success', 'table-warning', 'table-danger'],
+        awards: [
+          // 第一週
+          { name: '國旅券 (第一週)', codes: ['21', '32', '98', '67', '97', '410'] },
+          { name: 'i原券 (第一週)', codes: ['64', '85'] },
+          { name: '農遊券 (第一週)', codes: ['89', '32', '54', '597', '453', '152'] },
+          { name: '數位藝Fun券 (第一週)', codes: ['96', '15', '07', '30', '73', '98', '19', '11'] },
+          { name: '紙本藝Fun券 (第一週)', codes: ['39', '37', '23', '36', '79', '08', '14', '75'] },
+          { name: '動滋券 (第一週)', codes: ['97', '13', '19', '55', '71', '93', '381', '734', '644', '453', '985'] },
+          { name: '客庄券 (第一週)', codes: ['81', '900'] },
+          { name: '地方創生券 (第一週)', codes: ['081', '105', '594', '188', '089', '396', '521', '467', '912', '798', '358', '441', '367', '941', '335'] },
+          // 第二週
+          { name: '國旅券 (第二週)', codes: ['87', '04', '40', '29', '71'] },
+          { name: 'i原券 (第二週)', codes: ['12', '59'] },
+          { name: '農遊券 (第二週)', codes: ['50', '13'] },
+          { name: '數位藝Fun券 (第二週)', codes: ['78', '00', '39', '22', '61', '23', '15'] },
+          { name: '紙本藝Fun券 (第二週)', codes: ['37', '76', '31', '06', '51', '65', '81'] },
+          { name: '動滋券 (第二週)', codes: ['91', '11', '04', '18', '57', '498', '756'] },
+          { name: '客庄券 (第二週)', codes: ['11', '439', '841', '052', '206', '161', '457', '205', '012', '293', '446', '589'] },
+          { name: '地方創生券 (第二週)', codes: ['598', '880', '886', '675', '684', '568', '645', '456'] },
+          // 第三週
+          { name: '國旅券 (第三週)', codes: ['44', '34', '09', '55', '35', '041'] },
+          { name: 'i原券 (第三週)', codes: ['48', '49'] },
+          { name: '農遊券 (第三週)', codes: ['60', '75'] },
+          { name: '數位藝Fun券 (第三週)', codes: ['01', '92', '19', '23', '79', '95', '48', '46'] },
+          { name: '紙本藝Fun券 (第三週)', codes: ['31', '56', '02', '52', '44', '49', '00', '47', '59'] },
+        ],
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        uids () {
+          return _.chain(_.get(this, 'h.uids').match(/\d+/g))
+            .filter(uid => uid.length > 2)
+            .map(uid => ({ uid2: uid.slice(-2), uid3: uid.slice(-3) }))
+            .sortBy('uid3')
+            .uniqBy('uid3')
+            .value()
+        },
+        uid2CountPairs () {
+          return _.sortBy(_.toPairs({
+            ..._.fromPairs(_.times(100, i => [`0${i}`.slice(-2), 0])),
+            ..._.chain(this.awards)
+              .map(award => award.codes)
+              .flatten()
+              .filter(uid => uid.length === 2)
+              .groupBy(uid => uid)
+              .mapValues(codes => codes.length)
+              .value()
+          }), '0')
+        },
+      },
+      methods: {
+        awardsWinned (uid) {
+          const awards = _.filter(this.awards, award => _.includes(award.codes, uid.uid2) || _.includes(award.codes, uid.uid3))
+          return awards.length ? awards : [{ name: '沒中' }]
+        },
+      },
+    })

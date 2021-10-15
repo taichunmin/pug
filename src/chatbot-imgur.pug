@@ -37,6 +37,7 @@ block content
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-base64@2/base64.min.js")
   script.
+    /* global Base64 */
     window.parseJsonOrDefault = (str, defaultValue) => {
       try {
         if (!_.isString(str) && !_.isBuffer(str)) return defaultValue
