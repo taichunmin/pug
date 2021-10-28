@@ -59,7 +59,7 @@ block content
       .card-footer.d-flex.justify-content-between.p-2
         .d-flex.align-items-center(v-for="bg, i in uid2CountBg")
           .d-block.border.border-dark(style="width: 1rem; height: 1rem", :class="bg") &nbsp;
-          small.ml-1 中{{ _.parseInt(i) }}籤
+          small.ml-1 {{ _.parseInt(i) }}次
 
 block script
   script.
@@ -96,6 +96,9 @@ block script
           { name: '農遊券 (第三週)', codes: ['60', '75'] },
           { name: '數位藝Fun券 (第三週)', codes: ['01', '92', '19', '23', '79', '95', '48', '46'] },
           { name: '紙本藝Fun券 (第三週)', codes: ['31', '56', '02', '52', '44', '49', '00', '47', '59'] },
+          { name: '動滋券 (第三週)', codes: ['82', '45', '57', '53', '00', '546', '855', '865', '012', '983'] },
+          { name: '客庄券 (第三週)', codes: ['14', '269'] },
+          { name: '地方創生券 (第三週)', codes: ['771', '706', '064', '168', '191', '459', '135', '314', '366'] },
         ],
       },
       async mounted () {
@@ -126,7 +129,7 @@ block script
               .filter(uid => uid.length === 2)
               .groupBy(uid => uid)
               .mapValues(codes => codes.length)
-              .value()
+              .value(),
           }), '0')
         },
       },

@@ -105,33 +105,34 @@ script.
 
     async samConfiguration ({ mode = 1, timeout = 0x14, irq = 1 } = {}) {
       const frame = this.frameCreateNormal(5) // include len of TFI
-      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x14, mode, timeout, irq]))
+      frame.u8.set(new Uint8Array([0x14, mode, timeout, irq]), frame.data.byteOffset)
       this.frameGenerateDCS(frame)
       await this.frameExec({ frame })
     }
 
     async inListPassiveTarget ({ maxTg = 1, brTy = 0, data = null, timeout = 3e4 } = {}) {
       const frame = this.frameCreateNormal(4 + _.get(data, 'byteLength', 0)) // include len of TFI
-      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x4a, maxTg, brTy]))
+      frame.u8.set(new Uint8Array([0x4a, maxTg, brTy]), frame.data.byteOffset)
       if (data) { // initiator data
         if (data instanceof ArrayBuffer) data = new Uint8Array(data)
         if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
         new Uint8Array(frame.buffer, frame.data.byteOffset + 3).set(data)
       }
       this.frameGenerateDCS(frame)
-      const res = await this.frameExec({ frame, resTimeout: timeout })
-      return {
-        nbTg: res.data.getUint8(1),
-        ...(res.len <= 3 ? {} : {
-          data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
-        }),
-      }
-      // TODO: parse response
+      return await this.frameExec({ frame, resTimeout: timeout })
+      //- return {
+      //-   nbTg: res.data.getUint8(1),
+      //-   ...(res.len <= 3 ? {} : {
+      //-     data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
+      //-   }),
+      //- }
     }
+
+    async inListPassiveTarget14a ({ maxTg = 1, uid = null } = {}) {}
 
     async inDataExchange ({ tg = 1, data = null, timeout = 2e3 } = {}) {
       const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
-      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x40, tg]))
+      frame.u8.set(new Uint8Array([0x40, tg]), frame.data.byteOffset)
       if (data) { // data out
         if (data instanceof ArrayBuffer) data = new Uint8Array(data)
         if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
@@ -155,7 +156,7 @@ script.
       frame.data.setUint8(0, 0x42)
       if (data instanceof ArrayBuffer) data = new Uint8Array(data)
       if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-      new Uint8Array(frame.buffer, frame.data.byteOffset + 1).set(data)
+      frame.u8.set(data, frame.data.byteOffset + 1)
       this.frameGenerateDCS(frame)
       const res = await this.frameExec({ frame, resTimeout: timeout })
       const status = res.data.getUint8(1)
@@ -169,9 +170,9 @@ script.
     }
 
     async inDeselect ({ tg = 0 }) {
-      if (!tg) throw new Error('invalid tg')
+      if (_.isNil(tg)) throw new Error('invalid tg')
       const frame = this.frameCreateNormal(3) // include len of TFI
-      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x44, tg]))
+      frame.u8.set(new Uint8Array([0x44, tg]), frame.data.byteOffset)
       this.frameGenerateDCS(frame)
       const res = await this.frameExec({ frame })
       const status = res.data.getUint8(1)
@@ -179,9 +180,9 @@ script.
     }
 
     async inRelease ({ tg = 0 }) {
-      if (!tg) throw new Error('invalid tg')
+      if (_.isNil(tg)) throw new Error('invalid tg')
       const frame = this.frameCreateNormal(3) // include len of TFI
-      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x52, tg]))
+      frame.u8.set(new Uint8Array([0x52, tg]), frame.data.byteOffset)
       this.frameGenerateDCS(frame)
       const res = await this.frameExec({ frame })
       const status = res.data.getUint8(1)
@@ -189,9 +190,9 @@ script.
     }
 
     async inSelect ({ tg }) {
-      if (!tg) throw new Error('invalid tg')
+      if (!_.includes([1, 2], tg)) throw new Error('invalid tg')
       const frame = this.frameCreateNormal(3) // include len of TFI
-      new Uint8Array(frame.buffer, frame.data.byteOffset).set(new Uint8Array([0x54, tg]))
+      frame.u8.set(new Uint8Array([0x54, tg]), frame.data.byteOffset)
       this.frameGenerateDCS(frame)
       const res = await this.frameExec({ frame })
       const status = res.data.getUint8(1)
@@ -213,12 +214,13 @@ script.
       }
     }
 
-    async magicMifareSetUid () {
+    async magicMifareUnlock () {
       console.log(await window.pn532.inListPassiveTarget({ maxTg: 1, brTy: 0 }))
+      await this.inSelect({ tg: 1 })
       // 08 63 02 00 63 03 00 (0x6302 CIU_TxMode bit7 TxCRCEn, 0x6303 CIU_RxMode bit7 RxCRCEn)
       await this.writeRegisters({ 0x6302: 0x00, 0x6303: 0x00 })
       // 42 50 00 57 CD (halt)
-      await this.inCommunicateThru({ data: this.u8FromHex('500057CD') })
+      await this.inCommunicateThru({ data: this.u8FromHex('500057CD') }).catch(() => 0)
       // 08 63 3D 07 (0x633d CIU_BitFraming TxLastBits 7)
       await this.writeRegisters({ 0x633d: 0x07 })
       // 42 40
@@ -227,12 +229,18 @@ script.
       await this.writeRegisters({ 0x633d: 0x00 })
       // 42 43
       await this.inCommunicateThru({ data: new Uint8Array([0x43]) })
+    }
+
+    async magicMifareSetUid () {
+      await this.magicMifareUnlock()
       // 08 63 02 80 63 03 80
       await this.writeRegisters({ 0x6302: 0x80, 0x6303: 0x80 })
       // 40 01 A0 00 F2 35 06 1B DA 08 04 00 02 7D 1B 3B 60 73 86 1D
       await this.inDataExchange({ tg: 1, data: this.u8FromHex('A000F235061BDA080400027D1B3B6073861D') })
-      //
-      await this.inDeselect({ tg: 1 })
+      // HLTA
+      await this.inRelease({ tg: 0 })
+      // 08 63 02 00 63 03 00 (0x6302 CIU_TxMode bit7 TxCRCEn, 0x6303 CIU_RxMode bit7 RxCRCEn)
+      await this.writeRegisters({ 0x6302: 0x00, 0x6303: 0x00 })
       // 4A 01 00 (InListPassiveTarget)
       console.log(await window.pn532.inListPassiveTarget({ maxTg: 1, brTy: 0 }))
     }
@@ -312,7 +320,7 @@ script.
       // Octet 3: len
       // Octet 4: LCS
       // Octet 5: TFI
-      new Uint8Array(buffer, 2).set(new Uint8Array([0xFF, len, -len, 0xD4]))
+      frame.u8.set(new Uint8Array([0xFF, len, -len, 0xD4]), 2)
       return frame
     }
 
@@ -333,7 +341,7 @@ script.
       // Octet 7: LCS
       // Octet 8: TFI
       const lenM = (len >> 8); const lenL = (len & 0xFF)
-      new Uint8Array(buffer, 2).set(new Uint8Array([0xFF, 0xFF, 0xFF, lenM, lenL, (0 - lenM - lenL), 0xD4]))
+      frame.u8.set(new Uint8Array([0xFF, 0xFF, 0xFF, lenM, lenL, (0 - lenM - lenL), 0xD4]), 2)
       return frame
     }
 
