@@ -669,7 +669,10 @@ block script
           if (this.device) return
           if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
           this.device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [this.uuidService] }],
+            filters: [
+              { namePrefix: 'LE_' },
+              { services: [this.uuidService] },
+            ],
           })
           if (!this.device) throw new Error('未選擇裝置')
           this.logTime(`裝置選擇成功, name = ${this.device.name}, id = ${this.device.id}`)
