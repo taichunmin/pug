@@ -35,7 +35,7 @@ block content
           .input-group.input-group-sm.mt-2
             .input-group-prepend
               span.input-group-text.justify-content-end 回報金鑰
-            input.form-control(type="password", maxlength="32", inputmode="url", pattern="\\w{32}", required, v-model="h.secret", placeholder="Beacon 安裝回報所需的金鑰")
+            input.form-control(type="password", maxlength="32", inputmode="url", pattern="\\w{32}", required, v-model="h.secret", placeholder="如果需要安裝回報請填寫金鑰")
           .input-group.input-group-sm.mt-2
             .input-group-prepend
               span.input-group-text.justify-content-end 產品序號
@@ -110,7 +110,32 @@ block script
       if (!_.isString(secret) || !secret) throw new Error('invalid secret')
       return window.encodeBase64url(CryptoJS.HmacSHA256(msg, secret))
     }
+    window.httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
     const sleep = t => new Promise(resolve => { setTimeout(resolve, t) })
+    class GoogleFormClass {
+      constructor (url) {
+        url = new URL(url)
+        if (!this.constructor.isViewFormUrl(url)) throw new Error(`不是一個合法的 Google 表單預填連結: ${url}`)
+        this.urlFormResponse = new URL('./formResponse', url).href
+        this.params = _.filter([...url.searchParams], param => /^entry\./.test(param[0]))
+      }
+
+      async post (data) {
+        const body = {}
+        _.each(this.params, param => {
+          body[param[0]] = _.toString(_.get(data, param[1], ''))
+        })
+        await axios.post(
+          'https://us-central1-youbike2-linebot.cloudfunctions.net/cors-anywhere',
+          window.httpBuildQuery(body),
+          { params: { u: this.urlFormResponse } }
+        )
+      }
+
+      static isViewFormUrl (url) {
+        return url.origin === 'https://docs.google.com' && /^\/forms\/d\/e\/[0-9a-zA-Z_-]+\/viewform$/.test(url.pathname)
+      }
+    }
     window.vm = new Vue({
       el: '#app',
       data: {
@@ -119,8 +144,10 @@ block script
         bleService: null,
         device: null,
         fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_r3.bin',
+        logUpdateSetting: null,
         model: 'MA2004B',
         otaEntered: 0,
+        ua: '',
         uuidNotify: '7e400003-b5a3-f393-e0a9-e50e24dcca9e',
         uuidService: '7e400001-b5a3-f393-e0a9-e50e24dcca9e',
         uuidWrite: '7e400002-b5a3-f393-e0a9-e50e24dcca9e',
@@ -142,6 +169,9 @@ block script
         this.$watch('h', () => {
           localStorage.setItem(location.pathname, JSON5.stringify(this.h))
         }, { deep: true })
+
+        this.logUpdateSetting = new GoogleFormClass('https://docs.google.com/forms/d/e/1FAIpQLSfiiHf0vgFZ-gVpdz-5LCz51_ZE4pzX6OIShM40nStgq8z3MA/viewform?usp=pp_url&entry.135843282=snBefore&entry.1788349406=snAfter&entry.1455481659=ua&entry.1961450447=setting')
+        this.ua = navigator.userAgent
       },
       methods: {
         async btnUploadFirmware () {
@@ -284,6 +314,14 @@ block script
             ]
             this.$set(this.h, 'registers', _.uniqBy(registers, 'sn').slice(0, 3))
 
+            // 儲存產品參數更新紀錄
+            await this.logUpdateSetting.post({
+              snBefore: _.get(ctx, 'before.sn', '無資料'),
+              snAfter: _.get(ctx, 'after.sn', '無資料'),
+              ua: this.ua,
+              setting: JSON5.stringify(_.pick(ctx, ['before', 'after'])),
+            })
+
             // 自動換下一筆
             if (this.h.sn && this.h.autoNext) {
               const idx = ma2004bs.indexOf(ctx.after)
@@ -298,7 +336,6 @@ block script
           } finally {
             await this.bleDisconnect()
             console.log('ctx = ', ctx)
-            // TODO: 燒錄紀錄到 Google Forms
           }
         },
         async btnReset (confirm = true) {
