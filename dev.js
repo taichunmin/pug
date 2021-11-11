@@ -26,6 +26,7 @@ async function main () {
   })
 
   watch(['./component', './layout', './src'], { recursive: true }, async (e, name) => {
+    if (e !== 'update') return
     const match = name.match(/^src[\\/](.+)\.pug$/)
     await build()
     if (!match) log(`"${name}" changed.`)

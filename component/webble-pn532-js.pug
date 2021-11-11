@@ -167,9 +167,9 @@ script.
         const uidlen = res.data.getUint8(startpos + 4)
         targets.push({
           tg: res.data.getUint8(startpos + 0),
-          atqa: res.data.getUint16(startpos + 1),
-          sak: res.data.getUint8(startpos + 3),
-          uid: new Uint8Array(res.buffer, res.buffer.byteOffset + startpos + 5, uidlen),
+          atqa: `000${res.data.getUint16(startpos + 1).toString(16)}`.slice(-4),
+          sak: `0${res.data.getUint8(startpos + 3)}`.slice(-2),
+          uid: new Uint8Array(res.buffer, res.data.byteOffset + startpos + 5, uidlen),
         })
         startpos += uidlen + 5
       }
@@ -309,7 +309,7 @@ script.
     deviceOnDisconnect () {
       this.logTime('device disconnected')
       if (this.charRecv) {
-        this.charRecv.stopNotifications()
+        if (this.isGattConnected()) this.charRecv.stopNotifications()
         this.charRecv.removeEventListener('characteristicvaluechanged', this.gattOnReceive)
         this.charRecv = null
       }
