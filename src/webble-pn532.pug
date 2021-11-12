@@ -51,7 +51,19 @@ block script
         async btnTest () {
           //- console.log(await window.pn532.getFirmwareVersion())
           //- console.log(await window.pn532.readRegisters([0x6302, 0x6303, 0x633d]))
-          console.log(await window.pn532.magicMifareSetUid())
+          //- console.log(await window.pn532.magicMifareSetUid())
+          //- const block = 7
+          //- console.log(await window.pn532.mfAuthenticateBlock({ block, isKeyB: 1, key: 'ffffffffffff', uid: 'F235061B' }))
+          //- console.log(await window.pn532.mfWriteBlock({ block, data: '00010203040506070809101112131415' }))
+          //- console.log(await window.pn532.mfReadBlock({ block }))
+          //- console.log(await window.pn532.mfMagicUnlock())
+          //- console.log(await window.pn532.mfMagicWipe({ uid: 'F235061B' }))
+          try {
+            console.log(await window.pn532.hf14aListPassiveTarget())
+            console.log(await window.pn532.diagnose06())
+          } finally {
+            console.log(await window.pn532.inRelease())
+          }
         },
         showLoading (title, text) {
           Swal.fire({

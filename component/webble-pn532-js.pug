@@ -67,6 +67,29 @@ script.
       this.verbose = false
     }
 
+    async diagnose ({ test = 0x00, data = null, timeout = 1000 }) {
+      const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
+      frame.u8.set(new Uint8Array([0x00, test]), frame.data.byteOffset)
+      if (data) { // test input
+        data = this.castUint8Array(data)
+        frame.u8.set(data, frame.data.byteOffset + 2)
+      }
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame, resTimeout: timeout })
+      const status = res.data.getUint8(1)
+      this.throwStatusIfFailed(status)
+      return {
+        status,
+        ...(res.len <= 3 ? {} : {
+          data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
+        }),
+      }
+    }
+
+    async diagnose06 () {
+      return await this.diagnose({ test: 0x06 })
+    }
+
     async getFirmwareVersion () {
       const frame = this.frameCreateNormal(2) // include len of TFI
       frame.data.setUint8(0, 0x02)
@@ -103,6 +126,29 @@ script.
       await this.frameExec({ frame })
     }
 
+    async readGpio () {
+      const frame = this.frameCreateNormal(2) // include len of TFI
+      frame.data.setUint8(0, 0x0c)
+      this.frameGenerateDCS(frame)
+      const res = await this.frameExec({ frame })
+      return _.fromPairs([
+        ..._.times(6, i => [`p3${i}`, (res.data.getUint8(0) >> i) & 1]),
+        ..._.times(2, i => [`p7${i + 1}`, (res.data.getUint8(1) >> (i + 1)) & 1]),
+        ..._.times(2, i => [`i${i}`, (res.data.getUint8(2) >> i) & 1]),
+      ])
+    }
+
+    async writeGpio (gpio = {}) {
+      const frame = this.frameCreateNormal(4) // include len of TFI
+      frame.data.setUint8(0, 0x0e)
+      let p3 = 0x80 // VALIDATION BIT
+      for (let i = 0; i < 6; i++) p3 |= gpio[`p3${i}`] ? (1 << i) : 0
+      frame.data.setUint8(1, p3)
+      frame.data.setUint8(2, 0) // P7
+      this.frameGenerateDCS(frame)
+      await this.frameExec({ frame })
+    }
+
     async samConfiguration ({ mode = 1, timeout = 0x14, irq = 1 } = {}) {
       const frame = this.frameCreateNormal(5) // include len of TFI
       frame.u8.set(new Uint8Array([0x14, mode, timeout, irq]), frame.data.byteOffset)
@@ -110,28 +156,44 @@ script.
       await this.frameExec({ frame })
     }
 
+    async rfConfiguration ({ item, data = null } = {}) {
+      const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
+      frame.u8.set(new Uint8Array([0x32, item]), frame.data.byteOffset)
+      if (data) { // initiator data
+        data = this.castUint8Array(data)
+        frame.u8.set(data, frame.data.byteOffset + 2)
+      }
+      this.frameGenerateDCS(frame)
+      return await this.frameExec({ frame })
+    }
+
+    async rfSetField ({ autoRfca = 1, rfOnOff = 1 } = {}) {
+      return await this.rfConfiguration({
+        item: 1,
+        data: new Uint8Array([
+          (autoRfca ? 2 : 0) + (rfOnOff ? 1 : 0),
+        ]),
+      })
+    }
+
+    async rfSetMaxRetries ({ atr = 0xff, psl = 0x01, passiveActivation = 0xff } = {}) {
+      return await this.rfConfiguration({ item: 5, data: new Uint8Array([atr, psl, passiveActivation]) })
+    }
+
     async inListPassiveTarget ({ maxTg = 1, brTy = 0, data = null, timeout = 3e4 } = {}) {
       const frame = this.frameCreateNormal(4 + _.get(data, 'byteLength', 0)) // include len of TFI
       frame.u8.set(new Uint8Array([0x4a, maxTg, brTy]), frame.data.byteOffset)
       if (data) { // initiator data
-        if (data instanceof ArrayBuffer) data = new Uint8Array(data)
-        if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-        new Uint8Array(frame.buffer, frame.data.byteOffset + 3).set(data)
+        data = this.castUint8Array(data)
+        frame.u8.set(data, frame.data.byteOffset + 3)
       }
       this.frameGenerateDCS(frame)
       return await this.frameExec({ frame, resTimeout: timeout })
-      //- return {
-      //-   nbTg: res.data.getUint8(1),
-      //-   ...(res.len <= 3 ? {} : {
-      //-     data: new DataView(res.buffer, res.data.byteOffset + 2, res.len - 3),
-      //-   }),
-      //- }
     }
 
     async hf14aListPassiveTarget ({ maxTg = 1, uid = null } = {}) {
       if (uid) {
-        if (!(uid instanceof ArrayBuffer)) uid = new Uint8Array(uid)
-        if (!(uid instanceof Uint8Array)) uid = new Uint8Array(uid.buffer, uid.byteOffset, uid.byteLength)
+        uid = this.castUint8Array(uid)
         // pad Cascade Tag
         let uidtmp
         switch (uid.byteLength) {
@@ -139,21 +201,15 @@ script.
             break
           case 7:
             uidtmp = new Uint8Array(8)
-            for (let i=0; i<7; i++) uidtmp[i + 1] = uid[i]
+            for (let i = 0; i < 7; i++) uidtmp[i + 1] = uid[i]
             uid[0] = 0x88
             uid = uidtmp
             break
-          case 8:
-            if (uid[0] !== 0x88) throw new Error('invalid uid')
-            break
           case 10:
             uidtmp = new Uint8Array(12)
-            for (let i=0; i<10; i++) uidtmp[i + (i >= 3 ? 2 : 1)] = uid[i]
+            for (let i = 0; i < 10; i++) uidtmp[i + (i >= 3 ? 2 : 1)] = uid[i]
             ;[uid[0], uid[4]] = [0x88, 0x88]
             uid = uidtmp
-            break
-          case 12:
-            if (uid[0] !== 0x88 || uid[4] !== 0x88) throw new Error('invalid uid')
             break
           default:
             throw new Error('invalid uid')
@@ -161,28 +217,54 @@ script.
       }
       const res = await this.inListPassiveTarget({ maxTg, brTy: 0, data: uid })
       const nbTg = res.data.getUint8(1)
-      let startpos = 2
-      const targets = []
-      for (let i=0; i<nbTg; i++) {
-        const uidlen = res.data.getUint8(startpos + 4)
-        targets.push({
-          tg: res.data.getUint8(startpos + 0),
-          atqa: `000${res.data.getUint16(startpos + 1).toString(16)}`.slice(-4),
-          sak: `0${res.data.getUint8(startpos + 3)}`.slice(-2),
-          uid: new Uint8Array(res.buffer, res.data.byteOffset + startpos + 5, uidlen),
-        })
-        startpos += uidlen + 5
-      }
-      return targets
+      // find format: tg + atqa + sak + uidlen + uid (uidlen) + atslen + ats (atslen - 1)
+      const format = _.find([
+        [{ tg: 0, ats: 0 }, { tg: 0, ats: 0 }], // empty
+        [{ tg: 1, ats: 0 }, { tg: 0, ats: 0 }], // tg1
+        [{ tg: 1, ats: 1 }, { tg: 0, ats: 0 }], // tg1 + ats1
+        [{ tg: 1, ats: 0 }, { tg: 1, ats: 0 }], // tg1 + tg2
+        [{ tg: 1, ats: 1 }, { tg: 1, ats: 0 }], // tg1 + ats1 + tg2
+        [{ tg: 1, ats: 0 }, { tg: 1, ats: 1 }], // tg1 + tg2 + ats2
+        [{ tg: 1, ats: 1 }, { tg: 1, ats: 1 }], // tg1 + ats1 + tg2 + ats2
+      ], tmp => {
+        try {
+          if (tmp[0].tg + tmp[1].tg !== nbTg) return false
+          tmp[0].st = 2 // start pos
+          tmp[0].tg = res.data.getUint8(tmp[0].st + 4) + 5
+          if (!_.includes([4, 7, 10], tmp[0].tg - 5)) return false
+          // ATS Length byte is counted in ATS Frame
+          if (tmp[0].ats) tmp[0].ats = res.data.getUint8(tmp[0].st + tmp[0].tg)
+          if (tmp[1].tg) {
+            tmp[1].st = tmp[0].st + tmp[0].tg + tmp[0].ats // start pos
+            tmp[1].tg = res.data.getUint8(tmp[1].st + 4) + 5
+            if (!_.includes([4, 7, 10], tmp[1].tg - 5)) return false
+            // ATS Length byte is counted in ATS Frame
+            if (tmp[1].ats) tmp[1].ats = res.data.getUint8(tmp[1].st + tmp[1].tg)
+          }
+          return tmp[0].tg + tmp[0].ats + tmp[1].tg + tmp[1].ats + 2 === res.data.byteLength
+        } catch (err) {
+          return false
+        }
+      })
+      if (!format) throw new Error('failed to find targets format')
+      return _.times(nbTg, i => {
+        const { ats, st, tg } = format[i]
+        return {
+          tg: res.data.getUint8(st),
+          atqa: `000${res.data.getUint16(st + 1).toString(16)}`.slice(-4),
+          sak: this.dvGetHex(res.data, st+3),
+          uid: new Uint8Array(res.buffer, res.data.byteOffset + st + 5, tg - 5),
+          ...(ats === 0 ? {} : { ats: new Uint8Array(res.buffer, res.data.byteOffset + st + tg, ats) }),
+        }
+      })
     }
 
     async inDataExchange ({ tg = 1, data = null, timeout = 2e3 } = {}) {
       const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
       frame.u8.set(new Uint8Array([0x40, tg]), frame.data.byteOffset)
       if (data) { // data out
-        if (data instanceof ArrayBuffer) data = new Uint8Array(data)
-        if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-        new Uint8Array(frame.buffer, frame.data.byteOffset + 2).set(data)
+        data = this.castUint8Array(data)
+        frame.u8.set(data, frame.data.byteOffset + 2)
       }
       this.frameGenerateDCS(frame)
       const res = await this.frameExec({ frame, resTimeout: timeout })
@@ -200,8 +282,7 @@ script.
       if (!data) throw new Error('invalid data')
       const frame = this.frameCreateNormal(2 + _.get(data, 'byteLength', 0)) // include len of TFI
       frame.data.setUint8(0, 0x42)
-      if (data instanceof ArrayBuffer) data = new Uint8Array(data)
-      if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      data = this.castUint8Array(data)
       frame.u8.set(data, frame.data.byteOffset + 1)
       this.frameGenerateDCS(frame)
       const res = await this.frameExec({ frame, resTimeout: timeout })
@@ -215,7 +296,7 @@ script.
       }
     }
 
-    async inDeselect ({ tg = 0 }) {
+    async inDeselect ({ tg = 0 } = {}) {
       if (_.isNil(tg)) throw new Error('invalid tg')
       const frame = this.frameCreateNormal(3) // include len of TFI
       frame.u8.set(new Uint8Array([0x44, tg]), frame.data.byteOffset)
@@ -225,7 +306,7 @@ script.
       this.throwStatusIfFailed(status)
     }
 
-    async inRelease ({ tg = 0 }) {
+    async inRelease ({ tg = 0 } = {}) {
       if (_.isNil(tg)) throw new Error('invalid tg')
       const frame = this.frameCreateNormal(3) // include len of TFI
       frame.u8.set(new Uint8Array([0x52, tg]), frame.data.byteOffset)
@@ -235,7 +316,7 @@ script.
       this.throwStatusIfFailed(status)
     }
 
-    async inSelect ({ tg }) {
+    async inSelect ({ tg } = {}) {
       if (!_.includes([1, 2], tg)) throw new Error('invalid tg')
       const frame = this.frameCreateNormal(3) // include len of TFI
       frame.u8.set(new Uint8Array([0x54, tg]), frame.data.byteOffset)
@@ -260,11 +341,58 @@ script.
       }
     }
 
-    async magicMifareUnlock () {
-      console.log(await window.pn532.inListPassiveTarget({ maxTg: 1, brTy: 0 }))
-      await this.inSelect({ tg: 1 })
-      // 08 63 02 00 63 03 00 (0x6302 CIU_TxMode bit7 TxCRCEn, 0x6303 CIU_RxMode bit7 RxCRCEn)
-      await this.writeRegisters({ 0x6302: 0x00, 0x6303: 0x00 })
+    async mfAuthenticateBlock ({ block = 0, isKeyB = 0, key = null, tg = 1, uid = null } = {}) {
+      if (!key) throw new Error('key is required')
+      if (!uid) throw new Error('uid is required')
+      ;[key, uid] = [this.castUint8Array(key), this.castUint8Array(uid)]
+      if (key.byteLength !== 6) throw new Error('invalid key length')
+      if (uid.byteLength !== 4) throw new Error('invalid uid length')
+      return await this.inDataExchange({
+        tg,
+        data: new Uint8Array([
+          isKeyB ? 0x61 : 0x60, // Authentication B = 0x61, Authentication A = 0x60
+          block, // Block Number (1K = 0..63, 4K = 0..255)
+          ...key,
+          ...uid,
+        ]),
+      })
+    }
+
+    async mfReadBlock ({ block = 0, tg = 1 } = {}) {
+      return await this.inDataExchange({
+        tg,
+        data: new Uint8Array([
+          0x30, // Mifare Read command = 0x30
+          block, // Block Number (1K = 0..63, 4K = 0..255)
+        ]),
+      })
+    }
+
+    async mfWriteBlock ({ block = 0, tg = 1, data = null } = {}) {
+      if (!data) throw new Error('data is required')
+      data = this.castUint8Array(data)
+      if (data.byteLength !== 16) throw new Error('invalid data length')
+      return await this.inDataExchange({
+        tg,
+        data: new Uint8Array([
+          0xa0, // Mifare Write command = 0xA0
+          block, // Block Number (1K = 0..63, 4K = 0..255)
+          ...data,
+        ]),
+      })
+    }
+
+    async mfMagicSetCrc (enable = 1) {
+      enable = enable ? 0x80 : 0x00
+      // 0x6302 CIU_TxMode bit7 TxCRCEn, 0x6303 CIU_RxMode bit7 RxCRCEn
+      await this.writeRegisters({ 0x6302: enable, 0x6303: enable })
+    }
+
+    async mfMagicUnlock ({ tg = 1 } = {}) {
+      // https://github.com/RfidResearchGroup/proxmark3/blob/dbec6edfa7e411e09b26946ac52e6b7e37225e85/doc/magic_cards_notes.md#mifare-classic-block0
+      await this.inSelect({ tg })
+      // 08 63 02 00 63 03 00
+      await this.mfMagicSetCrc(0)
       // 42 50 00 57 CD (halt)
       await this.inCommunicateThru({ data: this.u8FromHex('500057CD') }).catch(() => 0)
       // 08 63 3D 07 (0x633d CIU_BitFraming TxLastBits 7)
@@ -275,20 +403,51 @@ script.
       await this.writeRegisters({ 0x633d: 0x00 })
       // 42 43
       await this.inCommunicateThru({ data: new Uint8Array([0x43]) })
+      // 08 63 02 80 63 03 80
+      await this.mfMagicSetCrc(1)
     }
 
-    async magicMifareSetUid () {
-      await this.magicMifareUnlock()
-      // 08 63 02 80 63 03 80
-      await this.writeRegisters({ 0x6302: 0x80, 0x6303: 0x80 })
-      // 40 01 A0 00 F2 35 06 1B DA 08 04 00 02 7D 1B 3B 60 73 86 1D
-      await this.inDataExchange({ tg: 1, data: this.u8FromHex('A000F235061BDA080400027D1B3B6073861D') })
-      // HLTA
-      await this.inRelease({ tg: 0 })
-      // 08 63 02 00 63 03 00 (0x6302 CIU_TxMode bit7 TxCRCEn, 0x6303 CIU_RxMode bit7 RxCRCEn)
-      await this.writeRegisters({ 0x6302: 0x00, 0x6303: 0x00 })
-      // 4A 01 00 (InListPassiveTarget)
-      console.log(await window.pn532.inListPassiveTarget({ maxTg: 1, brTy: 0 }))
+    async mfMagicSetUid ({ atqa = null, sak = null, tg = 1, uid = null } = {}) {
+      const block0 = this.castUint8Array(_.get(await this.mfReadBlock({ tg, block: 0 }).catch(() => 0), 'data', '0102030404080400000000000000BEAF'))
+      const block0dv = new DataView(block0.buffer)
+      if (uid) {
+        uid = this.castUint8Array(uid)
+        if (!_.includes([4, 7, 10], uid.byteLength)) throw new Error('invalid uid length')
+        block0.set(uid)
+        const uidlen = uid.byteLength
+        // bcc
+        block0[uidlen] = 0
+        for (let i = 0; i < uidlen; i++) block0[uidlen] ^= block0[i]
+        if (!_.isNil(sak)) block0dv.setUint8(uidlen + 1, sak)
+        if (!_.isNil(atqa)) block0dv.setUint16(uidlen + 2, atqa, true)
+      }
+      let isWriteFailed = true
+      for (let retry = 0; retry < 3; retry++) {
+        try {
+          await this.mfWriteBlock({ tg, block: 0, data: block0 })
+          isWriteFailed = false
+          break
+        } catch (err) {}
+      }
+      if (isWriteFailed) this.logTime('mfMagicSetUid failed')
+    }
+
+    async mfMagicWipe ({ atqa = null, sak = null, tg = 1, uid = null } = {}) {
+      const blockData = this.u8FromHex('00000000000000000000000000000000')
+      const blockKey = this.u8FromHex('FFFFFFFFFFFF08778F00FFFFFFFFFFFF')
+
+      await this.mfMagicSetUid({ atqa, sak, tg, uid })
+      for (let block = 1; block < 64; block++) { // skip block 0
+        let isWriteFailed = true
+        for (let retry = 0; retry < 3; retry++) {
+          try {
+            await this.mfWriteBlock({ tg, block, data: (block + 1) % 4 ? blockData : blockKey })
+            isWriteFailed = false
+            break
+          } catch (err) {}
+        }
+        if (isWriteFailed) this.logTime(`mfMagicWipe failed on block ${block}`)
+      }
     }
 
     async wakeup () {
@@ -392,12 +551,26 @@ script.
     }
 
     frameCreateFromHex (hex) {
-      const u8 = this.u8FromHex(hex)
-      return {
+      const u8 = this.castUint8Array(hex)
+      const frame = {
         buffer: u8.buffer,
         dv: new DataView(u8.buffer),
         u8,
       }
+      // find frame start
+      let st = 0
+      while (st < u8.length - 1 && frame.dv.getUint16(st) !== 0x00FF) st++
+      if (st < u8.length - 1) { // frame start found
+        // normal frame
+        if ((u8[st + 2] + u8[st + 3]) % 256 === 0) {
+          frame.len = u8[st + 2]
+          frame.data = new DataView(u8.buffer, st + 5, frame.len - 1)
+        } else if ((u8[st + 4] + u8[st + 5] + u8[st + 6]) % 256 === 0) {
+          frame.len = frame.dv.getUint16(st + 5)
+          frame.data = new DataView(u8.buffer, st + 8, frame.len - 1)
+        }
+      }
+      return frame
     }
 
     frameGenerateDCS (frame) {
@@ -414,10 +587,10 @@ script.
       // 把 resolve 跟 reject 丟到全域去
       const pending = { ack: null, res: null }
       if (ackTimeout) pending.ack = new Promise((resolve, reject) => { this.ackHandlers = { resolve, reject } })
-      if (resTimeout) pending.res = new Promise((resolve, reject) => { this.resHandlers = { resolve, reject } })
+      if (resTimeout) pending.res = new Promise((resolve, reject) => { this.resHandlers = { resolve, reject, cmd: frame.data ? frame.data.getUint8(0) + 1 : null } })
       try {
         // logTime
-        this.logTime(`傳送: ${this.inspectFrameBuffer(frame.buffer)}`)
+        this.logTime(`傳送: ${this.inspectFrame(frame)}`)
         await this.charSend.writeValue(frame.buffer)
         await this.timeout(pending.ack, ackTimeout, '傳送超時')
         if (resTimeout) return await this.timeout(pending.res, resTimeout, '回應超時')
@@ -436,7 +609,7 @@ script.
       const res = { buffer, dv: new DataView(buffer), u8: new Uint8Array(buffer) }
 
       // ack / nack frame
-      if (buffer.byteLength === 6) {
+      if (res.u8.length === 6) {
         const isAck = (this.bufferCmp(buffer, window.PN532_ACK) === 0)
         if (isAck) _.invoke(this, 'ackHandlers.resolve', res)
         else {
@@ -448,29 +621,20 @@ script.
         return
       }
 
-      this.logTime(`收到: ${this.inspectFrameBuffer(buffer)}`)
+      this.logTime(`收到: ${this.inspectFrame(buffer)}`)
       try {
-        const isNormalFrame = buffer.byteLength <= 262
+        const isNormalFrame = res.u8.length <= 262
         // LCS: len checksum
-        if (isNormalFrame) { // 255 + 7
-          res.u8[4] += res.u8[3]
-          if (res.u8[4]) throw new Error('invalid lcs')
-        } else { // 256 + 10
-          res.u8[7] += res.u8[5] + res.u8[6]
-          if (res.u8[7]) throw new Error('invalid lcs')
-        }
+        if ((isNormalFrame ? (res.u8[3] + res.u8[4]) : (res.u8[5] + res.u8[6] + res.u8[7])) % 256 !== 0) throw new Error('invalid lcs')
         res.len = isNormalFrame ? res.u8[3] : (res.u8[5] * 256 + res.u8[6])
         // DCS: data checksum
         const dcs = res.u8.length - 2
         for (let i = 0; i < res.len; i++) res.u8[dcs] += res.u8[dcs - i - 1]
         if (res.u8[dcs]) throw new Error('invalid dcs')
+        if (res.u8.length === 8) throw new Error(`Error frame: ${this.dvGetHex(res.dv, 5)}`)
         res.data = new DataView(buffer, res.u8.length - res.len - 1, res.len - 1)
-        // Error frame
-        if (buffer.byteLength === 8) {
-          const tfi = res.u8[res.u8.length - res.len - 2] // TFI
-          const code = `0${(tfi & 0x3f).toString(16)}`.slice(-2)
-          throw new Error(`NAD = ${(tfi & 0x80) ? 1 : 0}, MI = ${(tfi & 0x40) ? 1 : 0}, code = ${code}, msg = ` + window.PN532_ERROR_CODE['s' + code])
-        }
+        if (res.u8[res.data.byteOffset - 1] !== 0xd5) throw new Error('invalid TFI')
+        if (!_.isNil(_.get(this, 'resHandlers.cmd')) && this.resHandlers.cmd !== res.data.getUint8(0)) throw new Error('response cmd mismatch')
         return _.invoke(this, 'resHandlers.resolve', res)
       } catch (err) {
         _.set(err, 'data.res', res)
@@ -497,30 +661,16 @@ script.
       console.log(`[${new Date().toTimeString().slice(0, 8)}] ${text}`)
     }
 
-    inspectBuffer (buf) {
-      if (buf instanceof ArrayBuffer) buf = new Uint8Array(buf)
-      if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
-      return _.join(_.map(buf, num => `0${num.toString(16)}`.slice(-2)), ' ')
+    inspectBuffer (data) {
+      data = this.castUint8Array(data)
+      return _.join(_.map(data, num => `0${num.toString(16)}`.slice(-2)), ' ')
     }
 
-    inspectFrameBuffer (buf) {
-      if (this.verbose) return this.inspectBuffer(buf)
-      const u8 = new Uint8Array(buf)
-      const dv = new DataView(buf)
-      const lcs = new Uint8Array(1)
-      // find frame start
-      let st = 0
-      while (st < buf.byteLength - 1 && dv.getUint16(st) !== 0x00FF) st++
-      // start not found
-      if (st === buf.byteLength - 1) return this.inspectBuffer(buf)
-      // normal frame
-      lcs[0] = u8[st + 2] + u8[st + 3]
-      if (!lcs[0]) return this.inspectBuffer(new Uint8Array(buf, st + 5, u8[st + 2] - 1))
-      // extened frame
-      lcs[0] = u8[st + 4] + u8[st + 5] + u8[st + 6]
-      if (u8[st + 2] === 0xFF && u8[st + 3] === 0xFF && !lcs[0]) return this.inspectBuffer(new Uint8Array(buf, st + 8, dv.getUint16(5) - 1))
-      // other
-      return this.inspectBuffer(buf)
+    inspectFrame (frame) {
+      if (frame instanceof ArrayBuffer) frame = this.frameCreateFromHex(frame)
+      if (!frame.buffer) throw new Error('invalid frame')
+      if (!this.verbose && frame.data) return this.inspectBuffer(new Uint8Array(frame.buffer, frame.data.byteOffset, frame.data.byteLength))
+      return this.inspectBuffer(frame.buffer)
     }
 
     async getBluetoothAvailability () {
@@ -528,10 +678,7 @@ script.
     }
 
     bufferCmp (a, b) {
-      if (a instanceof ArrayBuffer) a = new Uint8Array(a)
-      if (!(a instanceof Uint8Array)) a = new Uint8Array(a.buffer, a.byteOffset, a.byteLength)
-      if (b instanceof ArrayBuffer) b = new Uint8Array(b)
-      if (!(b instanceof Uint8Array)) b = new Uint8Array(b.buffer, b.byteOffset, b.byteLength)
+      ;[a, b] = [this.castUint8Array(a), this.castUint8Array(b)]
 
       if (a.byteLength !== b.byteLength) return a.byteLength - b.byteLength
       let i = a.byteLength
@@ -546,8 +693,15 @@ script.
     }
 
     throwStatusIfFailed (status = 0) {
-      const hex = `0${status.toString(16)}`.slice(-2)
-      if (window.PN532_ERROR_CODE[hex]) throw new Error(window.PN532_ERROR_CODE[hex])
+      const code = `0${(status & 0x3f).toString(16)}`.slice(-2)
+      if (window.PN532_ERROR_CODE[code]) throw new Error(`NAD = ${(status & 0x80) ? 1 : 0}, MI = ${(status & 0x40) ? 1 : 0}, code = ${code}, msg = ${window.PN532_ERROR_CODE[code]}`)
+    }
+
+    castUint8Array (data) {
+      if (_.isString(data)) data = this.u8FromHex(data)
+      if (data instanceof ArrayBuffer) data = new Uint8Array(data)
+      if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      return data
     }
   }
   window.PN532 = PN532
