@@ -59,8 +59,8 @@ block script
           //- console.log(await window.pn532.mfMagicUnlock())
           //- console.log(await window.pn532.mfMagicWipe({ uid: 'F235061B' }))
           try {
-            console.log(await window.pn532.hf14aListPassiveTarget())
-            console.log(await window.pn532.diagnose06())
+            console.log(await window.pn532.hf14aListPassiveTarget({ timeout: 3e3 }))
+            console.log(await window.pn532.hf14a4IsPresent())
           } finally {
             console.log(await window.pn532.inRelease())
           }

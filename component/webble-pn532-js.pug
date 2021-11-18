@@ -191,7 +191,7 @@ script.
       return await this.frameExec({ frame, resTimeout: timeout })
     }
 
-    async hf14aListPassiveTarget ({ maxTg = 1, uid = null } = {}) {
+    async hf14aListPassiveTarget ({ maxTg = 1, uid = null, timeout } = {}) {
       if (uid) {
         uid = this.castUint8Array(uid)
         // pad Cascade Tag
@@ -215,7 +215,7 @@ script.
             throw new Error('invalid uid')
         }
       }
-      const res = await this.inListPassiveTarget({ maxTg, brTy: 0, data: uid })
+      const res = await this.inListPassiveTarget({ maxTg, brTy: 0, data: uid, timeout })
       const nbTg = res.data.getUint8(1)
       // find format: tg + atqa + sak + uidlen + uid (uidlen) + atslen + ats (atslen - 1)
       const format = _.find([
@@ -257,6 +257,19 @@ script.
           ...(ats === 0 ? {} : { ats: new Uint8Array(res.buffer, res.data.byteOffset + st + tg, ats) }),
         }
       })
+    }
+
+    async hf14a4IsPresent () {
+      // Diagnose06 failed completely with a JCOP31 on a PN532 so let's do it manually
+      let isPresent = false
+      for (let retry = 0; retry < 3; retry++) {
+        try {
+          await this.inCommunicateThru({ data: new Uint8Array([0xb2]) })
+          isPresent = true
+          break
+        } catch (err) {}
+      }
+      return isPresent
     }
 
     async inDataExchange ({ tg = 1, data = null, timeout = 2e3 } = {}) {
@@ -390,21 +403,24 @@ script.
 
     async mfMagicUnlock ({ tg = 1 } = {}) {
       // https://github.com/RfidResearchGroup/proxmark3/blob/dbec6edfa7e411e09b26946ac52e6b7e37225e85/doc/magic_cards_notes.md#mifare-classic-block0
-      await this.inSelect({ tg })
-      // 08 63 02 00 63 03 00
-      await this.mfMagicSetCrc(0)
-      // 42 50 00 57 CD (halt)
-      await this.inCommunicateThru({ data: this.u8FromHex('500057CD') }).catch(() => 0)
-      // 08 63 3D 07 (0x633d CIU_BitFraming TxLastBits 7)
-      await this.writeRegisters({ 0x633d: 0x07 })
-      // 42 40
-      await this.inCommunicateThru({ data: new Uint8Array([0x40]) })
-      // 08 63 3D 00 (0x633d CIU_BitFraming TxLastBits 0)
-      await this.writeRegisters({ 0x633d: 0x00 })
-      // 42 43
-      await this.inCommunicateThru({ data: new Uint8Array([0x43]) })
-      // 08 63 02 80 63 03 80
-      await this.mfMagicSetCrc(1)
+      try {
+        // 08 63 02 00 63 03 00
+        await this.mfMagicSetCrc(0)
+        await this.inSelect({ tg })
+        // 42 50 00 57 CD (halt)
+        await this.inCommunicateThru({ data: this.u8FromHex('500057CD') }).catch(() => 0)
+        // 08 63 3D 07 (0x633d CIU_BitFraming TxLastBits 7)
+        await this.writeRegisters({ 0x633d: 0x07 })
+        // 42 40
+        await this.inCommunicateThru({ data: new Uint8Array([0x40]) })
+        // 08 63 3D 00 (0x633d CIU_BitFraming TxLastBits 0)
+        await this.writeRegisters({ 0x633d: 0x00 })
+        // 42 43
+        await this.inCommunicateThru({ data: new Uint8Array([0x43]) })
+      } finally {
+        // 08 63 02 80 63 03 80
+        await this.mfMagicSetCrc(1)
+      }
     }
 
     async mfMagicSetUid ({ atqa = null, sak = null, tg = 1, uid = null } = {}) {
