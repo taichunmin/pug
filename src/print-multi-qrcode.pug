@@ -1,0 +1,99 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '在紙上一次印多個 QRCode'
+
+block style
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/print-multi-qrcode.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      @media print
+        .pagebreak
+          page-break-before: always
+
+block content
+  #app.container.text-monospace(v-cloak)
+    .card.my-3.d-print-none
+      .card-header= title
+      .card-body
+        .from-group
+          label QRCode 資料
+          textarea.form-control.form-control-sm(v-model="rawdata", rows="10")
+          small.text-muted 每行一筆資料，先寫文字再填網址，中間以 TAB 分隔
+        .form-inline.mt-2
+          button.btn.btn-primary(type="button", @click="btnPrint") 列印
+          select.ml-2.form-control(v-model.number="h.rows")
+            option(v-for="rows of 9", :value="rows") 每頁 {{ rows }} 排
+          select.ml-2.form-control(v-model.number="h.cols")
+            option(v-for="cols of 9", :value="cols") 每排 {{ cols }} 個
+    table.mb-0.d-none.d-print-table.table.table-bordered.pagebreak(v-for="pages of _.chunk(qrcodes, h.rows * h.cols)")
+      tr(v-for="cols of _.chunk(pages, h.cols)")
+        td.p-4(v-for="qrcode of cols")
+          .d-flex.flex-column.align-items-center
+            .w-100(v-html="qrcode.svg")
+            .mt-3 {{ qrcode.title }}
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
+  script.
+    window.sleep = t => new Promise(resolve => setTimeout(resolve, t))
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        qrcodes: [],
+        rawdata: '',
+        h: {
+          cols: 4,
+          rows: 5,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnPrint () {
+          this.showLoading('請稍候', '正在產生 QRCode')
+          const qrcodes = await Promise.all(_.map(this.rawdata.split(/\r?\n/) ?? [], async str => {
+            const [title, qrcode] = _.map(str.split('\t'), _.trim)
+            if (!qrcode) return
+            return {
+              qrcode,
+              svg: await this.textToQrSvg(qrcode),
+              title,
+            }
+          }))
+          this.$set(this, 'qrcodes', qrcodes)
+          await Swal.fire({ icon: 'success', title: '產生成功', text: `共 ${qrcodes.length} 筆資料` })
+          await window.sleep(1000)
+          window.print()
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+        textToQrSvg: (() => {
+          const config = { margin: 0 }
+          return async text => await QRCode.toString(text, config)
+        })()
+      },
+    })
