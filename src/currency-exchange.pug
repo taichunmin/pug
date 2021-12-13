@@ -23,20 +23,20 @@ block content
     h3.text-center= title
     .row
       .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 至少兌換外幣
-        input.form-control(type="number", v-model.number="h.source")
+        .input-group-prepend 兌換下限
+        input.form-control(type="number", v-model.number="h.lower")
       .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 可多換外幣
-        input.form-control(type="number", v-model.number="h.quota")
+        .input-group-prepend 兌換上限
+        input.form-control(type="number", v-model.number="h.upper")
       .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 外幣有效位數
-        input.form-control(type="number", v-model.number="h.precision1")
+        .input-group-prepend 兌換基準
+        input.form-control(type="number", v-model.number="h.basis")
       .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 外幣匯率
+        .input-group-prepend 兌換匯率
         input.form-control(type="number", v-model.number="h.rate")
       .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 台幣有效位數
-        input.form-control(type="number", v-model.number="h.precision2")
+        .input-group-prepend 四捨五入
+        input.form-control(type="number", v-model.number="h.round")
 
 block script
   script.
