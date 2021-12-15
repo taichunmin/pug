@@ -1,11 +1,14 @@
 extends /layout/default
 
 block beforehtml
-  - const title = '換匯計算機'
+  - const title = '換匯金額推薦'
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
-  meta(property="og:description", content="換匯計算機能協助你計算該換多少金額最划算。")
+  meta(property="og:description", content="換匯金額推薦能協助你計算該換多少金額最划算。")
+  meta(property="og:image:height", content="600")
+  meta(property="og:image:width", content="1000")
+  meta(property="og:image", content="https://i.imgur.com/7FKbAlQ.png")
   meta(property="og:locale", content="zh_TW")
   meta(property="og:site_name", content="筆記國度")
   meta(property="og:title", content=title)
@@ -21,30 +24,47 @@ block style
 block content
   #app.my-3.container.text-monospace(v-cloak)
     h3.text-center= title
-    .row
-      .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 兌換下限
-        input.form-control(type="number", v-model.number="h.lower")
-      .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 兌換上限
-        input.form-control(type="number", v-model.number="h.upper")
-      .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 兌換基準
-        input.form-control(type="number", v-model.number="h.basis")
-      .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 兌換匯率
-        input.form-control(type="number", v-model.number="h.rate")
-      .col-xs-12.col-md: .input-group.input-group-sm
-        .input-group-prepend 四捨五入
-        input.form-control(type="number", v-model.number="h.round")
+    .row.mx-n1
+      .col-xs-12.col-md.mx-1.px-0.my-1: .input-group.input-group-sm
+        .input-group-prepend: span.input-group-text 兌換匯率
+        input.form-control.text-right(type="number", v-model="h.rate")
+      .col-xs-12.col-md.mx-1.px-0.my-1: .input-group.input-group-sm
+        .input-group-prepend: span.input-group-text 兌換金額
+        input.form-control.text-right(type="number", v-model="h.target")
+      .col-xs-12.col-md.mx-1.px-0.my-1: .input-group.input-group-sm
+        .input-group-prepend: span.input-group-text 兌換基準
+        select.form-control.text-right(v-model="h.basis")
+          option(v-for="i of 10", :value="4-i") 10^{{ i-4 }}
+      .col-xs-12.col-md.mx-1.px-0.my-1: .input-group.input-group-sm
+        .input-group-prepend: span.input-group-text 花費基準
+        select.form-control.text-right(v-model="h.round")
+          option(v-for="i of 10", :value="4-i") 10^{{ i-4 }}
+    .card.mt-2(v-if="result?.tops?.length")
+      h5.card-header.text-white.bg-success #[i.fa.fa-money.mr-1] 計算結果
+      table.mb-0.table.table-striped.table-bordered.table-sm.text-right.text-monospace(style="font-size: 80%")
+        thead: tr
+          th 兌換
+          th 花費
+          th.text-left 匯率
+        tbody
+          tr(v-for="top of result.tops")
+            td {{ top.buy.toFixed(Math.max(0, h.basis)) }}
+            td {{ top.cost.toFixed(Math.max(0, h.round)) }}
+            td.text-left {{ top.rate.toFixed(15) }}
 
 block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/bignumber.js@9/bignumber.min.js")
   script.
+    /* global BigNumber */
     window.vm = new Vue({
       el: '#app',
       data: {
+        result: {},
         h: {
-          from: 0,
+          basis: 2,
+          target: 10,
+          rate: 4.3,
+          round: 0,
         },
       },
       async mounted () {
@@ -55,9 +75,32 @@ block script
         } catch (err) {}
         this.$watch('h', () => {
           localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+          this.genResult(this)
         }, { deep: true })
+        this.genResult(this) // init
       },
-      computed: {
-        results () {},
+      methods: {
+        genResult: _.debounce(me => {
+          if (!me) return
+          const ctx = { tops: [] }
+          for (const i of ['target', 'rate']) ctx[i] = BigNumber(me?.h?.[i])
+          for (const i of ['basis', 'round']) ctx[i] = _.toSafeInteger(me?.h?.[i])
+          if (ctx.target.isNaN() || ctx.rate.isNaN() || ctx.rate.lte(BigNumber(0))) return ctx // 匯率錯誤
+
+          const TOP_SIZE = 10
+          ctx.maxTopRate = ctx.rate
+          ctx.step = BigNumber(1).shiftedBy(-ctx.basis)
+          ctx.target = BigNumber.max(ctx.step, ctx.target) // 不可為 0
+          for (let i = 0; i < 1e5; i++) {
+            const tmp = {}
+            tmp.buy = ctx.step.times(i).plus(ctx.target).dp(Math.max(0, ctx.basis))
+            tmp.cost = tmp.buy.times(ctx.rate).dp(Math.max(0, ctx.round))
+            tmp.rate = tmp.cost.div(tmp.buy)
+            if (ctx.tops.length === TOP_SIZE && tmp.rate.gt(ctx.maxTopRate)) continue
+            ctx.tops = _.slice(_.sortBy([...ctx.tops, tmp], ['rate', 'buy']), 0, TOP_SIZE)
+            ctx.maxTopRate = _.maxBy(ctx.tops, 'rate')?.rate
+          }
+          me.$set(me, 'result', ctx)
+        }, 1000),
       },
     })

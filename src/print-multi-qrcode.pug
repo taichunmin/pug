@@ -94,6 +94,6 @@ block script
         textToQrSvg: (() => {
           const config = { margin: 0 }
           return async text => await QRCode.toString(text, config)
-        })()
+        })(),
       },
     })

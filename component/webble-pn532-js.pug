@@ -252,7 +252,7 @@ script.
         return {
           tg: res.data.getUint8(st),
           atqa: `000${res.data.getUint16(st + 1).toString(16)}`.slice(-4),
-          sak: this.dvGetHex(res.data, st+3),
+          sak: this.dvGetHex(res.data, st + 3),
           uid: new Uint8Array(res.buffer, res.data.byteOffset + st + 5, tg - 5),
           ...(ats === 0 ? {} : { ats: new Uint8Array(res.buffer, res.data.byteOffset + st + tg, ats) }),
         }
