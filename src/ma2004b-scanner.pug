@@ -1,0 +1,204 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'MA2004B 掃描'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      .card.beacon
+        font-size: 90%
+        letter-spacing: -1px
+        small
+          font-size: 80%
+      .beacon
+        li.list-group-item
+          position: relative
+          .beacon-dropdown
+            position: absolute
+            right: .25rem
+            top: .25rem
+
+block content
+  #app.container.py-3.text-monospace(v-cloak)
+    h3.text-center= title
+    .row.my-3.mx-n2
+      .col.px-0.mx-2
+        button.btn.btn-block.btn-danger(type="button", @click="btnClear") 清空資料
+      .col.px-0.mx-2
+        button.btn.btn-block.btn-success(v-if="!scanning", type="button", @click="btnToggleScan") 開始掃描
+        button.btn.btn-block.btn-warning(v-else, type="button", @click="btnToggleScan") 停止掃描
+    template(v-if="!_.keys(devices)?.length")
+      .input-group.input-group-sm
+        input.form-control(type="url", value="chrome://flags/#enable-experimental-web-platform-features", readonly)
+        .input-group-append
+          button.btn.btn-outline-success(type="button", @click="btnCopy('chrome://flags/#enable-experimental-web-platform-features')") 複製網址
+      small.text-muted 如果無法掃描，請嘗試使用 macOS 和 Android 系統的 Google Chrome（版本大於 79）開啟，並且前往上方網址啟用 Experimental Web Platform features 功能。
+    .card.beacon.mt-2(v-for="device of devices")
+      .card-header.d-flex.align-items-center(@click="device.show = !device.show")
+        i.fa.fa-fw.mr-2(:class="`fa-chevron-${device.show ? 'down' : 'right'}`")
+        .flex-fill {{ device.name || '無名稱' }} #[span.badge.badge-pill.badge-primary {{ _.keys(device?.beacons)?.length ?? 0 }}]
+        small.text-muted.ml-2 #[i.fa.fa-clock-o.mr-1]{{ device.scannedAt ?? '?' }}
+        small.text-muted.ml-2 #[i.fa.fa-signal.mr-1]{{ device.rssi ?? '?' }}
+      ul.list-group.list-group-flush(v-if="device.show")
+        li.list-group-item.py-1(v-for="beacon of (device?.beacons ?? [])")
+          .row.row-cols-2
+            .col.mt-1(v-for="[name, val] of beaconToPairs(beacon)", @click="btnCopy(val)")
+              small.text-info {{ name }}
+              .mt-n1 {{ val }}
+          .mt-1(v-if="beacon.dm", @click="btnCopy(beacon.dm)")
+            small.text-info 裝置訊息
+            .mt-n1 {{ beacon.dm }}
+          .beacon-dropdown.dropdown
+            button.btn.btn-sm.btn-outline-secondary(type="button", data-toggle="dropdown"): i.fa.fa-fw.fa-ellipsis-v
+            .dropdown-menu.dropdown-menu-right
+              a.dropdown-item(target="_blank", :href="oaMessage(`/mpbeacon ${beacon.mbid || beacon.hwid}`)") /mpbeacon
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/moment.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
+  script.
+    const bluetooth = _.get(navigator, 'bluetooth')
+    const DISPLAY_BATTERY = ['外部供電', '0%', '10%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '100%']
+    const UUID_LINE = '0000fe6f-0000-1000-8000-00805f9b34fb'
+    const vm = new Vue({ // eslint-disable-line no-unused-vars
+      el: '#app',
+      data: {
+        devices: {},
+        listened: false,
+        scan: null,
+        scanning: false,
+      },
+      methods: {
+        async getBluetoothAvailability () {
+          return await _.invoke(navigator, 'bluetooth.getAvailability') === true
+        },
+        async btnToggleScan () {
+          try {
+            this.updateScanning() // 確認現在是否在掃描中
+            if (!this.scanning) { // 開始掃描
+              if (!await this.getBluetoothAvailability()) throw new Error('您的裝置不支援藍芽功能')
+
+              // 綁定掃描事件 (只執行一次)
+              if (!this.listened) {
+                bluetooth.addEventListener('advertisementreceived', event => { this.onAdvertisementReceived(event) })
+                window.setInterval(() => this.updateScanning(), 1000)
+                this.listened = true
+              }
+              this.scan = await bluetooth.requestLEScan({ filters: [{ services: [UUID_LINE] }] })
+            } else { // 停止掃描
+              this.scan.stop()
+              this.scan = null
+            }
+          } catch (err) {
+            await Swal.fire({ icon: 'error', title: '藍芽掃描切換失敗', text: err.message })
+          }
+        },
+        async onAdvertisementReceived (event) {
+          const dv = event.serviceData.get(UUID_LINE)
+          if (!ArrayBuffer.isView(dv) || dv.byteLength < 6) return
+
+          // 處理 device 的資料
+          const deviceId = _.trim(event?.device?.id, '=')
+          const oldDevice = this.devices?.[deviceId] ?? {}
+          const device = {
+            ...oldDevice,
+            id: deviceId,
+            name: event?.device?.name || oldDevice?.name,
+            rssi: event?.rssi,
+            scannedAt: moment().format('HH:mm:ss'),
+            show: oldDevice?.show ?? false,
+          }
+
+          // 處理 beacon 的資料
+          const hwid = this.dvToHexString(dv, 1, 5)
+          const mbid = dv.byteLength !== 19 ? null : this.dvToHexString(dv, 14, 5)
+          const beaconId = `${hwid ?? ''}${mbid ?? ''}`
+          const beacon = {
+            ...device.beacons?.[beaconId] ?? {},
+            dm: this.dvToHexString(dv, 7, dv.byteLength - 7),
+            frameType: this.dvToHexString(dv, 0),
+            hwid,
+            id: beaconId,
+            mbid,
+            scannedAt: device.scannedAt,
+            txPower: event?.txPower,
+            ...(!_.includes([14, 19], dv.byteLength) ? {} : {
+              auth: this.dvToHexString(dv, 7, 4),
+              battery: DISPLAY_BATTERY[dv.getUint8(13)],
+              maskedTimestamp: `${dv.getUint16(11)} (0x${this.dvToHexString(dv, 11, 2)})`,
+            }),
+          }
+          if (this.isLineBeacon(beacon)) _.set(device, ['beacons', beaconId], beacon)
+          if (_.keys(device?.beacons)?.length) this.$set(this.devices, deviceId, device)
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        isLineBeacon (b) {
+          return b?.hwid?.length === 10 && b?.hwid !== '0000000000'
+        },
+        beaconToPairs: (() => {
+          const KEY2STRING = {
+            mbid: 'MBID',
+            hwid: 'HWID',
+            scannedAt: '接收時間',
+            maskedTimestamp: '時戳後四碼',
+            auth: '驗證資料',
+            battery: '剩餘電量',
+          }
+          return b => _.chain(KEY2STRING).map((zh, en) => [zh, b?.[en]]).filter(row => !_.isNil(row[1])).value()
+        })(),
+        updateScanning () {
+          this.scanning = _.get(this, 'scan.active', false)
+        },
+        btnClear () {
+          this.$set(this, 'devices', {})
+        },
+        oaMessage (text) {
+          return `https://line.me/R/oaMessage/@youbike/?${encodeURIComponent(text)}`
+        },
+        dvToHexString (dv, byteOffset, len = 1) {
+          if (dv instanceof ArrayBuffer) dv = new DataView(dv)
+          if (!(dv instanceof DataView)) dv = new DataView(dv.buffer, dv.byteOffset, dv.byteLength)
+          return _.times(len, i => {
+            try {
+              return `0${dv.getUint8(byteOffset + i).toString(16)}`.slice(-2)
+            } catch (err) {
+              return ''
+            }
+          }).join('')
+        },
+        u8FromHex (hex) {
+          return new Uint8Array(_.map(hex.match(/.{2}/g), b => _.parseInt(b, 16)))
+        },
+        fakeLineBeacon () {
+          this.onAdvertisementReceived({
+            device: { id: 'fake', name: 'LE_00_FAKE' },
+            rssi: _.random(-90, -30),
+            serviceData: {
+              get: () => new DataView(this.u8FromHex('0201deadbeef7f037cf6f1000001').buffer),
+            },
+          })
+        },
+        fakeMpBeacon () {
+          this.onAdvertisementReceived({
+            device: { id: 'fake', name: 'LE_00_FAKE' },
+            rssi: _.random(-90, -30),
+            serviceData: {
+              get: () => new DataView(this.u8FromHex('0201deadbeef7f5cf2a4230001018c194fe41d').buffer),
+            },
+          })
+        },
+      },
+    })
