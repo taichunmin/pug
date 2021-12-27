@@ -61,6 +61,7 @@ block content
         a.btn.btn-outline-info.mx-2.my-1(href="https://notify-bot.line.me/doc/en/", target="_blank") Notify 文件
         a.btn.btn-outline-info.mx-2.my-1(href="https://lodash.com/docs/#template", target="_blank") 訊息變數教學
         a.btn.btn-outline-info.mx-2.my-1(href="https://developers.line.biz/en/docs/messaging-api/sticker-list/", target="_blank") Sticker 清單
+        a.btn.btn-outline-info.mx-2.my-1(href="https://mybrowseraddon.com/access-control-allow-origin.html", target="_blank") CORS 擴充套件
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
@@ -77,6 +78,7 @@ block script
       if (window.gtagSetLineId) window.gtagSetLineId(profile.userId)
       return profile
     })()
+    window.sleep = t => new Promise(resolve => setTimeout(resolve, t))
     window.httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
     window.joiCustomUrl = (value, helpers) => {
       const a = new URL(value)
@@ -167,21 +169,24 @@ block script
             const tpl = this.compileTpl()
 
             let errCnt = 0
-            for (const [rowId, row] of _.toPairs(rows)) {
-              try {
-                this.showLoading('訊息推送中', `編譯給帳號 (${_.parseInt(rowId) + 1} / ${rows.length}) 的訊息`)
-                const ctx = { Qs, _, dayjs, row }
-                const token = await window.joiToken(tpl.token(ctx))
-                const msgs = await Promise.all(_.map(tpl.msgs, tplMsg => window.joiMsg(_.mapValues(tplMsg, v => v(ctx)))))
-                for (const [msgId, msg] of _.toPairs(msgs)) {
-                  this.showLoading('訊息推送中', `推送給帳號 (${_.parseInt(rowId) + 1} / ${rows.length})，訊息 (${_.parseInt(msgId) + 1} / ${msgs.length})`)
-                  await this.apiNotify(token, msg)
+            for (const chunk of _.chunk(_.toPairs(rows), 100)) {
+              await Promise.all(_.map(chunk, async ([rowId, row]) => {
+                try {
+                  this.showLoading('訊息推送中', `編譯給帳號 (${_.parseInt(rowId) + 1} / ${rows.length}) 的訊息`)
+                  const ctx = { Qs, _, dayjs, row }
+                  const token = await window.joiToken(tpl.token(ctx))
+                  const msgs = await Promise.all(_.map(tpl.msgs, tplMsg => window.joiMsg(_.mapValues(tplMsg, v => v(ctx)))))
+                  for (const [msgId, msg] of _.toPairs(msgs)) {
+                    this.showLoading('訊息推送中', `推送給帳號 (${_.parseInt(rowId) + 1} / ${rows.length})，訊息 (${_.parseInt(msgId) + 1} / ${msgs.length})`)
+                    await this.apiNotify(token, msg)
+                  }
+                } catch (err) {
+                  err.message = `帳號 ${_.parseInt(rowId) + 1} 發生錯誤: ${err.message}`
+                  console.error(err)
+                  errCnt++
                 }
-              } catch (err) {
-                err.message = `帳號 ${_.parseInt(rowId) + 1} 發生錯誤: ${err.message}`
-                console.error(err)
-                errCnt++
-              }
+              }))
+              await window.sleep(1000)
             }
             if (errCnt) throw new Error(`累計發生 ${errCnt} 個錯誤，請從開發者工具中查看錯誤。`)
             await Swal.fire({ icon: 'success', title: '訊息推送成功' })
