@@ -315,7 +315,7 @@ block script
             if (!_.get(cached, cachedKey)) _.set(cached, cachedKey, this.bleNewRequest({ ack, cmd: 0xf2, len }))
             const req = _.get(cached, cachedKey)
             new Uint8Array(req.buffer, 4).set(new Uint8Array(file, start, len)) // 複製 file 中指定的範圍
-            const res = await this.bleSendRequest({ req, verbose: false })
+            const res = await this.bleSendRequest({ req })
             if (!ack) return
             const parsed = {
               code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
