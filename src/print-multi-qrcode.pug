@@ -92,7 +92,7 @@ block script
             const titleSize = _.first(qrcodes)?.titles?.length ?? 1
             qrcodes.push(..._.times(padSize, () => ({
               svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" />',
-              titles: _.times(titleSize, () => ' ')
+              titles: _.times(titleSize, () => ' '),
             })))
           }
           this.$set(this, 'qrcodes', qrcodes)

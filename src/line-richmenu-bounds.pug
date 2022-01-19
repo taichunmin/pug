@@ -6,20 +6,28 @@ block style
       [v-cloak]
         display: none
       .richmenu
-        position: relative
-        overflow: hidden
-        height: 0
         background-repeat: no-repeat
         background-size: cover
         border: 1px dashed gray
+        height: 0
+        overflow: hidden
+        position: relative
       .area
         border: 1px dashed red
         color: red
         font-size: .8rem
         position: absolute
+        top: 0
+        left: 0
+      .resizable
+        border: 1px solid blue
+        position: absolute
+        touch-action: none
+        top: 0
+        left: 0
       .input-group-sm .input-group-text
         letter-spacing: -1px
-        min-width: 5rem
+        min-width: 5.5rem
 
 block content
   #app.container.py-3.text-monospace(v-cloak)
@@ -41,29 +49,34 @@ block content
           .col.px-1
             .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-end x
-              input.form-control(type="number", required, v-model="h.area1.x")
-          .col.px-1
-            .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-end y
-              input.form-control(type="number", required, v-model="h.area1.y")
-        .row.mx-n1
+              input.form-control(type="number", required, v-model="h.resizable.x")
           .col.px-1
             .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-end width
-              input.form-control(type="number", required, v-model="h.area1.width")
+              input.form-control(type="number", required, v-model="h.resizable.width")
+        .row.mx-n1
+          .col.px-1
+            .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-end y
+              input.form-control(type="number", required, v-model="h.resizable.y")
           .col.px-1
             .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-end height
-              input.form-control(type="number", required, v-model="h.area1.height")
+              input.form-control(type="number", required, v-model="h.resizable.height")
       .col.d-flex.flex-column
         .input-group.input-group-sm.flex-fill
-          .input-group-prepend: span.input-group-text.justify-content-end.text-right areas#[br]csv
+          .input-group-prepend
+            span.input-group-text.flex-column.justify-content-center.align-items-center areas#[br]#[span.badge.badge-primary.d-inline-block {{ areas.length }}]
           textarea#areas.form-control.form-control-sm(v-model="h.areas")
-    .richmenu(:style="styleRichmenu")
-      .area(:style="styleArea(h.area1)")
-      .area.d-flex.justify-content-center.align-items-center(v-for="area in areas", :style="styleArea(area)") {{ area.x }},{{ area.y }},{{ area.width }},{{ area.height }}
+        .row.mx-n1.mt-2
+          .col.px-1: button.btn.btn-sm.btn-block.btn-danger(type="button", @click="btnPopArea") Pop
+          .col.px-1: button.btn.btn-sm.btn-block.btn-success(type="button", @click="btnPushArea") Push
+    .richmenu(ref="richmenu", :style="styleRichmenu")
+      .area.d-flex.justify-content-center.align-items-center(v-for="area, idx in areas", :style="styleArea(area)") ({{ _.parseInt(idx) + 1 }}) {{ area.x }},{{ area.width }},{{ area.y }},{{ area.height }}
+      .resizable(:style="styleArea(h.resizable)")
 
 block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/interactjs@1/dist/interact.min.js")
   script.
     window.areasToCsv = areas => {
       // copy(areasToCsv(areas))
@@ -77,11 +90,11 @@ block script
           image: 'https://i.imgur.com/uTSeCeQ.png',
           imgHeight: 400,
           imgWidth: 800,
-          area1: {
-            height: 400,
-            width: 800,
+          resizable: {
             x: 0,
+            width: 800,
             y: 0,
+            height: 400,
           },
         },
       },
@@ -94,6 +107,48 @@ block script
         this.$watch('h', () => {
           localStorage.setItem(location.pathname, JSON5.stringify(this.h))
         }, { deep: true })
+
+        // 監聽圖片網址修改事件
+        this.$watch('h.image', async (newVal, oldVal) => {
+          try {
+            if (newVal === oldVal) return
+            const tmp = await this.getImageUrlSize(this.h.image)
+            ;[this.h.imgHeight, this.h.imgWidth] = [tmp.height, tmp.width]
+          } catch (err) {}
+        })
+
+        // .resizable
+        const clampResize = (r, img) => {
+          //- console.log(JSON.stringify({ r, img }))
+          for (const p of [['x', 'width', 'w'], ['y', 'height', 'h']]) {
+            if (r[p[0]] < 0) {
+              r[p[1]] = r[p[1]] + r[p[0]]
+              r[p[0]] = 0
+            }
+            r[p[0]] = _.clamp(r[p[0]], 0, img[p[2]])
+            r[p[1]] = _.clamp(r[p[1]], 0, img[p[2]] - r[p[0]])
+          }
+          return r
+        }
+        interact('.resizable').resizable({
+          edges: { top: true, left: true, bottom: true, right: true },
+          invert: 'reposition',
+          listeners: {
+            move: event => {
+              const { deltaRect: delta } = event
+              const img = (o => ({ h: o.imgHeight, w: o.imgWidth }))(this.h)
+              const dom = (o => ({ h: o.clientHeight, w: o.clientWidth }))(this.$refs.richmenu)
+              const ratio = { w: img.w / dom.w, h: img.h / dom.h }
+              const old = this.h.resizable
+              this.$set(this.h, 'resizable', clampResize({
+                x: old.x + delta.left * ratio.w,
+                y: old.y + delta.top * ratio.h,
+                width: old.width + delta.width * ratio.w,
+                height: old.height + delta.height * ratio.h,
+              }, img))
+            }
+          }
+        })
       },
       computed: {
         styleRichmenu () {
@@ -116,12 +171,47 @@ block script
       },
       methods: {
         styleArea (area) {
-          return {
-            top: `${area.y / this.h.imgHeight * 100}%`,
-            left: `${area.x / this.h.imgWidth * 100}%`,
-            width: `${area.width / this.h.imgWidth * 100}%`,
-            height: `${area.height / this.h.imgHeight * 100}%`,
+          const img = _.pick(this.h, ['imgHeight', 'imgWidth'])
+          const dom = _.pick(this.$refs.richmenu, ['clientHeight', 'clientWidth'])
+          const ratio = {
+            w: dom.clientWidth / img.imgWidth,
+            h: dom.clientHeight / img.imgHeight,
           }
+          return {
+            height: `${area.height * ratio.h}px`,
+            width: `${area.width * ratio.w}px`,
+            transform: `translate(${area.x * ratio.w}px, ${area.y * ratio.h}px)`,
+          }
+        },
+        async getImageUrlSize (url) {
+          if (!url) throw new Error('url is required')
+          return await new Promise((resolve, reject) => {
+            const img = new Image()
+            img.onload = function () {
+              resolve({ height: this.height, width: this.width })
+            }
+            img.onerror = function (event) {
+              console.error(event)
+              reject(new Error('無法取得圖片大小'))
+            }
+            img.src = url
+          })
+        },
+        async btnPushArea () {
+          const areas = [
+            ...this.areas,
+            _.mapValues(_.pick(this.h.resizable, [
+              'x', 'width', 'y', 'height'
+            ]), _.toSafeInteger)
+          ]
+          this.h.areas = Papa.unparse(areas, { header: true })
+        },
+        async btnPopArea () {
+          if (!this.areas.length) return
+          const areas = [...this.areas]
+          const resizable = _.first(areas.splice(-1, 1))
+          this.$set(this.h, 'resizable', resizable)
+          this.h.areas = Papa.unparse(areas, { header: true })
         },
       },
     })
