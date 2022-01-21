@@ -130,7 +130,7 @@ block script
           }
           return r
         }
-        interact('.resizable').resizable({
+        window.interact('.resizable').resizable({
           edges: { top: true, left: true, bottom: true, right: true },
           invert: 'reposition',
           listeners: {
@@ -146,8 +146,8 @@ block script
                 width: old.width + delta.width * ratio.w,
                 height: old.height + delta.height * ratio.h,
               }, img))
-            }
-          }
+            },
+          },
         })
       },
       computed: {
@@ -201,8 +201,8 @@ block script
           const areas = [
             ...this.areas,
             _.mapValues(_.pick(this.h.resizable, [
-              'x', 'width', 'y', 'height'
-            ]), _.toSafeInteger)
+              'x', 'width', 'y', 'height',
+            ]), _.toSafeInteger),
           ]
           this.h.areas = Papa.unparse(areas, { header: true })
         },

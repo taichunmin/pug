@@ -65,19 +65,17 @@ script.
         this.device = null
         this.resHandlers = null
         this.service = null
-        this.uuidRecv = '0000ff01-0000-1000-8000-00805f9b34fb'
-        this.uuidSend = '0000ff02-0000-1000-8000-00805f9b34fb'
-        this.uuidServ = '0000ff00-0000-1000-8000-00805f9b34fb'
+        this.uuidRecv = 0xffe1
+        this.uuidSend = 0xffe2
+        this.uuidServ = 0xffe0
         this.verbose = false
       }
 
       async diagnose ({ test = 0x00, data = null, timeout = 1000 }) {
+        data = this.castUint8Array(data)
         const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
         frame.u8.set(new Uint8Array([0x00, test]), frame.data.byteOffset)
-        if (data) { // test input
-          data = this.castUint8Array(data)
-          frame.u8.set(data, frame.data.byteOffset + 2)
-        }
+        if (data) frame.u8.set(data, frame.data.byteOffset + 2) // test input
         this.frameGenerateDCS(frame)
         const res = await this.frameExec({ frame, resTimeout: timeout })
         const status = res.data.getUint8(1)
@@ -161,12 +159,10 @@ script.
       }
 
       async rfConfiguration ({ item, data = null } = {}) {
+        data = this.castUint8Array(data)
         const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
         frame.u8.set(new Uint8Array([0x32, item]), frame.data.byteOffset)
-        if (data) { // initiator data
-          data = this.castUint8Array(data)
-          frame.u8.set(data, frame.data.byteOffset + 2)
-        }
+        if (data) frame.u8.set(data, frame.data.byteOffset + 2) // initiator data
         this.frameGenerateDCS(frame)
         return await this.frameExec({ frame })
       }
@@ -185,12 +181,10 @@ script.
       }
 
       async inListPassiveTarget ({ maxTg = 1, brTy = 0, data = null, timeout = 3e4 } = {}) {
+        data = this.castUint8Array(data)
         const frame = this.frameCreateNormal(4 + _.get(data, 'byteLength', 0)) // include len of TFI
         frame.u8.set(new Uint8Array([0x4a, maxTg, brTy]), frame.data.byteOffset)
-        if (data) { // initiator data
-          data = this.castUint8Array(data)
-          frame.u8.set(data, frame.data.byteOffset + 3)
-        }
+        if (data) frame.u8.set(data, frame.data.byteOffset + 3) // initiator data
         this.frameGenerateDCS(frame)
         return await this.frameExec({ frame, resTimeout: timeout })
       }
@@ -268,7 +262,7 @@ script.
         let isPresent = false
         for (let retry = 0; retry < 3; retry++) {
           try {
-            await this.inCommunicateThru({ data: new Uint8Array([0xb2]) })
+            await this.inCommunicateThru({ data: 'b2' })
             isPresent = true
             break
           } catch (err) {}
@@ -277,12 +271,10 @@ script.
       }
 
       async inDataExchange ({ tg = 1, data = null, timeout = 2e3 } = {}) {
+        data = this.castUint8Array(data)
         const frame = this.frameCreateNormal(3 + _.get(data, 'byteLength', 0)) // include len of TFI
         frame.u8.set(new Uint8Array([0x40, tg]), frame.data.byteOffset)
-        if (data) { // data out
-          data = this.castUint8Array(data)
-          frame.u8.set(data, frame.data.byteOffset + 2)
-        }
+        if (data) frame.u8.set(data, frame.data.byteOffset + 2) // data out
         this.frameGenerateDCS(frame)
         const res = await this.frameExec({ frame, resTimeout: timeout })
         const status = res.data.getUint8(1)
@@ -297,9 +289,9 @@ script.
 
       async inCommunicateThru ({ data = null, timeout = 3e3 } = {}) {
         if (!data) throw new Error('invalid data')
+        data = this.castUint8Array(data)
         const frame = this.frameCreateNormal(2 + _.get(data, 'byteLength', 0)) // include len of TFI
         frame.data.setUint8(0, 0x42)
-        data = this.castUint8Array(data)
         frame.u8.set(data, frame.data.byteOffset + 1)
         this.frameGenerateDCS(frame)
         const res = await this.frameExec({ frame, resTimeout: timeout })
@@ -367,7 +359,8 @@ script.
         if (this.device) return
         if (!await this.getBluetoothAvailability()) throw new Error('WebBLE not supported')
         this.device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: [this.uuidServ] }],
+          acceptAllDevices: true,
+          optionalServices: [this.uuidServ],
         })
         if (!this.device) throw new Error('no device')
         this.logTime(`device selected, name = ${this.device.name}, id = ${this.device.id}`)
@@ -617,7 +610,7 @@ script.
 
   ;(function (root, factory) { // amdWebGlobal
     if (!(typeof define === 'function' && define.amd)) return (root.Pn532M1 = factory(root._, root.Pn532))
-    define(['_', 'Pn532'], (_, Pn532) => (root.Pn532 = factory(_, Pn532)))
+    define(['_', 'Pn532'], (_, Pn532) => (root.Pn532M1 = factory(_, Pn532)))
   }(typeof self !== 'undefined' ? self : this, (_, Pn532) => {
     class Pn532M1 {
       constructor (pn532) {
@@ -684,15 +677,15 @@ script.
           await this.magicSetCrc(0)
           await pn532.inSelect({ tg })
           // 42 50 00 57 CD (halt)
-          await pn532.inCommunicateThru({ data: pn532.u8FromHex('500057CD') }).catch(() => 0)
+          await pn532.inCommunicateThru({ data: '500057CD' }).catch(() => 0)
           // 08 63 3D 07 (0x633d CIU_BitFraming TxLastBits 7)
           await pn532.writeRegisters({ 0x633d: 0x07 })
           // 42 40
-          await pn532.inCommunicateThru({ data: new Uint8Array([0x40]) })
+          await pn532.inCommunicateThru({ data: '40' })
           // 08 63 3D 00 (0x633d CIU_BitFraming TxLastBits 0)
           await pn532.writeRegisters({ 0x633d: 0x00 })
           // 42 43
-          await pn532.inCommunicateThru({ data: new Uint8Array([0x43]) })
+          await pn532.inCommunicateThru({ data: '43' })
         } finally {
           // 08 63 02 80 63 03 80
           await this.magicSetCrc(1)
@@ -744,4 +737,60 @@ script.
       }
     }
     return Pn532M1
+  }))
+
+  ;(function (root, factory) { // amdWebGlobal
+    if (!(typeof define === 'function' && define.amd)) return (root.Pn532Waveshare = factory(root._, root.Pn532))
+    define(['_', 'Pn532'], (_, Pn532) => (root.Pn532Waveshare = factory(_, Pn532)))
+  }(typeof self !== 'undefined' ? self : this, (_, Pn532) => {
+    class Pn532Waveshare {
+      constructor (pn532) {
+        if (!(pn532 instanceof Pn532)) throw new TypeError('pn532 instance is required')
+        this.pn532 = pn532
+      }
+
+      async execRetUint16le ({ data = null, timeout = 5e3 }) {
+        const { pn532 } = this
+        data = pn532.castUint8Array(data)
+        if (!data) throw new Error('invalid data')
+        const ret = await pn532.inCommunicateThru({ timeout, data: new Uint8Array([0xcd, ...data.values()]) })
+        if (!ret.data || ret.data.byteLength !== 2) throw new Error('unexpected return value')
+        return ret.data.getUint16(0, true) // littleEndian
+      }
+
+      async update_1_54b () {
+        const { pn532 } = this
+        try {
+          await pn532.inSelect({ tg: 1 })
+          for (const cmd of [0x0d, 0x00, 0x01, 0x02, 0x03]) {
+            if (!this.execRetUint16le({ data: new Uint8Array([cmd]) })) throw new Error(`cmd 0x${cmd.toString(16)}`)
+          }
+          const bitmapData = new Uint8Array([ // sample data
+            0x05, 100,
+            ..._.times(100, i => [0xff, 0x00][i & 1]),
+          ])
+          // black
+          for (let i = 0; i < 50; i++) {
+            if (!this.execRetUint16le({ data: bitmapData })) throw new Error('black bitmap')
+          }
+          if (!this.execRetUint16le({ data: new Uint8Array([0x04]) })) throw new Error('cmd 0x04')
+          // red
+          for (let i = 0; i < 50; i++) {
+            if (!this.execRetUint16le({ data: bitmapData })) throw new Error('red bitmap')
+          }
+          if (!this.execRetUint16le({ data: new Uint8Array([0x06]) })) throw new Error('cmd 0x06')
+          await pn532.sleep(1e4) // 10s
+          for (let i = 0; i < 70; i++) {
+            if (this.execRetUint16le({ data: new Uint8Array([0x08]) }) === 0xff) throw new Error('wait for ready')
+          }
+          if (!this.execRetUint16le({ data: new Uint8Array([0x04]) })) throw new Error('cmd 0x04')
+        } catch (err) {
+          pn532.logTime(`update failed: ${err.message}`)
+          throw err
+        } finally {
+          await pn532.inRelease()
+        }
+      }
+    }
+    return Pn532Waveshare
   }))
