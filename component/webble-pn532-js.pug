@@ -88,6 +88,14 @@ script.
         }
       }
 
+      async diagnosePing () {
+        const res = await this.diagnose({ test: 0x00, data: this.u8FromUtf8('ping') })
+        if (!res.data) throw new Error('no data in response')
+        const actual = this.u8ToUtf8(res.data)
+        if (actual !== 'ping') throw new Error('response data mismatch')
+        return true
+      }
+
       async diagnose06 () {
         return await this.diagnose({ test: 0x06 })
       }
@@ -167,12 +175,23 @@ script.
         return await this.frameExec({ frame })
       }
 
-      async rfSetField ({ autoRfca = 1, rfOnOff = 1 } = {}) {
+      async rfSetField ({ autoRfca = 1, rfOnOff = 0 } = {}) {
         return await this.rfConfiguration({
           item: 1,
-          data: new Uint8Array([
-            (autoRfca ? 2 : 0) + (rfOnOff ? 1 : 0),
-          ]),
+          data: new Uint8Array([ (autoRfca ? 2 : 0) + (rfOnOff ? 1 : 0) ]),
+        })
+      }
+
+      /**
+       * timeouts[0]: defines the timeout between ATR_REQ and ATR_RES
+       * timeouts[1]: defines the timeout value that the PN532 uses in the InCommunicateThru and InDataExchange
+       * 0x00: no timeout, 0x01 = 100 μs, 0x02 = 200 μs, 0x03 = 400 μs, 0x04 = 800 μs, 0x05 = 1.6 ms, 0x06 = 3.2 ms, 0x07 = 6.4 ms, 0x08 = 12.8 ms, 0x09 = 25.6 ms, 0x0A = 51.2 ms, 0x0B = 102.4 ms, 0x0C = 204.8 ms, 0x0D = 409.6 ms, 0x0E = 819.2 ms, 0x0F = 1.64 sec, 0x10 = 3.28 sec
+       */
+      async rfSetTimeouts (timeouts = [0x0b, 0x0a]) {
+        if (timeouts.length !== 2 || !_.inRange(timeouts[0], 0, 0x11) || !_.inRange(timeouts[1], 0, 0x11)) throw new Error('invalid timeouts')
+        return await this.rfConfiguration({
+          item: 2,
+          data: new Uint8Array([0, ...timeouts]),
         })
       }
 
@@ -325,7 +344,7 @@ script.
         this.throwStatusIfFailed(status)
       }
 
-      async inSelect ({ tg } = {}) {
+      async inSelect ({ tg = 1 } = {}) {
         if (!_.includes([1, 2], tg)) throw new Error('invalid tg')
         const frame = this.frameCreateNormal(3) // include len of TFI
         frame.u8.set(new Uint8Array([0x54, tg]), frame.data.byteOffset)
@@ -505,6 +524,17 @@ script.
         return new Uint8Array(_.map(hex.match(/.{2}/g), b => _.parseInt(b, 16)))
       }
 
+      u8FromUtf8 (utf8) {
+        if (!_.isString(utf8)) throw new Error('utf8 is required')
+        return new Uint8Array((new TextEncoder()).encode(utf8).buffer)
+      }
+
+      u8ToUtf8 (data) {
+        data = this.castUint8Array(data)
+        if (!data) throw new Error('data is required')
+        return (new TextDecoder('utf-8')).decode(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength))
+      }
+
       async gattOnReceive (event) {
         const buffer = _.get(event, 'target.value.buffer')
         const res = { buffer, dv: new DataView(buffer), u8: new Uint8Array(buffer) }
@@ -529,9 +559,9 @@ script.
           if ((isNormalFrame ? (res.u8[3] + res.u8[4]) : (res.u8[5] + res.u8[6] + res.u8[7])) % 256 !== 0) throw new Error('invalid lcs')
           res.len = isNormalFrame ? res.u8[3] : (res.u8[5] * 256 + res.u8[6])
           // DCS: data checksum
-          const dcs = res.u8.length - 2
-          for (let i = 0; i < res.len; i++) res.u8[dcs] += res.u8[dcs - i - 1]
-          if (res.u8[dcs]) throw new Error('invalid dcs')
+          let dcs = 0
+          for (let i = 0; i <= res.len; i++) dcs += res.u8[res.u8.length - i - 2]
+          if (dcs % 256) throw new Error(`invalid dcs = ${dcs}`)
           if (res.u8.length === 8) throw new Error(`Error frame: ${this.dvGetHex(res.dv, 5)}`)
           res.data = new DataView(buffer, res.u8.length - res.len - 1, res.len - 1)
           if (res.u8[res.data.byteOffset - 1] !== 0xd5) throw new Error('invalid TFI')
@@ -595,13 +625,13 @@ script.
 
       throwStatusIfFailed (status = 0) {
         const code = `0${(status & 0x3f).toString(16)}`.slice(-2)
-        if (ERROR_CODE[code]) throw new Error(`NAD = ${(status & 0x80) ? 1 : 0}, MI = ${(status & 0x40) ? 1 : 0}, code = ${code}, msg = ${window.PN532_ERROR_CODE[code]}`)
+        if (ERROR_CODE[code]) throw new Error(`NAD = ${(status & 0x80) ? 1 : 0}, MI = ${(status & 0x40) ? 1 : 0}, code = ${code}, msg = ${ERROR_CODE[code]}`)
       }
 
       castUint8Array (data) {
         if (_.isString(data)) data = this.u8FromHex(data)
         if (data instanceof ArrayBuffer) data = new Uint8Array(data)
-        if (!(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+        if (data && !(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
         return data
       }
     }
@@ -749,41 +779,69 @@ script.
         this.pn532 = pn532
       }
 
-      async execRetUint16le ({ data = null, timeout = 5e3 }) {
+      async sendCmd ({ data = null, timeout = 5e3 }) {
         const { pn532 } = this
         data = pn532.castUint8Array(data)
         if (!data) throw new Error('invalid data')
-        const ret = await pn532.inCommunicateThru({ timeout, data: new Uint8Array([0xcd, ...data.values()]) })
-        if (!ret.data || ret.data.byteLength !== 2) throw new Error('unexpected return value')
-        return ret.data.getUint16(0, true) // littleEndian
+        for (let i = 3; i > 0; i--) {
+          try {
+            const ret = await pn532.inCommunicateThru({ timeout, data: new Uint8Array([0xcd, ...data.values()]) })
+            if (!ret.data || ret.data.byteLength !== 2) throw new Error('unexpected return value')
+            return ret.data.getUint16(0, true) // littleEndian
+          } catch (err) {
+            pn532.logTime(`retry with error: ${err.message}`)
+            if (i === 1) throw err
+          }
+        }
+      }
+
+      async waitUpdateReady (cmd) {
+        const { pn532 } = this
+        for (let i = 0; i < 100; i++) {
+          try {
+            const status = await this.sendCmd({ data: cmd })
+            if (status === 0xff) return
+            await pn532.sleep(25)
+          } catch (err) {}
+        }
+        throw new Error('wait update ready failed')
       }
 
       async update_1_54b () {
         const { pn532 } = this
         try {
-          await pn532.inSelect({ tg: 1 })
-          for (const cmd of [0x0d, 0x00, 0x01, 0x02, 0x03]) {
-            if (!this.execRetUint16le({ data: new Uint8Array([cmd]) })) throw new Error(`cmd 0x${cmd.toString(16)}`)
+          await pn532.rfSetTimeouts([0x10, 0x10]) // timeout 3.28s
+          console.log(_.first(await pn532.hf14aListPassiveTarget({ timeout: 3e4 })))
+
+          for (const cmd of [
+            ['0d', 0],
+            ['00', 50],
+            ['01', 10],
+            ['02', 10],
+            ['03', 10],
+          ]) {
+            if (await this.sendCmd({ data: cmd[0] })) throw new Error(`cmd 0xcd${cmd[0]}`)
+            if (cmd[1]) await pn532.sleep(cmd[1])
           }
-          const bitmapData = new Uint8Array([ // sample data
+          const bitmap = new Uint8Array([ // sample data
             0x05, 100,
             ..._.times(100, i => [0xff, 0x00][i & 1]),
           ])
           // black
           for (let i = 0; i < 50; i++) {
-            if (!this.execRetUint16le({ data: bitmapData })) throw new Error('black bitmap')
+            if (await this.sendCmd({ data: bitmap })) throw new Error('black bitmap')
           }
-          if (!this.execRetUint16le({ data: new Uint8Array([0x04]) })) throw new Error('cmd 0x04')
+          if (await this.sendCmd({ data: new Uint8Array([0x04]) })) throw new Error('cmd 0xcd04')
           // red
           for (let i = 0; i < 50; i++) {
-            if (!this.execRetUint16le({ data: bitmapData })) throw new Error('red bitmap')
+            if (await this.sendCmd({ data: bitmap })) throw new Error('red bitmap')
           }
-          if (!this.execRetUint16le({ data: new Uint8Array([0x06]) })) throw new Error('cmd 0x06')
-          await pn532.sleep(1e4) // 10s
-          for (let i = 0; i < 70; i++) {
-            if (this.execRetUint16le({ data: new Uint8Array([0x08]) }) === 0xff) throw new Error('wait for ready')
-          }
-          if (!this.execRetUint16le({ data: new Uint8Array([0x04]) })) throw new Error('cmd 0x04')
+          if (await this.sendCmd({ data: new Uint8Array([0x06]) })) throw new Error('cmd 0xcd06')
+          pn532.logTime('sleep 1s')
+          await pn532.sleep(1e3) // 10s
+          await pn532.rfSetTimeouts([0x09, 0x09]) // timeout 25ms
+          await this.waitUpdateReady('08') // waitUpdateReady
+          if (await this.sendCmd({ data: new Uint8Array([0x04]) })) throw new Error('cmd 0xcd04')
         } catch (err) {
           pn532.logTime(`update failed: ${err.message}`)
           throw err

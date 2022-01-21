@@ -1,0 +1,228 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'Wordle 猜單字遊戲及求解'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="協助破解 Wordle 猜單字遊戲的程式！")
+  meta(property="og:image:height", content="600")
+  meta(property="og:image:width", content="1200")
+  meta(property="og:image", content="https://i.imgur.com/zJyiY6v.png")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/wordle.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.container(v-cloak)
+    a(target="_blank", href="https://www.powerlanguage.co.uk/wordle/"): h3.text-center.my-3= title
+    .row.row-cols-1.row-cols-md-2.text-monospace
+      .col
+        .card.mb-3
+          h5.card-header #[i.fa.fa-fw.fa-gamepad] 你來猜電腦
+          .card-body
+            .form-group
+              label(for="h-guess") 請輸入長度為 5 的英文單字
+              .input-group.input-group-sm.mb-2
+                .input-group-prepend
+                  span.input-group-text {{ h.guesses.length + 1 }}
+                input.form-control#h-guess(type="text", inputmode="email", maxlength="5", v-model="h.guess", @keyup.enter="btnPushGuess")
+                .input-group-append
+                  button.btn.btn-success(type="button", @click="btnPushGuess") 送出
+            table.table.table-sm.table-bordered.text-center.mb-0(v-if="h.guesses.length")
+              thead: tr
+                th #
+                th 猜測單字
+                th(colspan="2") 結果
+              tbody
+                tr(v-for="(guess, guessId) in h.guesses")
+                  template(v-for="simiArr in [simiCmp(guess, h.answer)]")
+                    th {{ guessId + 1 }}
+                    td {{ guess }}
+                    td: i.fa.fa-square(v-for="v, k of simiArr", :class="[`text-${['muted', 'warning', 'success'][v]}`, ['ml-1', ''][+!k]]")
+                    td: a.badge.badge-info.mr-1(@click="btnPushSolver(guess, simiArr)", href="#") 求解
+          .card-footer.text-right
+            button.btn.btn-sm.btn-danger(type="button", @click="btnNewGame(false)") #[span.fa.fa-fw.fa-trash-o] 開新遊戲
+      .col
+        .card.mb-3
+          h5.card-header #[i.fa.fa-fw.fa-graduation-cap] 電腦來猜你
+          .card-body
+            .form-group
+              label 請輸入猜測單字與結果
+              .input-group.input-group-sm.mb-2(v-for="(solver, solverId) in h.solvers")
+                .input-group-prepend
+                  span.input-group-text {{ solverId + 1 }}
+                input.form-control(type="text", inputmode="email", maxlength="5", v-model="solver.guess")
+                .input-group-append
+                  button.btn.btn-outline-dark(type="button", v-for="v, k of solver.simiArr", @click="$set(solver.simiArr, k, (v+1)%3)")
+                    i.fa.fa-square(:class="`text-${['muted', 'warning', 'success'][v]}`")
+            .form-group
+              label 探索新字母 #[span.badge.badge-pill.badge-success {{ exploreLetter.length }}]
+              small.form-text.text-muted(v-if="!exploreLetter.length") 沒有推薦的新字母
+              small.form-text.text-muted(v-if="exploreLetter.length > 20") 僅顯示前 20 筆推薦的新字母
+              #exploreLetter
+                a.badge.badge-info.mr-1(v-for="possible in exploreLetter.slice(0, 20)", @click="h.guess = possible", href="#") {{ possible }}
+            .form-group.mb-0
+              label 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibles.length }}]
+              small.form-text.text-muted(v-if="!possibles.length") 請輸入猜測單字與結果來顯示可能的謎底
+              small.form-text.text-muted(v-if="possibles.length > 100") 僅顯示前 100 筆可能的謎底
+              #possibles
+                a.badge.badge-info.mr-1(v-for="possible in possibles.slice(0, 100)", @click="h.guess = possible", href="#") {{ possible }}
+          .card-footer.text-right
+            button.btn.btn-sm.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
+
+block script
+  script.
+    window.allows = []
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        h: {
+          answer: '',
+          guess: '',
+          guesses: [],
+          solvers: [],
+        },
+      },
+      async mounted () {
+        this.showLoading('請稍候', '網頁載入中…')
+        await this.fetchAllows()
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        // 初始化
+        if (!this.verifyGuess(this.h.answer)) this.btnNewGame(true)
+        if (!this.h.solvers.length) this.btnNewSolver(true)
+        Swal.close()
+      },
+      computed: {
+        validSolvers () {
+          return _.filter(this.h.solvers, solver => this.verifyGuess(solver.guess))
+        },
+        possibles () {
+          const solvers = _.map(this.validSolvers, solver => ({
+            guess: _.toLower(solver.guess),
+            simi: this.simiArrToInt(solver.simiArr),
+          }))
+          if (!solvers.length) return []
+          return _.filter(window.allows, possible => {
+            for (const solver of solvers) {
+              if (this.simiArrToInt(this.simiCmp(solver.guess, possible)) !== solver.simi) return false
+            }
+            return true
+          })
+        },
+        exploreLetter () {
+          const solvers = this.validSolvers
+          const found = _.uniq(_.flatten(_.map(solvers, solver => _.filter(solver.guess, (v, k) => solver.simiArr[k])))).sort()
+          if (found.length === 5) return []
+          const guessed = _.uniq(_.map(solvers, 'guess').join('')).sort()
+          if (found.length === 26) return []
+          return _.chain(window.allows)
+            .map(allow => ({ allow, diff: _.difference(_.uniq(allow), guessed) }))
+            .filter(row => row.diff.length > 1)
+            .sortBy([row => 5 - row.diff.length])
+            .map('allow').value()
+        },
+      },
+      methods: {
+        async fetchAllows () {
+          window.allows = _.shuffle(_.trim(_.get(await axios.get('https://gist.githubusercontent.com/taichunmin/73a52779ecb9b1ac4555cf541f467743/raw/all.txt'), 'data')).split(/\r?\n/))
+        },
+        verifyGuess (guess) {
+          if (guess.length !== 5) return false
+          return _.includes(window.allows, _.toLower(guess))
+        },
+        simiCmp (guess, answer) {
+          const flags = _.times(10, () => 0)
+          for (let i = 0; i < 5; i++) {
+            if (guess[i] === answer[i]) flags[i] = flags[5 + i] = 2
+          }
+          for (let i = 0; i < 5; i++) {
+            if (flags[i]) continue
+            for (let j = 0; j < 5; j++) {
+              if (i === j || flags[5 + j]) continue
+              if (guess[i] === answer[j]) flags[i] = flags[5 + j] = 1
+            }
+          }
+          return flags.slice(0, 5)
+        },
+        simiArrToInt (simiArr) {
+          let simi = 0
+          for (let i = 0; i < 5; i++) {
+            simi <<= 2
+            simi += simiArr[4 - i]
+          }
+          return simi
+        },
+        simiIntToArr (simi) {
+          const simiArr = _.times(5, () => 0)
+          for (let i = 0; i < 5; i++) {
+            simiArr[4 - i] = simi & 3
+            simi >>= 2
+          }
+          return simiArr
+        },
+        btnPushGuess () {
+          const guess = this.h.guess
+          if (!this.verifyGuess(guess)) return
+          if (_.includes(this.h.guesses, guess)) return
+          this.h.guesses.push(guess)
+          this.h.guess = ''
+        },
+        async btnNewGame (force = false) {
+          if (!force && !await this.confirm('是否開始新的猜數字遊戲？')) return
+          this.h.answer = _.sample(window.allows)
+          this.h.guess = ''
+          this.h.guesses = []
+        },
+        async btnNewSolver (force = false) {
+          if (!force && !await this.confirm('是否清空求解資料？')) return
+          this.$set(this.h, 'solvers', _.times(8, () => ({
+            guess: '',
+            simiArr: _.times(5, () => 0),
+          })))
+        },
+        async btnPushSolver (guess, simiArr) {
+          const solver = _.find(this.h.solvers, solver => !this.verifyGuess(solver.guess))
+          if (!solver) return
+          solver.guess = guess
+          this.$set(solver, 'simiArr', simiArr)
+        },
+        async confirm (message, yes = '是', no = '否') {
+          const confirm = await Swal.fire({
+            cancelButtonColor: '#3085d6',
+            cancelButtonText: no,
+            confirmButtonColor: '#d33',
+            confirmButtonText: yes,
+            icon: 'question',
+            showCancelButton: true,
+            text: message,
+          })
+          return !!confirm.value
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

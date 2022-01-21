@@ -66,127 +66,127 @@ block content
 
 block script
   script.
-   const SIMILARITY = {
-     '0A0B': 0,
-     '0A1B': 1,
-     '0A2B': 2,
-     '0A3B': 3,
-     '0A4B': 4,
-     '1A0B': 10,
-     '1A1B': 11,
-     '1A2B': 12,
-     '1A3B': 13,
-     '2A0B': 20,
-     '2A1B': 21,
-     '2A2B': 22,
-     '3A0B': 30,
-     '4A0B': 40,
-   }
+    const SIMILARITY = {
+      '0A0B': 0,
+      '0A1B': 1,
+      '0A2B': 2,
+      '0A3B': 3,
+      '0A4B': 4,
+      '1A0B': 10,
+      '1A1B': 11,
+      '1A2B': 12,
+      '1A3B': 13,
+      '2A0B': 20,
+      '2A1B': 21,
+      '2A2B': 22,
+      '3A0B': 30,
+      '4A0B': 40,
+    }
     const vm = new Vue({ // eslint-disable-line
-     el: '#app',
-     data: {
-       i: {
-         answer: '',
-         guess: '',
-         guesses: [],
-         solvers: [],
-       },
-       similarity: {
-         toInt: SIMILARITY,
-         toStr: _.invert(SIMILARITY),
-       },
-     },
-     mounted () {
-       // 自動儲存功能
-       try {
-         const saved = JSON5.parse(localStorage.getItem(location.pathname))
-         if (saved) this.$set(this, 'i', { ...this.i, ...saved })
-       } catch (err) {}
-       this.$watch('i', () => {
-         localStorage.setItem(location.pathname, JSON5.stringify(this.i))
-       }, { deep: true })
+      el: '#app',
+      data: {
+        i: {
+          answer: '',
+          guess: '',
+          guesses: [],
+          solvers: [],
+        },
+        similarity: {
+          toInt: SIMILARITY,
+          toStr: _.invert(SIMILARITY),
+        },
+      },
+      mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'i', { ...this.i, ...saved })
+        } catch (err) {}
+        this.$watch('i', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.i))
+        }, { deep: true })
 
-       // 初始化
-       if (!this.verifyGuess(this.i.answer)) this.btnNewGame(true)
-       if (!this.i.solvers.length) this.btnNewSolver(true)
-     },
-     computed: {
-       possibilities () {
-         const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.hasIn(this.similarity.toStr, solver.simi))
-         if (!solvers.length) return []
-         const possibilities = []
-         for (let g1 = 0; g1 < 10; g1++) {
-           for (let g2 = 0; g2 < 10; g2++) {
-             if (g1 === g2) continue
-             for (let g3 = 0; g3 < 10; g3++) {
-               if (g3 === g1 || g3 === g2) continue
-               for (let g4 = 0; g4 < 10; g4++) {
-                 if (g4 === g1 || g4 === g2 || g4 === g3) continue
-                 let isPossible = true
-                 const possible = `${g1}${g2}${g3}${g4}`
-                 for (const solver of solvers) { if (isPossible && this.calcSimilarity(possible, solver.guess) !== solver.simi) isPossible = false }
-                 if (isPossible) possibilities.push(possible)
-               }
-             }
-           }
-         }
-         return possibilities
-       },
-     },
-     methods: {
-       verifyGuess (guess) {
-         // 確認是四位數不重複的數字
-         if (!_.isString(guess) || !/^\d{4}$/.test(guess)) return false
-         // 確認不重複
-         for (let i = 0; i < 4; i++) {
-           for (let j = i + 1; j < 4; j++) { if (guess[i] === guess[j]) return false }
-         }
-         return true
-       },
-       calcSimilarity (guess, answer) {
-         let similarity = 0
-         for (let i = 0; i < 4; i++) {
-           for (let j = 0; j < 4; j++) { if (guess[i] === answer[j]) similarity += i === j ? 10 : 1 }
-         }
-         return similarity
-       },
-       btnPushGuess () {
-         const guess = this.i.guess
-         if (!this.verifyGuess(guess)) return
-         if (_.includes(this.i.guesses, guess)) return
-         this.i.guesses.push(guess)
-         this.i.guess = ''
-       },
-       async btnNewGame (force = false) {
-         if (!force && !await this.confirm('是否開始新的猜數字遊戲？')) return
-         this.i.answer = _.sampleSize('0123456789', 4).join('')
-         this.i.guess = ''
-         this.i.guesses = []
-       },
-       async btnNewSolver (force = false) {
-         if (!force && !await this.confirm('是否清空求解資料？')) return
-         this.$set(this.i, 'solvers', _.times(8, i => ({
-           guess: '',
-           simi: 0,
-         })))
-       },
-       async btnPushSolver (guess, simi) {
-         const solver = _.find(this.i.solvers, solver => !this.verifyGuess(solver.guess))
-         if (!solver) return
-         solver.guess = guess
-         solver.simi = simi
-       },
-       async confirm (message, yes = '是', no = '否') {
-         const confirm = await Swal.fire({
-           cancelButtonColor: '#3085d6',
-           cancelButtonText: no,
-           confirmButtonColor: '#d33',
-           confirmButtonText: yes,
-           icon: 'question',
-           showCancelButton: true,
-           text: message,
-         })
-         return !!confirm.value
-       },
-     },
-   })
+        // 初始化
+        if (!this.verifyGuess(this.i.answer)) this.btnNewGame(true)
+        if (!this.i.solvers.length) this.btnNewSolver(true)
+      },
+      computed: {
+        possibilities () {
+          const solvers = _.filter(this.i.solvers, solver => this.verifyGuess(solver.guess) && _.hasIn(this.similarity.toStr, solver.simi))
+          if (!solvers.length) return []
+          const possibilities = []
+          for (let g1 = 0; g1 < 10; g1++) {
+            for (let g2 = 0; g2 < 10; g2++) {
+              if (g1 === g2) continue
+              for (let g3 = 0; g3 < 10; g3++) {
+                if (g3 === g1 || g3 === g2) continue
+                for (let g4 = 0; g4 < 10; g4++) {
+                  if (g4 === g1 || g4 === g2 || g4 === g3) continue
+                  let isPossible = true
+                  const possible = `${g1}${g2}${g3}${g4}`
+                  for (const solver of solvers) { if (isPossible && this.calcSimilarity(possible, solver.guess) !== solver.simi) isPossible = false }
+                  if (isPossible) possibilities.push(possible)
+                }
+              }
+            }
+          }
+          return possibilities
+        },
+      },
+      methods: {
+        verifyGuess (guess) {
+          // 確認是四位數不重複的數字
+          if (!_.isString(guess) || !/^\d{4}$/.test(guess)) return false
+          // 確認不重複
+          for (let i = 0; i < 4; i++) {
+            for (let j = i + 1; j < 4; j++) { if (guess[i] === guess[j]) return false }
+          }
+          return true
+        },
+        calcSimilarity (guess, answer) {
+          let similarity = 0
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) { if (guess[i] === answer[j]) similarity += i === j ? 10 : 1 }
+          }
+          return similarity
+        },
+        btnPushGuess () {
+          const guess = this.i.guess
+          if (!this.verifyGuess(guess)) return
+          if (_.includes(this.i.guesses, guess)) return
+          this.i.guesses.push(guess)
+          this.i.guess = ''
+        },
+        async btnNewGame (force = false) {
+          if (!force && !await this.confirm('是否開始新的猜數字遊戲？')) return
+          this.i.answer = _.sampleSize('0123456789', 4).join('')
+          this.i.guess = ''
+          this.i.guesses = []
+        },
+        async btnNewSolver (force = false) {
+          if (!force && !await this.confirm('是否清空求解資料？')) return
+          this.$set(this.i, 'solvers', _.times(8, i => ({
+            guess: '',
+            simi: 0,
+          })))
+        },
+        async btnPushSolver (guess, simi) {
+          const solver = _.find(this.i.solvers, solver => !this.verifyGuess(solver.guess))
+          if (!solver) return
+          solver.guess = guess
+          solver.simi = simi
+        },
+        async confirm (message, yes = '是', no = '否') {
+          const confirm = await Swal.fire({
+            cancelButtonColor: '#3085d6',
+            cancelButtonText: no,
+            confirmButtonColor: '#d33',
+            confirmButtonText: yes,
+            icon: 'question',
+            showCancelButton: true,
+            text: message,
+          })
+          return !!confirm.value
+        },
+      },
+    })
