@@ -27,10 +27,36 @@ block content
         button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnTest") #[span.fa.fa-fw.fa-cogs] 執行測試
 
 block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
   include ../component/webble-pn532-js
   script.
     /* global Pn532 */
+    window.vConsole = new VConsole()
     window.pn532 = new Pn532()
+    window.errToPlainObj = (() => {
+      const ERROR_KEYS = [
+        'address',
+        'code',
+        'data',
+        'dest',
+        'errno',
+        'info',
+        'message',
+        'name',
+        'path',
+        'port',
+        'reason',
+        'response.data',
+        'response.headers',
+        'response.status',
+        'stack',
+        'status',
+        'statusCode',
+        'statusMessage',
+        'syscall',
+      ]
+      return err => _.pick(err, ERROR_KEYS)
+    })()
     window.vm = new Vue({
       el: '#app',
       data: {
@@ -59,10 +85,10 @@ block script
           //- console.log(await window.pn532.mfMagicUnlock())
           //- console.log(await window.pn532.mfMagicWipe({ uid: 'F235061B' }))
           try {
-            console.log(await window.pn532.hf14aListPassiveTarget({ timeout: 3e3 }))
-            console.log(await window.pn532.hf14a4IsPresent())
-          } finally {
-            console.log(await window.pn532.inRelease())
+            const epaper = new window.Pn532Waveshare(window.pn532)
+            await epaper.update_1_54b()
+          } catch (err) {
+            console.log(window.errToPlainObj(err))
           }
         },
         showLoading (title, text) {
