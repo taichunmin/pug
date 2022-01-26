@@ -378,7 +378,10 @@ script.
         if (this.device) return
         if (!await this.getBluetoothAvailability()) throw new Error('WebBLE not supported')
         this.device = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'JDY-33-BLE' }],
+          filters: [
+            { name: 'JDY-33-BLE' },
+            { name: 'PN532-BLE' },
+          ],
           optionalServices: [this.uuidServ],
         })
         if (!this.device) throw new Error('no device')
