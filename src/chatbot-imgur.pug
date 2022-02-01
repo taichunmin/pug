@@ -33,6 +33,7 @@ block content
           .input-group-prepend: span.input-group-text.justify-content-center {{ name }}
           input.form-control.text-right(type="text", readonly, :value="val")
       img.card-img-bottom(:src="imgur.link")
+    button.mb-3.btn.btn-danger(@click="btnDel") 刪除圖片
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-base64@2/base64.min.js")
@@ -113,6 +114,32 @@ block script
           document.execCommand('copy')
           container.removeChild(dom)
           await Swal.fire({ icon: 'success', title: '已複製到剪貼簿' })
+        },
+        async btnDel () {
+          try {
+            const confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '取消',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '刪除',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否刪除圖片？',
+            })
+            if (!confirm.value) return
+            const imgur = this.imgur
+            if (!imgur) return {}
+            await axios.delete(`https://api.imgur.com/3/image/${imgur.deletehash}`, {
+              headers: { Authorization: `Client-ID ${imgur.clientId}` },
+            })
+            await Swal.fire({ icon: 'success', title: '刪除成功' })
+          } catch (err) {
+            err.message = _.get(err, 'response.data.data.error', err.message)
+            err.status = _.get(err, 'response.data.status', err.status)
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '刪除失敗', text: err.message })
+          }
         },
         paramBase64url (key, defaultValue) {
           const val = new URL(location).searchParams.get(key)
