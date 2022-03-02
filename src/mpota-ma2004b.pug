@@ -48,6 +48,7 @@ block content
         h5.card-title 操作
         button.mt-2.btn.btn-block.btn-outline-primary(type="button", @click="btnUploadFirmware") #[span.fa.fa-fw.fa-cloud-upload] 執行韌體更新
         button.mt-2.btn.btn-block.btn-outline-success(type="button", @click="btnUpdateSetting") #[span.fa.fa-fw.fa-cogs] 更新產品參數
+        button.mt-2.btn.btn-block.btn-outline-secondary(type="button", @click="btnIncTimestamp") #[span.fa.fa-fw.fa-clock-o] 增加時間戳記
         button.mt-2.btn.btn-block.btn-outline-danger(type="button", @click="btnReset") #[span.fa.fa-fw.fa-trash-o] 重設本頁資料
     .card.mb-4
       .card-header #[span.fa.fa-fw.fa-flag] Beacon 安裝回報
@@ -249,7 +250,7 @@ block script
             await this.bleUploadFirmwareStep3()
             await Swal.fire({ icon: 'success', title: '韌體更新成功' })
           } catch (err) {
-            console.error(window.errToPlainObj(err))
+            console.error(err)
             await Swal.fire({ icon: 'error', title: '韌體更新失敗', text: err.message })
           } finally {
             await this.bleDisconnect()
@@ -331,8 +332,55 @@ block script
 
             await Swal.fire({ icon: 'success', title: '參數更新成功', text: `產品序號 ${sn}` })
           } catch (err) {
-            console.error(window.errToPlainObj(err))
+            console.error(err)
             await Swal.fire({ icon: 'error', title: '參數更新失敗', text: err.message })
+          } finally {
+            await this.bleDisconnect()
+            console.log('ctx = ', ctx)
+          }
+        },
+        async btnIncTimestamp () {
+          const ctx = {}
+          try {
+            this.showLoading('搜尋裝置中')
+            await this.bleSearchDevice()
+            this.showLoading('請稍候', '讀取參數中…')
+            ctx.before = await this.bleGetBeacons()
+            const sn = _.get(ctx, 'before.sn')
+            if (!sn) throw new Error('無法取得產品序號')
+            const confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '取消執行',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '確認執行',
+              focusCancel: true,
+              icon: 'warning',
+              reverseButtons: true,
+              showCancelButton: true,
+              text: `產品序號 ${ctx.before.sn} 的時戳將會增加 34 天，請確認是否執行？`,
+            })
+            if (!confirm.value) return
+            this.showLoading('請稍候', '增加時戳中…')
+            ctx.after = { ...ctx.before }
+            // 增加大約 34.13 天
+            for (let i = 0; i < 3; i++) ctx.after[`timestamp${i}`] = this.toHexZerofill(BigInt('0x' + ctx.after[`timestamp${i}`]) + 0x30000n, 16)
+            await this.bleSetBeacons(ctx.after)
+            await this.bleSetTxPower(0) // +4 dbm
+            await this.bleSetAdvInterval(243) // 243 * 0.625 = 151 ms
+            this.logTime(`產品序號 ${sn} 增加時戳成功`)
+
+            // 儲存產品參數更新紀錄
+            await this.logUpdateSetting.post({
+              snBefore: _.get(ctx, 'before.sn', '無資料'),
+              snAfter: _.get(ctx, 'after.sn', '無資料'),
+              ua: this.ua,
+              setting: JSON5.stringify(_.pick(ctx, ['before', 'after'])),
+            })
+
+            await Swal.fire({ icon: 'success', title: '增加時戳成功', text: `產品序號 ${sn}` })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '增加時戳失敗', text: err.message })
           } finally {
             await this.bleDisconnect()
             console.log('ctx = ', ctx)
@@ -420,7 +468,7 @@ block script
           req.body.setUint32(4, blockCnt) // Byte 8~11: 封包總數
           const res = await this.bleSendRequest({ req, timeout: 22e3 })
           const parsed = {
-            code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
+            code: this.toHexZerofill(res.body.getUint16(0), 4), // 回覆代碼
             ackFreq: res.body.getUint8(2), // 確認頻率
             blockSize: res.body.getUint16(3), // 每次封包大小
             blockCnt: res.body.getUint32(5), // 封包總數
@@ -446,7 +494,7 @@ block script
             const res = await this.bleSendRequest({ req, verbose: false })
             if (!ack) return
             const parsed = {
-              code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
+              code: this.toHexZerofill(res.body.getUint16(0), 4), // 回覆代碼
               crc: res.body.getUint8(2),
             }
             if (parsed.code !== '0001') throw new Error(ERRCODE_08[parsed.code] || `未知錯誤 ${parsed.code}`)
@@ -457,7 +505,7 @@ block script
           const req = this.bleNewRequest80({ cmd: 0xf3 })
           const res = await this.bleSendRequest({ req })
           const parsed = {
-            code: _.padStart(res.body.getUint16(0).toString(16), 4, '0'), // 回覆代碼
+            code: this.toHexZerofill(res.body.getUint16(0), 4), // 回覆代碼
           }
           if (parsed.code !== '0001') throw new Error(ERRCODE_08[parsed.code] || `未知錯誤 ${parsed.code}`)
           return parsed
@@ -505,19 +553,19 @@ block script
           const req = this.bleNewRequest25({ cmd: 0x38 })
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('hwid 讀取失敗')
-          return _.times(5, i => _.padStart(res.body.getUint8(i).toString(16), 2, '0')).join('')
+          return _.times(5, i => this.toHexZerofill(res.body.getUint8(i), 2)).join('')
         },
         async bleGetLotKeyV1 () {
           const req = this.bleNewRequest25({ cmd: 0x39 })
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 讀取失敗')
-          return _.times(8, i => _.padStart(res.body.getUint8(i).toString(16), 2, '0')).join('')
+          return _.times(8, i => this.toHexZerofill(res.body.getUint8(i), 2)).join('')
         },
         async bleGetVendorKeyV1 () {
           const req = this.bleNewRequest25({ cmd: 0x3a })
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 讀取失敗')
-          return _.times(4, i => _.padStart(res.body.getUint8(i).toString(16), 2, '0')).join('')
+          return _.times(4, i => this.toHexZerofill(res.body.getUint8(i), 2)).join('')
         },
         async bleGetModeV1 () {
           const req = this.bleNewRequest25({ cmd: 0x3d })
@@ -532,7 +580,7 @@ block script
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('hwid 讀取失敗')
           if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
-          return _.times(5, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+          return _.times(5, i => this.toHexZerofill(res.body.getUint8(i + 1), 2)).join('')
         },
         async bleGetLotKeyV2 (channel) {
           if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
@@ -541,7 +589,7 @@ block script
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('lotKey 讀取失敗')
           if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
-          return _.times(8, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+          return _.times(8, i => this.toHexZerofill(res.body.getUint8(i + 1), 2)).join('')
         },
         async bleGetVendorKeyV2 (channel) {
           if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
@@ -550,7 +598,7 @@ block script
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('vendorKey 讀取失敗')
           if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
-          return _.times(4, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+          return _.times(4, i => this.toHexZerofill(res.body.getUint8(i + 1), 2)).join('')
         },
         async bleGetTimestampV2 (channel) {
           if (!_.inRange(channel, 0, 3)) throw new Error('channel 必須介於 0 到 2 之間')
@@ -559,7 +607,7 @@ block script
           const res = await this.bleSendRequest({ req })
           if (!res.body.getUint8(res.len - 1)) throw new Error('timestamp 讀取失敗')
           if (res.body.getUint8(0) !== channel) throw new Error(`channel 回傳值有誤: req = ${channel}, res = ${res.body.getUint8(0)}`)
-          return _.times(8, i => _.padStart(res.body.getUint8(i + 1).toString(16), 2, '0')).join('')
+          return _.times(8, i => this.toHexZerofill(res.body.getUint8(i + 1), 2)).join('')
         },
         async bleGetModeV2 () {
           const req = this.bleNewRequest25({ cmd: 0x55 })
@@ -726,7 +774,7 @@ block script
               await this.device.gatt.connect()
               await sleep(500)
             } catch (err) {
-              console.error(window.errToPlainObj(err))
+              console.error(err)
             }
           }
           if (!isConnected()) throw new Error('裝置連線失敗')
@@ -828,7 +876,10 @@ block script
         },
         inspectBuffer (buf) {
           buf = ArrayBuffer.isView(buf) ? buf.buffer : buf
-          return _.join(_.map(new Uint8Array(buf), num => _.padStart(num.toString(16), 2, '0')), ' ')
+          return _.join(_.map(new Uint8Array(buf), num => this.toHexZerofill(num, 2)), ' ')
+        },
+        toHexZerofill (num, size) {
+          return _.padStart(num.toString(16), size, '0')
         },
         logTime (text) {
           console.log(`[${dayjs().format('HH:mm:ss.SSS')}] ${text}`)

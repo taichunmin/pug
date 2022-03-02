@@ -178,7 +178,7 @@ script.
       async rfSetField ({ autoRfca = 1, rfOnOff = 0 } = {}) {
         return await this.rfConfiguration({
           item: 1,
-          data: new Uint8Array([ (autoRfca ? 2 : 0) + (rfOnOff ? 1 : 0) ]),
+          data: new Uint8Array([(autoRfca ? 2 : 0) + (rfOnOff ? 1 : 0)]),
         })
       }
 
