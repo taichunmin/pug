@@ -1,0 +1,95 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '性向測驗'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content="當您回答問題時，請想像您是身處於平常工作環境中的自己。這不是考試，沒有對錯，您只需依直覺誠實的回答。")
+  meta(property="og:image:height", content="600")
+  meta(property="og:image:width", content="1200")
+  meta(property="og:image", content="https://i.imgur.com/ub1eJr1.png")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/20220309-aptitude-test.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container.text-monospace(v-cloak)
+    h3.text-center= title
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        quests: [
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['有條理', '有創意', '很獨立', '有熱忱'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['有守時', '注重溝通', '好奇', '追求樂趣'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['注重細節', '靈活變通', '沉著', '好勝心'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['肯負責', '有愛心', '注重分析', '足智多謀'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['能全心投入', '觀察敏銳', '深思熟慮', '有勇氣'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['謹慎', '注重合作', '熟諳技術', '精力旺盛'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['勇於任事', '注重感情', '自主', '有冒險精神'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['受人尊重', '真心誠意', '有才幹', '寬大為懷'],
+          },
+          {
+            desc: '請根據選項與您的符合程度由大到小排序：',
+            opts: ['表現沉穩', '能栽培後進', '愛追根究底', '自動自發'],
+          },
+          {
+            desc: '當您在做決定時，請根據選項與您的符合程度由大到小排序：',
+            opts: ['擬定計畫', '請教別人', '蒐集資料', '憑直覺'],
+          },
+          {
+            desc: '當您在和他人合作時，請根據選項與您的符合程度由大到小排序：',
+            opts: ['教練', '團隊一份子', '解決問題的人', '調解糾紛的人'],
+          },
+          {
+            desc: '請根據這些環境能讓您感到自在以及能發揮所長的程度由大到小排序：',
+            opts: ['安定', '和諧', '隱私', '自由'],
+          },
+        ],
+        h: {},
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+    })
