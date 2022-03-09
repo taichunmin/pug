@@ -69,13 +69,13 @@ block content
               small.form-text.text-muted(v-if="!exploreLetter.length") 沒有推薦的新字母
               small.form-text.text-muted(v-if="exploreLetter.length > 20") 僅顯示前 20 筆推薦的新字母
               #exploreLetter
-                a.badge.badge-info.mr-1(v-for="possible in exploreLetter.slice(0, 20)", @click="h.guess = possible", href="#") {{ possible }}
+                a.badge.badge-info.mr-1(v-for="possible in _.take(exploreLetter, 20)", @click="h.guess = possible", href="#") {{ possible }}
             .form-group.mb-0
               label 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibles.length }}]
               small.form-text.text-muted(v-if="!possibles.length") 請輸入猜測單字與結果來顯示可能的謎底
               small.form-text.text-muted(v-if="possibles.length > 100") 僅顯示前 100 筆可能的謎底
               #possibles
-                a.badge.badge-info.mr-1(v-for="possible in possibles.slice(0, 100)", @click="h.guess = possible", href="#") {{ possible }}
+                a.badge.badge-info.mr-1(v-for="possible in _.take(possibles, 100)", @click="h.guess = possible", href="#") {{ possible }}
           .card-footer.text-right
             button.btn.btn-sm.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
 

@@ -60,7 +60,7 @@ block content
               small.form-text.text-muted(v-if="!possibilities.length") 請輸入猜測數字與結果來顯示可能的謎底
               small.form-text.text-muted(v-if="possibilities.length > 100") 僅顯示前 100 筆可能的謎底
               #possibilities
-                a.badge.badge-info.mr-1(v-for="possible in possibilities.slice(0, 100)", @click="i.guess = possible", href="#") {{ possible }}
+                a.badge.badge-info.mr-1(v-for="possible in _.take(possibilities, 100)", @click="i.guess = possible", href="#") {{ possible }}
           .card-footer.text-right
             button.btn.btn-sm.btn-danger(type="button", @click="btnNewSolver(false)") #[span.fa.fa-fw.fa-trash-o] 重新求解
 

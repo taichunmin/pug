@@ -313,7 +313,7 @@ block script
               },
               ..._.get(this, 'h.registers', []),
             ]
-            this.$set(this.h, 'registers', _.uniqBy(registers, 'sn').slice(0, 3))
+            this.$set(this.h, 'registers', _.take(_.uniqBy(registers, 'sn'), 3))
 
             // 儲存產品參數更新紀錄
             await this.logUpdateSetting.post({
