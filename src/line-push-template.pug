@@ -178,7 +178,7 @@ block script
               messages = { type: 'flex', altText: '您有一則新訊息', contents: messages }
             }
             if (!_.isArray(messages)) messages = [messages]
-            await axios.post('https://us-central1-taichunmin.cloudfunctions.net/cors-anywhere', {
+            await axios.post('https://cors-anywhere-ybtjbo45iq-uc.a.run.app', {
               to,
               messages,
               notificationDisabled,

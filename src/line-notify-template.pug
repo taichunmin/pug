@@ -248,7 +248,7 @@ block script
         },
         async apiNotify (token, msg) {
           try {
-            await axios.post('https://us-central1-taichunmin.cloudfunctions.net/cors-anywhere', window.httpBuildQuery(msg), {
+            await axios.post('https://cors-anywhere-ybtjbo45iq-uc.a.run.app', window.httpBuildQuery(msg), {
               headers: { Authorization: `Bearer ${token}` },
               params: { u: 'https://notify-api.line.me/api/notify' },
             })

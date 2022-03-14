@@ -136,7 +136,7 @@ block script
               title: this.h.title,
             })
             // https://docs.google.com/forms/d/e/1FAIpQLSdWRzEaZh6WHupjkq7vcVpjNKkVYpp44au8S95Wvb49d8rH4Q/viewform?usp=pp_url&entry.1360041841=time&entry.1150087531=course&entry.1133765164=name&entry.661913675=email&entry.66914760=department&entry.548249594=title&entry.1221220906=note
-            await axios.post('https://us-central1-taichunmin.cloudfunctions.net/cors-anywhere', window.httpBuildQuery({
+            await axios.post('https://cors-anywhere-ybtjbo45iq-uc.a.run.app', window.httpBuildQuery({
               'entry.1133765164': body.name,
               'entry.1150087531': body.course,
               'entry.1221220906': body.note,
