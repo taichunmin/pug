@@ -23,6 +23,9 @@ block style
         .input-group-text
           letter-spacing: -1px
           min-width: 5rem
+      .card video
+        width: 100%
+        height: auto
 
 block content
   #app.my-3.container-fluid.text-monospace(v-cloak, style="max-width: 760px")
@@ -32,8 +35,9 @@ block content
         .input-group.input-group-sm.mt-2(v-for="val, name in copyables", @click="btnCopy(val)")
           .input-group-prepend: span.input-group-text.justify-content-center {{ name }}
           input.form-control.text-right(type="text", readonly, :value="val")
-      img.card-img-bottom(:src="imgur.link")
-    button.mb-3.btn.btn-danger(@click="btnDel") 刪除圖片
+      video(v-if="isVideo", :src="imgur.link", muted)
+      img.card-img-bottom(v-else, :src="imgur.link")
+    button.mb-3.btn.btn-danger(@click="btnDel") 刪除{{ ['圖片', '影片'][+isVideo] }}
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-base64@2/base64.min.js")
@@ -82,15 +86,26 @@ block script
         await this.init()
       },
       computed: {
+        isVideo () {
+          const imgur = this.imgur
+          return /^video\//.test(_.get(imgur, 'type'))
+        },
         copyables () {
           const imgur = this.imgur
           if (!imgur) return {}
+          if (!this.isVideo) { // 圖片
+            return {
+              圖片網址: imgur.link,
+              Markdown: `![](${imgur.link})`,
+              HTML: `<img src="${imgur.link}">`,
+              圖片比例: `${imgur.width}:${imgur.height}`,
+              圖片大小: this.formatSize(imgur.size),
+              上傳時間: dayjs.unix(imgur.datetime).format('YYYY-MM-DD HH:mm:ss ZZ'),
+            }
+          }
           return {
-            圖片網址: imgur.link,
-            Markdown: `![](${imgur.link})`,
-            HTML: `<img src="${imgur.link}">`,
-            圖片比例: `${imgur.width}:${imgur.height}`,
-            圖片大小: this.formatSize(imgur.size),
+            影片網址: imgur.link,
+            HTML: `<video src="${imgur.link}"></video>`,
             上傳時間: dayjs.unix(imgur.datetime).format('YYYY-MM-DD HH:mm:ss ZZ'),
           }
         },
