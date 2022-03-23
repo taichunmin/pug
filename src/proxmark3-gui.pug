@@ -1,0 +1,286 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'Proxmark3 GUI'
+
+block style
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description", content=title)
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url", content="https://taichunmin.idv.tw/pug/proxmark3-gui.html")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container-fluid(v-cloak)
+    h3.mb-3.text-center= title
+    .card
+      h5.card-header Block read/write
+      .card-body
+
+block script
+  script.
+    ;(() => {
+      // helper function
+      const logTime = text => console.log(`[${new Date().toTimeString().slice(0, 8)}] ${text}`)
+      const sleep = t => new Promise(resolve => setTimeout(resolve, t))
+      const u8FromHex = hex => new Uint8Array(_.map(hex.match(/.{2}/g), b => _.parseInt(b, 16)))
+      const castUint8Array = data => {
+        if (_.isString(data)) data = u8FromHex(data)
+        if (data instanceof ArrayBuffer) data = new Uint8Array(data)
+        if (data && !(data instanceof Uint8Array)) data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+        return data
+      }
+      const u8ToPadHex = u8 => {
+        u8 = castUint8Array(u8)
+        return _.map(u8, byte => `0${byte.toString(16)}`.slice(-2)).join('')
+      }
+      const intToPadHex = (num, len) => {
+        return _.padStart(num.toString(16), len, '0')
+      }
+      class WebSerial { // Web Serial
+        constructor () {
+          this.port = null
+          this.chunks = []
+          this.buflen = 0
+        }
+
+        static isSupported () {
+          return 'serial' in navigator
+        }
+
+        async requestPort (filters) {
+          if (!WebSerial.isSupported()) throw new Error('不支援 WebSerial')
+          this.port = await navigator.serial.requestPort({ filters })
+          await this.port.open({ baudRate: 9600 })
+        }
+
+        async read (len = 1) {
+          len = _.toSafeInteger(len)
+          if (len < 1) throw new TypeError('invalid len')
+          if (!this.port) await this.requestPort()
+          const reader = this.port?.readable?.getReader?.()
+          if (!reader) throw new Error('Failed to getReader')
+          try {
+            while (this.buflen < len) {
+              const { value, done } = await reader.read()
+              console.log({ value, done })
+              if (done) break
+              this.chunks.push(value)
+              this.buflen += value.byteLength
+            }
+            if (this.chunks.length > 1) { // merge chunks
+              const buffer = new Uint8Array(_.sumBy(this.chunks, 'byteLength'))
+              let offset = 0
+              for (const chunk of this.chunks) {
+                buffer.set(chunk, offset)
+                offset += chunk.byteLength
+              }
+              this.chunks = [buffer]
+            }
+            if (this.chunks[0].byteLength > len) {
+              const buffer = this.chunks[0]
+              this.chunks = [buffer.slice(0, len), buffer.slice(len)]
+            }
+            const res = _.first(this.chunks.splice(0, 1))
+            this.buflen = _.sumBy(this.chunks, 'byteLength')
+            console.log(len)
+            return res
+          } finally {
+            reader.releaseLock?.()
+          }
+        }
+
+        async write (data) {
+          if (!data) throw new Error('invalid data')
+          data = castUint8Array(data)
+          console.log(data)
+          if (!this.port) await this.requestPort()
+          const writer = this.port?.writable?.getWriter?.()
+          if (!writer) throw new Error('Failed to getWriter')
+          await writer.write(data)
+          writer.releaseLock()
+        }
+      }
+      window.WebSerial = WebSerial
+      // https://github.com/Proxmark/proxmark3/blob/master/include/usb_cmd.h#L29
+      class Proxmark3Cmd {
+        constructor (...tmpArr) { // cmd and args[3]
+          this.buffer = new ArrayBuffer(544) // 8 * 4 + 512
+          this.dv = new DataView(this.buffer)
+          this.dvData = new DataView(this.buffer, 32, 512)
+          this.u8 = new Uint8Array(this.buffer)
+          this.u8Data = new Uint8Array(this.buffer, 32, 512)
+
+          // set cmd and args[3]
+          for (let i = 0; i < 4; i++) this.dv.setBigUint64(i << 3, tmpArr?.[i] ?? 0n, true)
+        }
+
+        get cmd () {
+          return this.dv.getBigUint64(0, true)
+        }
+
+        set cmd (newVal) {
+          this.dv.setBigUint64(0, newVal, true)
+        }
+
+        getArg (index) {
+          return this.dv.getBigUint64((index + 1) << 3, true)
+        }
+
+        setArg (index, newVal) {
+          this.dv.setBigUint64((index + 1) << 3, newVal, true)
+          return this
+        }
+      }
+      window.Proxmark3Cmd = Proxmark3Cmd
+      class Proxmark3ResV1 {
+        constructor (buffer) {
+          this.buffer = buffer ?? new ArrayBuffer(544)
+          this.dv = new DataView(this.buffer)
+          this.dvData = new DataView(this.buffer, 32, 512)
+          this.u8 = new Uint8Array(this.buffer)
+          this.u8Data = new Uint8Array(this.buffer, 32, 512)
+        }
+
+        get cmd () {
+          return this.dv.getBigUint64(0, true)
+        }
+
+        getArg (index) {
+          return this.dv.getBigUint64((index + 1) << 3, true)
+        }
+
+        static isV2 (u8) {
+          const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength)
+          return dv.getUint16(0) & 0x8000
+        }
+      }
+      window.Proxmark3ResV1 = Proxmark3ResV1
+      class Proxmark3Iso14aCardSelect {
+        constructor (u8) {
+          if (u8.byteLength < 271) throw new TypeError('Proxmark3Iso14aCard: invalid byteLength')
+          this.buffer = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)
+          this.dv = new DataView(this.buffer)
+          this.u8 = new Uint8Array(this.buffer)
+        }
+
+        get u8Uid () {
+          return new Uint8Array(this.buffer, 0, this.u8[10])
+        }
+
+        get atqa () {
+          return this.dv.getUint16(11, true)
+        }
+
+        get sak () {
+          return this.u8[13]
+        }
+
+        get ats () {
+          return new Uint8Array(this.buffer, 15, this.u8[14])
+        }
+      }
+      class Proxmark3 {
+        constructor (serial) {
+          this.serial = serial ?? new WebSerial([
+            { usbVendorId: 0x2d2d, usbProductId: 0x504d }, // proxmark.org: Proxmark3
+            { usbVendorId: 0x9ac4, usbProductId: 0x4b8f }, // J. Westhues: ProxMark-3 RFID Instrument (old)
+          ])
+        }
+
+        async read () {
+          // https://github.com/Proxmark/proxmark3/blob/master/client/comms.c#L231
+          const CMD_VARIABLE_SIZE_FLAG = 0x8000
+          const u8p1 = await this.serial.read(64) // new format at least 64 bytes
+        }
+
+        async readTimeout (timeout = 1e3) {
+          const u8 = await Promise.race([
+            this.serial.read(544),
+            (async () => {
+              await sleep(timeout)
+              throw new Error(`readTimeout ${timeout}ms`)
+            })(),
+          ])
+          return new Proxmark3ResV1(u8.buffer)
+        }
+
+        async CmdHF14ADisconnect () {
+          const cmd = new Proxmark3Cmd(0x0385n)
+          await this.serial.write(cmd.u8)
+        }
+
+        // https://github.com/Proxmark/proxmark3/blob/master/client/cmdhf14a.c#L160
+        async CmdHF14AInfo (isSelect = false) {
+          try {
+            const cmd = new Proxmark3Cmd(0x0385n, 0b11n) // CMD_READER_ISO_14443a, [ISO14A_CONNECT | ISO14A_NO_DISCONNECT]
+            await this.serial.write(cmd.u8)
+            const cmdres = await this.readTimeout()
+            const status = cmdres.getArg(0)
+            const card = new Proxmark3Iso14aCardSelect(cmdres.u8Data)
+            if (status === 0n) { // 0: couldn't read, 1: OK, with ATS, 2: OK, no ATS, 3: proprietary Anticollision
+              if (isSelect) throw new Error('failed to select iso14443a card')
+              return
+            } else if (status === 3n) {
+              throw new Error(`Card doesn't support standard iso14443-3 anticollision, ATQA: ${intToPadHex(card.atqa, 4)}`)
+            }
+            const res = {
+              uid: u8ToPadHex(card.u8Uid),
+              atqa: intToPadHex(card.atqa, 4),
+              sak: intToPadHex(card.sak, 2),
+              status,
+            }
+            return res
+          } catch (err) {
+            console.error(err)
+            throw err
+          } finally {
+            await this.CmdHF14ADisconnect()
+          }
+        }
+      }
+      window.Proxmark3 = Proxmark3
+    })()
+    window.pm3 = new window.Proxmark3()
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          block: {
+            target: 0,
+            keyHex: '',
+            keyType: '',
+            dataHex: '',
+          },
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
