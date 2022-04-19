@@ -1,0 +1,85 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '部落格用截圖合併工具'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      #merged
+        background-color: #6b6b6b
+        height: 600px
+        width: 1200px
+        .screenshot
+          background: no-repeat center/contain
+
+block content
+  #app.my-3.text-monospace.container-fluid(v-cloak)
+    h1.text-center= title
+    #merged.my-2.px-1.py-2.d-flex
+      .screenshot.mx-1(v-for="img of images" :style="{'background-image': `url(${img.url})`, 'flex-grow': img.flex}")
+    .from-group
+      .input-group.mt-2
+        .input-group-prepend: button.btn.btn-primary(type="button", @click="btnMergeImages") 合#[br]併#[br]截#[br]圖#[br]網#[br]址
+        textarea.form-control.form-control-sm(v-model="h.images", rows="15", style="font-size: .75rem")
+      small.text-muted 可以貼上多個圖片網址，以換行分開。
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          images: '',
+          bg: '',
+        },
+        images: [],
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnMergeImages () {
+          const urls = _.compact(this.h.images.split(/\r?\n/))
+          const images =  _.compact(await Promise.all(_.map(urls, async url => {
+            try {
+              const size = await this.getImageUrlSize(url)
+              return { url, ...size, flex: size.width * 1200 / size.height }
+            } catch (err) {
+              console.error(err)
+              return null
+            }
+          })))
+          this.$set(this, 'images', images)
+        },
+        getImageUrlSize: (() => {
+          const sizeMap = new Map()
+          return async url => {
+            if (!url) throw new Error('url is required')
+            if (!sizeMap.has(url)) {
+              await new Promise((resolve, reject) => {
+                const img = new Image()
+                img.onload = function () {
+                  sizeMap.set(url, { height: this.height, width: this.width })
+                  resolve()
+                }
+                img.onerror = () => reject(new Error(`無法取得圖片大小: ${url}`))
+                img.src = url
+              })
+            }
+            return sizeMap.get(url)
+          }
+        })(),
+      },
+    })
