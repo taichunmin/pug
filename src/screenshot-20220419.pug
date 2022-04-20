@@ -52,7 +52,7 @@ block script
       methods: {
         async btnMergeImages () {
           const urls = _.compact(this.h.images.split(/\r?\n/))
-          const images =  _.compact(await Promise.all(_.map(urls, async url => {
+          const images = _.compact(await Promise.all(_.map(urls, async url => {
             try {
               const size = await this.getImageUrlSize(url)
               return { url, ...size, flex: size.width * 1200 / size.height }
