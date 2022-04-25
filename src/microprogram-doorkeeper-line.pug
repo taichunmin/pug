@@ -1,11 +1,11 @@
 extends /layout/default
 
 block beforehtml
-  - const title = '微程式刷卡通知設定'
+  - const title = '微程式刷卡通知人工審核'
 
 block style
   meta(property="fb:app_id", content="2133031763635285")
-  meta(property="og:description", content="微程式刷卡通知設定")
+  meta(property="og:description", content="微程式刷卡通知人工審核")
   meta(property="og:locale", content="zh_TW")
   meta(property="og:site_name", content="筆記國度")
   meta(property="og:title", content=title)
@@ -149,10 +149,7 @@ block script
             if (!liff.isApiAvailable('shareTargetPicker')) throw new Error('不支援 shareTargetPicker，請嘗試更新應用程式版本。')
             const res = await liff.shareTargetPicker(this.getRenderedMsgs())
             if (_.get(res, 'status') !== 'success') throw new Error('已取消傳送')
-            await Swal.fire({
-              icon: 'success',
-              title: '傳送成功',
-            })
+            await Swal.fire({ icon: 'success', title: '傳送成功' })
           } catch (err) {
             console.error(err)
             await Swal.fire({ icon: 'error', title: '傳送失敗', text: err.message })
@@ -249,7 +246,7 @@ block script
                           backgroundColor: '#ffffff',
                           gravity: 'center',
                           type: 'image',
-                          url: 'https://i.imgur.com/5tS4s3Y.png',
+                          url: 'https://i.imgur.com/7F25dCI.png',
                         },
                       ],
                     },
@@ -277,7 +274,7 @@ block script
             msg = { type: 'flex', altText: '邀請您開啟微程式的刷卡通知服務。', contents: msg }
           }
           if (!_.isArray(msg)) msg = [msg]
-          console.log('msg =', JSON.stringify(msg))
+          console.log('msg =', msg)
           return msg
         },
       },

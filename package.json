@@ -8,7 +8,8 @@
   "scripts": {
     "build": "cross-env DEBUG=app:* node ./index.js",
     "dev": "cross-env DEBUG=app:* node ./dev.js",
-    "lint": "eslint --ext .js,.pug --fix ."
+    "lint": "eslint --ext .js,.pug --fix .",
+    "mkcert": "mkcert -key-file ./mkcert/key.pem -cert-file ./mkcert/cert.pem -ecdsa localhost"
   },
   "dependencies": {
     "cross-env": "^7.0.3",
