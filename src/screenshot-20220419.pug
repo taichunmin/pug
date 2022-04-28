@@ -24,8 +24,8 @@ block content
       .screenshot.mx-1(v-for="img of images" :style="{'background-image': `url(${img.url})`, 'flex-grow': img.flex}")
     .from-group
       .input-group.mt-2
-        .input-group-prepend: button.btn.btn-primary(type="button", @click="btnMergeImages") 合#[br]併#[br]截#[br]圖#[br]網#[br]址
-        textarea.form-control.form-control-sm(v-model="h.images", rows="15", style="font-size: .75rem")
+        .input-group-prepend: button.btn.btn-primary(type="button", @click="btnMergeImages") 點此#[br]合併#[br]截圖
+        textarea.form-control.form-control-sm(v-model="h.images", rows="5", style="font-size: .75rem")
       small.text-muted 可以貼上多個圖片網址，以換行分開。
 
 block script

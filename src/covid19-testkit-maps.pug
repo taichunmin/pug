@@ -1,0 +1,270 @@
+//- https://g0v.hackmd.io/@yitzu/covid-19/https%3A%2F%2Fg0v.hackmd.io%2F%40kiang%2Fantigen?fbclid=IwAR1BUhL9lM2d0SjOfz8zihXMT4aZzu_9WYWvBqWR-jgc2pc7DeexXM-T4-U
+//- https://data.nhi.gov.tw/Datasets/Download.ashx?rid=A21030000I-D03001-001&l=https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv
+//- https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv
+//- https://data.nhi.gov.tw/resource/Opendata/%E5%85%A8%E6%B0%91%E5%81%A5%E5%BA%B7%E4%BF%9D%E9%9A%AA%E7%89%B9%E7%B4%84%E9%99%A2%E6%89%80%E5%9B%BA%E5%AE%9A%E6%9C%8D%E5%8B%99%E6%99%82%E6%AE%B5.csv
+extends /layout/default
+
+block beforehtml
+  - const title = 'COVID-19 快篩實名制地圖'
+  - var description = '顯示您附近的藥局，方便您前往購買 COVID-19 快篩試劑！'
+
+block style
+  meta(name="description" content=description)
+  meta(property="fb:app_id", content="2133031763635285")
+  meta(property="og:description" content=description)
+  meta(property="og:image", content="https://i.imgur.com/O9GX9P9.png")
+  meta(property="og:image:height", content="600")
+  meta(property="og:image:width", content="1200")
+  meta(property="og:locale", content="zh_TW")
+  meta(property="og:site_name", content="筆記國度")
+  meta(property="og:title", content=title)
+  meta(property="og:type", content="website")
+  meta(property="og:url" content="https://taichunmin.idv.tw/pug/covid19-testkit-maps.html")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0/dist/L.Control.Locate.min.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.css")
+  link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/MarkerCluster.Default.css")
+  style
+    :sass
+      [v-cloak]
+        display: none
+      html, body, #app
+        height: 100%
+        width: 100vw
+      .leaflet-popup-content
+        font-size: 14px
+        h6
+          font-size: 18px
+          margin-bottom: 1rem
+        .table-store
+          th
+            white-space: nowrap
+          td
+            text-align: right
+        .table-time th
+          background-color: #d6d8db
+
+block content
+  #app(v-cloak)
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0/dist/L.Control.Locate.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1/dist/leaflet.markercluster.min.js")
+  script.
+    /* global _, L, Qs, Papa */
+    const { joi: Joi } = window
+    const vm = new Vue({ // eslint-disable-line
+      el: '#app',
+      data: {
+        h: {
+          lastNews: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        await this.init()
+      },
+      methods: {
+        async init () {
+          try {
+            this.initMap()
+            this.showLoading('讀取中', '請稍候')
+            const [opens, stores] = await Promise.all([
+              this.fetchOpens(),
+              this.fetchStores(),
+            ])
+            await this.renderMap({ opens, stores })
+            await this.showNews()
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+            location.reload()
+          }
+        },
+        async showNews () {
+          const NEWS_TIMESTAMP = ''
+          if (this.h.lastNews === NEWS_TIMESTAMP) return
+          this.h.lastNews = NEWS_TIMESTAMP
+          const result = await Swal.fire({
+            cancelButtonText: '與開發者聯絡',
+            confirmButtonText: '我知道了',
+            icon: 'info',
+            reverseButtons: true,
+            showCancelButton: true,
+            html: `<div style="font-size: .9rem">
+            <p>ℹ️&nbsp;&nbsp;10/15 因為口罩恢復定額徵用，本地圖已經調整為展示模式。</p>
+            </div>`,
+          })
+          if (!result.value) location.href = 'https://fb.me/taichunmin'
+        },
+        async initMap () {
+          if (window.map) return
+          const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>',
+          })
+          const map = window.map = L.map('app', {
+            center: [25.040857, 121.567904],
+            layers: [tiles],
+            tap: false,
+            zoom: 14,
+          })
+          window.lc = L.control.locate({
+            position: 'topleft',
+            strings: { title: '定位目前位置', popup: '定位目前位置' },
+          }).addTo(map)
+        },
+        async fetchOpens () {
+          const rows = await this.getCsv('https://taichunmin.idv.tw/covid19-testkit-maps-crawler/opens.csv')
+          const opens = new Map()
+          for (const row of rows) opens.set(row.id, row.time)
+          return opens
+        },
+        async fetchStores () {
+          const rows = await this.getCsv('https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv')
+          const stores = []
+          const schema = Joi.object({
+            addr: Joi.string().trim().required(),
+            amount: Joi.number().integer().min(0).required(),
+            id: Joi.string().alphanum().required(),
+            lat: Joi.number().min(21).max(28).empty('0').required(),
+            lng: Joi.number().min(117).max(123).empty('0').required(),
+            name: Joi.string().trim().required(),
+            notice: Joi.string().trim().empty(Joi.any().equal('-', '')).default(''),
+            tel: Joi.string().trim().required(),
+            testkit: Joi.string().trim().required(),
+            updatedAt: Joi.any().required(),
+          })
+          const CHAR_MAP = _.zipObject('０１２３４５６７８９／：；（）～〜。\n'.split(''), '0123456789/:;()~~;;'.split(''))
+          const strtr = (str, charmap) => _.map(str, c => _.get(charmap, [c], c)).join('')
+          let errCnt = 0
+          for (const row of rows) {
+            try {
+              const updatedAt = dayjs(row['來源資料時間'], 'YYYY/MM/DD HH:mm:ssZZ')
+              if (!updatedAt.isValid()) throw new Error('時間錯誤')
+              const store = await schema.validateAsync({
+                addr: row['醫事機構地址'],
+                amount: row['快篩試劑截至目前結餘存貨數量'],
+                id: row['醫事機構代碼'],
+                lat: row['緯度'],
+                lng: row['經度'],
+                name: row['醫事機構名稱'],
+                notice: row['備註'],
+                tel: row['醫事機構電話'],
+                testkit: row['廠牌項目'],
+                updatedAt: updatedAt.format('MM/DD HH:mm'),
+              }, { stripUnknown: true })
+              for (const k of ['addr', 'notice', 'tel']) store[k] = strtr(store[k], CHAR_MAP)
+              stores.push(store)
+            } catch (err) {
+              errCnt++
+              ;(window.errStores = window.errStores || []).push({
+                ...row,
+                message: err.message,
+              })
+            }
+          }
+          if (errCnt) console.log(`fetchStores 有 ${errCnt} 筆錯誤資料`)
+          return stores
+        },
+        async renderMap ({ opens, stores }) {
+          console.log({ opens, stores })
+          const { map } = window
+          // add marker
+          const StoreIcon = L.Icon.extend({
+            options: {
+              iconAnchor: [18, 36],
+              iconSize: [36, 36],
+              popupAnchor: [0, -38],
+            },
+          })
+          const icons = {
+            green: new StoreIcon({ iconUrl: 'https://i.imgur.com/1KRTaAO.png' }),
+            red: new StoreIcon({ iconUrl: 'https://i.imgur.com/Ed6iMMC.png' }),
+            unknown: new StoreIcon({ iconUrl: 'https://i.imgur.com/mfATTxs.png' }),
+            yellow: new StoreIcon({ iconUrl: 'https://i.imgur.com/raxi9vh.png' }),
+          }
+          const httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
+          const storeToGoogleMap = store => {
+            const baseUrl = 'https://www.google.com/maps/dir/?'
+            const query = {
+              api: 1,
+              destination: `${store.lat},${store.lng}`,
+              openExternalBrowser: 1,
+              travelmode: 'walking',
+            }
+            return baseUrl + httpBuildQuery(query)
+          }
+          const storeTimeTable = time => {
+            const tmp1 = ['<tr><th>　</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>']
+            const th2 = ['上', '下', '晚']
+            for (let i = 0; i < 3; i++) {
+              const tmp2 = [`<th>${th2[i]}</th>`]
+              for (let j = 0; j < 7; j++) {
+                if (time[i * 7 + j] === '1') tmp2.push('<td class="table-success"><i class="fa fa-check"></i></td>')
+                else tmp2.push('<td class="table-danger"><i class="fa fa-times"></i></td>')
+              }
+              tmp1.push('<tr>' + tmp2.join('') + '</tr>')
+            }
+            return tmp1.join('')
+          }
+          const telLink = tel => `tel:${tel.replace(/^[(]*(\d+)[)\s-]*(\d+)$/, '$1-$2')}`
+          const storePopup = store => {
+            const open = opens.get(store.id)
+            return `<h6>${store.name}</h6>` +
+              '<table class="table table-sm mb-2 table-borderless table-store text-monospace">' +
+                `<tr><th class="text-center" colspan="2">${store.testkit} <span class="badge badge-pill badge-primary">${store.amount}</span></td></tr>` +
+                `<tr><th>電話</th><td><a href="${telLink(store.tel)}">${store.tel}</a></td></tr>` +
+                `<tr><th>備註</th><td>${store.notice}</td></tr>` +
+                `<tr><th>地址</th><td>${store.addr}</td></tr>` +
+                `<tr><th>更新</th><td>${store.updatedAt}</td></tr>` +
+              '</table>' +
+              (open ? `<table class="table table-sm mb-2 table-bordered text-center table-time">${storeTimeTable(opens.get(store.id))}</table>` : '') +
+              `<a class="btn btn-dark btn-block text-white mt-3" href="${storeToGoogleMap(store)}" role="button" target="_blank">` +
+                'Google 導航' +
+              '</a>'
+          }
+          const storeMarker = (store, icon) => L.marker([store.lat, store.lng], { icon }).bindPopup(storePopup(store), { minWidth: 200 })
+          const cluster = L.markerClusterGroup({
+            chunkedLoading: true,
+            disableClusteringAtZoom: 16,
+            spiderfyOnMaxZoom: false,
+          })
+          for (const store of stores) {
+            if (!store.amount) cluster.addLayer(storeMarker(store, icons.red))
+            else if (store.amount <= 20) cluster.addLayer(storeMarker(store, icons.yellow))
+            else cluster.addLayer(storeMarker(store, icons.green))
+          }
+          map.addLayer(cluster)
+          window.lc.start() // request location update and set location
+        },
+        async getCsv (url, cachetime = 3e4) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: _.floor(Date.now() / cachetime) },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => Swal.showLoading(),
+          })
+        },
+      },
+    })

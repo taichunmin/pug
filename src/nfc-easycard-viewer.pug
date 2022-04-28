@@ -221,7 +221,7 @@ block script
         return new Easycard(BufferLE.fromHex(eml))
       }
 
-      getXfer ({ txn , group }) {
+      getXfer ({ txn, group }) {
         const buf = this.buf
         const xferAfter = buf.getUint8((group << 4) + 13)
         const sploc = window.EasycardData?.sploc ?? {}
@@ -384,7 +384,6 @@ block script
             return Easycard.fromEml(this.h.eml)
           } catch (err) {
             console.error(err)
-            return
           }
         },
       },
