@@ -73,7 +73,7 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 卡片效期
               input.form-control(readonly, :value="card?.exp")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 功能開關
+              .input-group-prepend: span.input-group-text.justify-content-center 票卡狀態
               input.form-control(readonly, :value="card?.usageControl")
         .form-group(v-for="xfer in card?.xfers")
           label 轉乘紀錄 {{ xfer.tsqn }}
@@ -135,6 +135,9 @@ block content
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 設備編號
               input.form-control(readonly, :value="txn?.device")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center RFU
+              input.form-control(readonly, :value="txn?.rfu")
         .form-group
           label 最近扣款交易
           .table-responsive
@@ -148,6 +151,7 @@ block content
                 th 業者
                 th 場站
                 th 設備
+                th RFU
               tbody
                 tr(v-for="txn of card?.deducts")
                   th {{ txn?.tsqn }}
@@ -158,6 +162,7 @@ block content
                   td {{ txn?.provider }}
                   td {{ txn?.location }}
                   td {{ txn?.device }}
+                  td {{ txn?.rfu }}
         .form-group(v-for="bus, busId of card?.buses")
           label 公車{{ '上下'[busId] }}車紀錄
           .row.mx-n1
@@ -249,9 +254,10 @@ block script
         return {
           ...this.getSploc(pos + 10),
           amount: buf.getInt16(pos + 6),
-          device: `0x${buf.subarray(pos + 12, pos + 16).rhex}`,
+          device: `0x${buf.subarray(pos + 12, pos + 15).rhex}`,
           ev: buf.getInt16(pos + 8),
           oldXferGroup: `0x${buf.subarray(pos + 10, pos + 11).hex}`,
+          rfu: `0x${buf.subarray(pos + 15, pos + 16).rhex}`,
           time: this.getUnixStr(pos + 1),
           tsqn: `0x${buf.subarray(pos, pos + 1).hex}`,
           tsqnUint: buf.getUint8(pos),
