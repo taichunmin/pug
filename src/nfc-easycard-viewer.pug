@@ -35,7 +35,7 @@ block content
               input.form-control(readonly, :value="card?.tsqn")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 餘額
-              input.form-control(readonly, :value="card?.balance")
+              input.form-control(readonly, :value="card?.ev")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 預設加值
               input.form-control(readonly, :value="card?.autoload")
@@ -73,41 +73,53 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 卡片效期
               input.form-control(readonly, :value="card?.exp")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 月票到期日
+              input.form-control(readonly, :value="card?.monthlyExp")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 優待票日期
+              input.form-control(readonly, :value="card?.concessionDate")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 優待票點數
+              input.form-control(readonly, :value="card?.concessionPoint")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 票卡狀態
               input.form-control(readonly, :value="card?.usageControl")
-        .form-group(v-for="xfer in card?.xfers")
-          label 轉乘紀錄 {{ xfer.tsqn }}
+        .form-group
+          label 轉乘紀錄
           .row.mx-n1
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 交易序號
-              input.form-control(readonly, :value="xfer?.tsqn")
+              input.form-control(readonly, :value="card?.xfer?.tsqn")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 時間
-              input.form-control(readonly, :value="xfer?.time")
+              input.form-control(readonly, :value="card?.xfer?.time")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 優惠方式
-              input.form-control(readonly, :value="xfer?.type")
+              .input-group-prepend: span.input-group-text.justify-content-center 交易類別
+              input.form-control(readonly, :value="card?.xfer?.type")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 扣款
-              input.form-control(readonly, :value="xfer?.amount")
+              input.form-control(readonly, :value="card?.xfer?.amount")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 餘額
-              input.form-control(readonly, :value="xfer?.ev")
+              input.form-control(readonly, :value="card?.xfer?.ev")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘前群組
-              input.form-control(readonly, :value="xfer?.before")
+              input.form-control(readonly, :value="card?.xfer?.before")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘後群組
-              input.form-control(readonly, :value="xfer?.after")
+              input.form-control(readonly, :value="card?.xfer?.after")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 舊轉乘群組
-              input.form-control(readonly, :value="xfer?.oldXferGroup")
+              input.form-control(readonly, :value="card?.xfer?.old")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 場站
-              input.form-control(readonly, :value="xfer?.location")
+              .input-group-prepend: span.input-group-text.justify-content-center 地點
+              input.form-control(readonly, :value="card?.xfer?.location")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 設備編號
-              input.form-control(readonly, :value="xfer?.device")
+              input.form-control(readonly, :value="card?.xfer?.device")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center DFU
+              input.form-control(readonly, :value="card?.xfer?.dfu")
         .form-group(v-for="txn of [card?.credit]")
           label 最近加值交易
           .row.mx-n1
@@ -118,7 +130,7 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 時間
               input.form-control(readonly, :value="txn?.time")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 交易方式
+              .input-group-prepend: span.input-group-text.justify-content-center 交易類別
               input.form-control(readonly, :value="txn?.type")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 加值金額
@@ -130,7 +142,7 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 業者
               input.form-control(readonly, :value="txn?.provider")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 場站
+              .input-group-prepend: span.input-group-text.justify-content-center 地點
               input.form-control(readonly, :value="txn?.location")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 設備編號
@@ -149,7 +161,7 @@ block content
                 th 扣款
                 th 餘額
                 th 業者
-                th 場站
+                th 地點
                 th 設備
                 th RFU
               tbody
@@ -189,7 +201,7 @@ block content
                 th 時間
                 th 進出站
                 th 業者
-                th 場站
+                th 地點
                 th 累計次數
                 th 累計金額
               tbody
@@ -200,6 +212,15 @@ block content
                   td {{ mrt?.location }}
                   td {{ mrt?.count }}
                   td {{ mrt?.amount }}
+        .form-group
+          label Mifare 卡片金鑰
+          .row.mx-n1
+            .mb-1.px-1.col-12.col-md-6: .input-group.input-group-sm(@click="btnCopy(card?.keya)")
+              .input-group-prepend: span.input-group-text.justify-content-center keyA
+              textarea.form-control(readonly, rows="16", :value="card?.keya")
+            .mb-1.px-1.col-12.col-md-6: .input-group.input-group-sm(@click="btnCopy(card?.keyb)")
+              .input-group-prepend: span.input-group-text.justify-content-center keyB
+              textarea.form-control(readonly, rows="16", :value="card?.keyb")
       .form-group(style="min-width: 250px")
         label EML (HEX)
         textarea.form-control.form-control-sm(rows="65", v-model="h.eml")
@@ -213,9 +234,9 @@ block script
       constructor (buf) {
         if (!buf || !(buf instanceof BufferLE) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
         this.buf = buf
+        this.payload = this.getPayload()
         this.credit = this.getTxn(160) // 最近加值交易
         this.deducts = _.chain([16, 17, 18, 20, 21, 22]).map(blk => this.getTxn(blk << 4)).sortBy(['time']).value() // 最近扣款交易
-        this.xfers = _.chain([{ txn: 13, group: 12 }, { txn: 14, group: 26 }]).map(arg => this.getXfer(arg)).sortBy(['time']).value()
         this.buses = _.map([45, 46], blk => this.getBus(blk << 4)) // 公車上下車紀錄
         this.mrts = _.chain([29, 30, 49, 50]).map(blk => this.getMrt(blk << 4)).compact().sortBy(['time']).value()
       }
@@ -226,42 +247,29 @@ block script
         return new Easycard(BufferLE.fromHex(eml))
       }
 
-      getXfer ({ txn, group }) {
+      getPayload () {
         const buf = this.buf
-        const xferAfter = buf.getUint8((group << 4) + 13)
-        const sploc = window.EasycardData?.sploc ?? {}
-        const xfersploc = {
-          1: sploc[2], // 台北捷運
-          11: sploc[103], // 桃園捷運
-          20: sploc[107], // 高雄捷運
-          22: sploc[105], // 台中捷運
-          7: sploc[200], // 捷運貓空
-          8: sploc[100], // 台鐵
-        }
-        const xfer = {
-          ...this.getXferGroup((group << 4) + 12),
-          ...this.getTxn(txn << 4),
-          tsqn: `0x${buf.subarray((group << 4), (group << 4) + 2).rhex}`,
-        }
-        const xferloc = xfersploc[xferAfter]?.[buf.getUint8((txn << 4) + 11)]?.location
-        console.log({ xfer, xferloc })
-        if (xferloc) xfer.location = xferloc
-        return xfer
+        // 根據交易序號取得正確的後設資料
+        const pos = buf.getUint16(192) > buf.getUint16(416) ? [192, 400] : [416, 384]
+        // 找到最新轉乘交易資料
+        pos.push(buf.getUint32(209) > buf.getUint32(225) ? 208 : 224)
+        const payload = new BufferLE(pos.length << 4)
+        for (let i = 0; i < pos.length; i++) payload.set(buf.subarray(pos[i], pos[i] + 16), i << 4)
+        return payload
       }
 
-      getTxn (pos) { // 16 bytes
+      getTxn (pos) { // 16 bytes: 47 3CD47362 30 0100 EB0D 55 01 6C70FF 00
         const buf = this.buf
         return {
           ...this.getSploc(pos + 10),
-          amount: buf.getInt16(pos + 6),
-          device: `0x${buf.subarray(pos + 12, pos + 15).rhex}`,
-          ev: buf.getInt16(pos + 8),
-          oldXferGroup: `0x${buf.subarray(pos + 10, pos + 11).hex}`,
-          rfu: `0x${buf.subarray(pos + 15, pos + 16).rhex}`,
-          time: this.getUnixStr(pos + 1),
           tsqn: `0x${buf.subarray(pos, pos + 1).hex}`,
           tsqnUint: buf.getUint8(pos),
+          time: this.getUnixStr(this.buf, pos + 1),
           type: this.getTxnType(pos + 5),
+          amount: buf.getInt16(pos + 6),
+          ev: buf.getInt16(pos + 8),
+          device: `0x${buf.subarray(pos + 12, pos + 15).rhex}`,
+          rfu: `0x${buf.subarray(pos + 15, pos + 16).hex}`,
         }
       }
 
@@ -270,7 +278,7 @@ block script
         return {
           agent: `0x${buf.subarray(pos + 3, pos + 5).rhex}`,
           line: `0x${buf.subarray(pos + 5, pos + 7).hex}`,
-          time: this.getUnixStr(pos + 7),
+          time: this.getUnixStr(this.buf, pos + 7),
           station: buf.getUint8(pos + 11),
           zone: buf.getUint8(pos + 12),
         }
@@ -296,18 +304,17 @@ block script
           location: mrtsploc[sp]?.[loc]?.location ?? `${loc}`,
           amount: buf.getUint16(pos + 6, false), // 捷運累計金額
           count: buf.getUint8(pos + 5), // 捷運累計次數
-          time: this.getUnixStr(pos + 9),
+          time: this.getUnixStr(this.buf, pos + 9),
           type: `${'出進'[buf.getUint8(pos + 3)]}站`, // 進出站
         }
       }
 
-      getUnixStr (pos) {
-        const buf = this.buf
+      getUnixStr (buf, pos) {
         return dayjs.unix(buf.getUint32(pos) - 28800).format('YYYY-MM-DD HH:mm:ss')
       }
 
-      getEasycardDateStr (pos) {
-        const u16 = this.buf.getUint16(pos)
+      getDosDateStr (buf, pos) {
+        const u16 = buf.getUint16(pos)
         if (!u16) return '無資料'
         return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
       }
@@ -319,13 +326,6 @@ block script
         return sploc[sp]?.[loc] ?? sploc?.[sp]?.[0] ?? { provider: `${sp}`, location: `${loc}` }
       }
 
-      getXferGroup (pos) {
-        return {
-          before: this.getXferCode(pos), // LSB byte 轉乘前群組
-          after: this.getXferCode(pos + 1), // MSB byte 轉乘後群組
-        }
-      }
-
       getNameU8 (key, pos) {
         const hex = this.buf.subarray(pos, pos + 1).hex
         return window.EasycardData?.[key]?.[hex] ?? `0x${hex}`
@@ -333,7 +333,6 @@ block script
 
       getAuthProfile (pos) { return this.getNameU8('authProfiles', pos) }
       getTxnType (pos) { return this.getNameU8('txnTypes', pos) }
-      getXferCode (pos) { return this.getNameU8('xferCodes', pos) }
 
       get usageControl () {
         const FLAG_NAMES = ['已啟用', '被封鎖', '已退卡', '自動加值', 'Credit']
@@ -341,27 +340,67 @@ block script
         return _.filter(FLAG_NAMES, (v, k) => (flag >> k) & 1).join()
       }
 
-      get mrtsploc () {
+      get keya () {
+        const buf = this.buf
+        return _.uniq(_.times(16, i => buf.subarray((i << 6) + 48, (i << 6) + 54).hex)).join('\n')
       }
 
-      get xfersploc () {
+      get keyb () {
+        const buf = this.buf
+        return _.uniq(_.times(16, i => buf.subarray((i << 6) + 58, (i << 6) + 64).hex)).join('\n')
       }
+
+      get xfer () {
+        const payload = this.payload
+        const getXferCode = pos => {
+          const hex = payload.subarray(pos, pos + 1).hex
+          return window.EasycardData?.xferCodes?.[hex] ?? `0x${hex}`
+        }
+        const sploc = window.EasycardData?.sploc ?? {}
+        const afterloc = {
+          0x01: sploc[2], // 台北捷運
+          0x07: sploc[200], // 捷運貓空
+          0x08: sploc[100], // 台鐵
+          0x0a: sploc[102], // 高鐵
+          0x0b: sploc[103], // 桃園捷運
+          0x14: sploc[107], // 高雄捷運
+          0x16: sploc[105], // 台中捷運
+        }
+        let after = payload.getUint8(42) & 0xf // 舊轉乘群組
+        if (after === 0xf) after = payload.getUint8(13) // 新轉乘群組
+        return {
+          tsqn: `0x${payload.subarray(32, 33).rhex}`,
+          before: getXferCode(12),
+          after: getXferCode(13),
+          time: this.getUnixStr(payload, 33),
+          type: `0x${payload.subarray(37, 38).hex}`,
+          amount: payload.getInt16(38),
+          ev: payload.getInt16(40),
+          old: `0x${payload.subarray(42, 43).hex}`,
+          location: afterloc?.[after]?.[payload.getUint8(43)]?.location ?? `0x${payload.subarray(43, 44).hex}`,
+          device: `0x${payload.subarray(44, 47).rhex}`,
+          dfu: `0x${payload.subarray(47, 48).hex}`,
+        }
+      } // 轉乘群組
 
       get area () { return this.getNameU8('areaCodes', 90) } // 區碼
       get autoload () { return this.buf.getUint16(81) } // 自動加值
-      get balance () { return this.buf.getInt24(144) } // 餘額
       get bank () { return this.getNameU8('bankCodes', 91) } // 加值銀行
-      get exp () { return this.getUnixStr(73) } // 有效時間
-      get issued () { return this.getUnixStr(69) } // 製造時間
-      get tsqn () { return `0x${this.buf.subarray(192, 194).rhex} (${this.buf.getUint16(192)})` } // 交易序號
-      get type () { return this.getNameU8('cardTypes', 93) } // 卡別
-      get uid () { return this.buf.subarray(0, 4).rhex } // 卡片編號
+      get concessionDate () { return this.getDosDateStr(this.payload, 5) } // 優待票日期
+      get concessionPoint () { return this.payload.getUint16(3) } // 優待票點數
+      get ev () { return this.buf.getInt32(128) } // 餘額
+      get exp () { return this.getUnixStr(this.buf, 73) } // 有效時間
+      get issued () { return this.getUnixStr(this.buf, 69) } // 製造時間
+      get monthlyExp () { return this.getDosDateStr(this.payload, 14) } // 月票到期日
+      get profileExp () { return this.getUnixStr(this.buf, 961) } // 身份別到期時間
+      get profileType () { return this.getNameU8('profiles', 960) } // 身份別
       get quotaDaily () { return this.buf.getUint16(83) } // 日限額金額
-      get quotaDate () { return this.getEasycardDateStr(1003) } // 日限額日期
+      get quotaDate () { return this.getDosDateStr(this.buf, 1003) } // 日限額日期
       get quotaOnce () { return this.buf.getUint16(85) } // 日單次限額
       get quotaUsed () { return this.buf.getUint16(1005) } // 日已用限額
-      get profileExp () { return this.getUnixStr(961) } // 身份別到期時間
-      get profileType () { return this.getNameU8('profiles', 960) } // 身份別
+      get tsqn () { return `0x${this?.xfer?.tsqn} (${this.payload.getUint16(0)})` } // 交易序號
+      get type () { return this.getNameU8('cardTypes', 93) } // 卡別
+      get uid () { return this.buf.subarray(0, 4).rhex } // 卡片編號
     }
     window.vm = new Vue({
       el: '#app',
@@ -431,6 +470,17 @@ block script
             encoding: 'utf8',
             header: true,
           }), 'data', [])
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
         },
       },
     })
