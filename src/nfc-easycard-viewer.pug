@@ -350,6 +350,11 @@ block script
         return _.uniq(_.times(16, i => buf.subarray((i << 6) + 58, (i << 6) + 64).hex)).join('\n')
       }
 
+      get eml () {
+        const buf = this.buf
+        return _.toUpper(_.times(64, i => buf.subarray(i << 4, (i+1) << 4).hex).join('\n'))
+      }
+
       get xfer () {
         const payload = this.payload
         const getXferCode = pos => {
