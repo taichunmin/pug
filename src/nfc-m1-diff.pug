@@ -1,0 +1,155 @@
+extends /layout/dark
+
+block beforehtml
+  - const title = 'NFC M1 EML Diff Tools'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .eml-table
+        table
+          width: 321px
+        td
+          font-size: 12px
+          height: 20px
+
+block content
+  #app.my-3.container-fluid.text-monospace(v-cloak)
+    h2.mb-3.text-center=title
+    .d-flex.flex-row.mx-n1
+      .card.mt-3.mx-1.eml-table(v-for="eml, emlIdx of emls")
+        .card-header.pl-3.pr-2.d-flex.align-items-center
+          i.fa.fa-id-card-o.mr-2
+          .mr-auto 卡號 {{ eml.uid }}
+          .dropdown
+            button.btn.btn-sm.my-n1.btn-outline-secondary.dropdown-toggle(type="button", data-toggle="dropdown")
+            .dropdown-menu.dropdown-menu-right
+              button.dropdown-item(type="button", @click="btnEditEml(emlIdx)") 編輯
+        table.table.table-bordered.table-sm.mb-0.text-center
+          tr(v-for="i of _.times(64)")
+            template(v-for="j of _.range(i * 16, i * 16 + 16)")
+              td.align-middle.p-0 {{ eml.buf.subarray(j, j + 1).hex }}
+      #eml-inspect
+    #modal-exportimport.modal.fade(data-backdrop="static", data-keyboard="false", tabindex="-1", ref="modalExportImport")
+      .modal-dialog.modal-dialog-centered.modal-xl.align-items-stretch
+        .modal-content
+          .modal-body.d-flex.flex-column
+            textarea.form-control.form-control-sm.flex-fill(v-model="exportimport.text")
+            small.text-muted.form-text 請複製或貼上 EML 並點一下「匯入」按鈕。
+          .modal-footer
+            button.btn.btn-outline-success(type="button", @click="btnCopy(exportimport.text, $refs['modalExportImport'])") 複製
+            button.btn.btn-secondary(type="button", @click="_.invoke(exportimport, 'resolve', 0)") 關閉
+            button.btn.btn-primary(type="button", @click="_.invoke(exportimport, 'resolve', 1)") 匯入
+
+block script
+  script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
+  script.
+    const { BufferLE } = window.Proxmark3
+    class M1 {
+      constructor (buf) {
+        if (!buf || !(buf instanceof BufferLE) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
+        this.buf = buf
+      }
+
+      static fromEml (eml) {
+        eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
+        if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
+        return new M1(BufferLE.fromHex(eml))
+      }
+
+      getUnixStr (buf, pos) {
+        return dayjs.unix(buf.getUint32(pos) - 28800).format('YYYY-MM-DD HH:mm:ss')
+      }
+
+      getDosDateStr (buf, pos) {
+        const u16 = buf.getUint16(pos)
+        if (!u16) return '無資料'
+        return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
+      }
+
+      get keya () {
+        const buf = this.buf
+        return _.uniq(_.times(16, i => buf.subarray((i << 6) + 48, (i << 6) + 54).hex)).join('\n')
+      }
+
+      get keyb () {
+        const buf = this.buf
+        return _.uniq(_.times(16, i => buf.subarray((i << 6) + 58, (i << 6) + 64).hex)).join('\n')
+      }
+
+      get eml () {
+        const buf = this.buf
+        return _.toUpper(_.times(64, i => buf.subarray(i << 4, (i + 1) << 4).hex).join('\n'))
+      }
+
+      get uid () { return this.buf.subarray(0, 4).hex } // 卡片編號
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          emls: ['', ''],
+        },
+        exportimport: {
+          text: '',
+          visible: false,
+          resolver: null,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        emls () {
+          const emls = []
+          for (let i = 0; i < 2; i++) {
+            try {
+              emls[i] = M1.fromEml(this.h.emls[i])
+            } catch (err) {
+              emls[i] = new M1(new BufferLE(1024))
+            }
+          }
+          return emls
+        },
+      },
+      methods: {
+        async btnEditEml (emlIdx) {
+          const ctx = this.exportimport
+          const pending = new Promise(resolve => { this.$set(ctx, 'resolve', resolve) })
+          this.$set(ctx, 'text', this.h.emls[emlIdx])
+          this.jqModal('modalExportImport', 'show')
+          const isImport = await pending
+          this.$set(ctx, 'resolve', null)
+          this.jqModal('modalExportImport', 'hide')
+          if (isImport) this.$set(this.h.emls, emlIdx, ctx.text)
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        byteClass (byteIdx) {
+    
+        },
+        jqModal (ref, action) {
+          window.jQuery(this.$refs[ref]).modal(action)
+        },
+      },
+    })

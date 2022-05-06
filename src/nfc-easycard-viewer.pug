@@ -352,7 +352,7 @@ block script
 
       get eml () {
         const buf = this.buf
-        return _.toUpper(_.times(64, i => buf.subarray(i << 4, (i+1) << 4).hex).join('\n'))
+        return _.toUpper(_.times(64, i => buf.subarray(i << 4, (i + 1) << 4).hex).join('\n'))
       }
 
       get xfer () {
