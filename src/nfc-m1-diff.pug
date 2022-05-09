@@ -66,29 +66,43 @@ block content
           tr
             th(scope="row") getUint8
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint8(h.pos, h.littleEndian) }}
+          tr
+            th(scope="row") getInt8
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getInt8(h.pos, h.littleEndian) }}
           tr(v-if="h.pos + 1 < 1024")
             th(scope="row") getUint16
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint16(h.pos, h.littleEndian) }}
+          tr(v-if="h.pos + 1 < 1024")
+            th(scope="row") getInt16
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getInt16(h.pos, h.littleEndian) }}
           tr(v-if="h.pos + 2 < 1024")
             th(scope="row") getUint24
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint24(h.pos, h.littleEndian) }}
+          tr(v-if="h.pos + 2 < 1024")
+            th(scope="row") getInt24
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getInt24(h.pos, h.littleEndian) }}
           tr(v-if="h.pos + 3 < 1024")
             th(scope="row") getUint32
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint32(h.pos, h.littleEndian) }}
+          tr(v-if="h.pos + 3 < 1024")
+            th(scope="row") getInt32
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getInt32(h.pos, h.littleEndian) }}
           tr(v-if="h.pos + 1 < 1024")
             th(scope="row") getDosDateStr
-            td(v-for="eml of emls", v-if="eml") {{ eml.getDosDateStr(eml.buf, h.pos) }}
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getDosDateStr(h.pos) }}
           tr(v-if="h.pos + 3 < 1024")
             th(scope="row") getUnixStr
-            td(v-for="eml of emls", v-if="eml") {{ eml.getUnixStr(eml.buf, h.pos) }}
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUnixStr(h.pos) }}
     #modal-exportimport.modal.fade(data-backdrop="static", data-keyboard="false", tabindex="-1", ref="modalExportImport")
       .modal-dialog.modal-dialog-centered.modal-xl.align-items-stretch
         .modal-content
           .modal-body.d-flex.flex-column
-            textarea.form-control.form-control-sm.flex-fill(v-model="exportimport.text")
+            .d-flex.flex-fill.mx-n1
+              .form-group.flex-fill.d-flex.flex-column.mx-1.my-0(v-for="i of _.times(2)")
+                label(@click="btnCopy(exportimport.emls[i], $refs['modalExportImport'])") {{ '右左'[i] }}方 (點此可複製)
+                textarea.form-control.form-control-sm.flex-fill(v-model="exportimport.emls[i]")
             small.text-muted.form-text 請複製或貼上 EML 並點一下「匯入」按鈕。
           .modal-footer
-            button.btn.btn-outline-success(type="button", @click="btnCopy(exportimport.text, $refs['modalExportImport'])") 複製
             button.btn.btn-secondary(type="button", @click="_.invoke(exportimport, 'resolve', 0)") 關閉
             button.btn.btn-primary(type="button", @click="_.invoke(exportimport, 'resolve', 1)") 匯入
 
@@ -96,6 +110,14 @@ block script
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
     const { BufferLE } = window.Proxmark3
+    BufferLE.prototype.getUnixStr = function (pos, littleEndian = true) {
+      return dayjs.unix(this.getUint32(pos, littleEndian) - 28800).format('YYYY-MM-DD HH:mm:ss')
+    }
+    BufferLE.prototype.getDosDateStr = function (pos, littleEndian = true) {
+      const u16 = this.getUint16(pos, littleEndian)
+      if (!u16) return '無資料'
+      return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
+    }
     class M1 {
       constructor (buf) {
         if (!buf || !(buf instanceof BufferLE) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
@@ -106,16 +128,6 @@ block script
         eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
         if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
         return new M1(BufferLE.fromHex(eml))
-      }
-
-      getUnixStr (buf, pos) {
-        return dayjs.unix(buf.getUint32(pos) - 28800).format('YYYY-MM-DD HH:mm:ss')
-      }
-
-      getDosDateStr (buf, pos) {
-        const u16 = buf.getUint16(pos)
-        if (!u16) return '無資料'
-        return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
       }
 
       get keya () {
@@ -144,9 +156,8 @@ block script
           pos: 0,
         },
         exportimport: {
+          emls: ['', ''],
           resolver: null,
-          text: '',
-          visible: false,
         },
       },
       async mounted () {
@@ -176,12 +187,12 @@ block script
         async btnEditEml (emlIdx) {
           const ctx = this.exportimport
           const pending = new Promise(resolve => { this.$set(ctx, 'resolve', resolve) })
-          this.$set(ctx, 'text', this.h.emls[emlIdx])
+          this.$set(ctx, 'emls', this.h.emls)
           this.jqModal('modalExportImport', 'show')
           const isImport = await pending
           this.$set(ctx, 'resolve', null)
           this.jqModal('modalExportImport', 'hide')
-          if (isImport) this.$set(this.h.emls, emlIdx, ctx.text)
+          if (isImport) this.$set(this.h, 'emls', ctx.emls)
         },
         async btnCopy (text, container = null) {
           if (!container) container = document.body
