@@ -99,7 +99,7 @@ block content
           .modal-body.d-flex.flex-column
             .d-flex.flex-fill.mx-n1
               .form-group.flex-fill.d-flex.flex-column.mx-1.my-0(v-for="i of _.times(2)")
-                label(@click="btnCopy(exportimport.emls[i], $refs['modalExportImport'])") {{ '右左'[i] }}方 (點此可複製)
+                label(@click="btnCopy(exportimport.emls[i], $refs['modalExportImport'])") {{ '左右'[i] }}方 (點此可複製)
                 textarea.form-control.form-control-sm.flex-fill(v-model="exportimport.emls[i]")
             small.text-muted.form-text 請複製或貼上 EML 並點一下「匯入」按鈕。
           .modal-footer
