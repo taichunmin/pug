@@ -1,0 +1,252 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'LINE Richmenu 遊樂場底圖'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .justify-content-evenly
+        justify-content: space-evenly
+      .richmenu
+        font-family: 'jf-jinxuan-3.0-Book', sans-serif
+        width: 2500px
+        height: 1684px
+        background-color: #2a2a2a
+        .richmenu-header
+          flex: 104
+          color: #ffffff
+          .richmenu-title
+            font-size: 96px
+          .richmenu-icons .fa
+            border-radius: 50%
+            border: 8px solid #ffffff
+            font-size: 96px
+            min-width: 128px
+            padding: 8px
+            text-align: center
+        .richmenu-navbar
+          flex: 84
+          justify-content: space-evenly
+          margin-bottom: -1px
+          .richmenu-nav-prevnext, .richmenu-nav-item
+            align-items: center
+            border-top-left-radius: 32px
+            border-top-right-radius: 32px
+            justify-content: center
+            padding-top: 12px
+          .richmenu-nav-prevnext
+            background-color: #ffffff
+            color: #08c356
+            font-size: 128px
+            width: 240px
+          .richmenu-nav-item
+            background-color: #016529
+            color: #ffffff
+            font-size: 96px
+            width: 690px
+            &.active
+              background-color: #08c356
+        .richmenu-body
+          flex: 540
+          border: 36px solid #08c356
+          background-color: #ffffff
+          h1
+            font-family: 'jf-jinxuan-3.0-Medium', sans-serif
+            font-size: 128px
+            text-decoration: underline
+            text-underline-offset: 8px
+          h2
+            font-family: 'jf-jinxuan-3.0-Book', sans-serif
+            font-size: 80px
+          .btn
+            border-radius: 76px
+            font-family: 'jf-jinxuan-3.0-Book', sans-serif
+            font-size: 96px
+            &.btn-success
+              background-color: #08c356
+              color: #ffffff
+            &.btn-outline-success
+              background-color: #ffffff
+              border: 8px solid #08c356
+              color: #08c356
+        &#richmenu-blue
+          .richmenu-nav-prevnext
+            color: #3677da
+          .richmenu-nav-item
+            background-color: #1b4279
+          .richmenu-nav-item.active, .btn-success
+            background-color: #3677da
+          .richmenu-body
+            border-color: #3677da
+      #richmenu-sm
+        font-family: 'jf-jinxuan-3.0-Book', sans-serif
+        width: 2500px
+        height: 421px
+        background-color: #de8344
+        .btn
+          border-radius: 76px
+          font-family: 'jf-jinxuan-3.0-Book', sans-serif
+          font-size: 96px
+          background-color: #ffffff
+          color: #000000
+          .fa-chevron-left
+            color: #de8344
+          .richmenu-icons .fa
+            border-radius: 50%
+            border: 8px solid #000000
+            font-size: 96px
+            min-width: 128px
+            padding: 8px
+            text-align: center
+        .richmenu-height
+          margin-right: -32px
+          font-size: 48px
+          .flex-fill
+            border-right: 10px solid #ffffff
+            margin-top: -8px
+            margin-bottom: -8px
+          .fa
+            margin-right: -26px
+
+block content
+  #app.container-fluid(v-cloak)
+    .richmenu.my-3.d-flex.flex-column(v-for="i of _.range(1, 4)")
+      .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
+        .richmenu-icons(style="visibility: hidden")
+          i.fa.fa-question.mx-3
+          i.fa.fa-times.mx-3
+        .richmenu-title {{ titles[i] }}
+        .richmenu-icons
+          i.fa.fa-question.mx-3
+          i.fa.fa-times.mx-3
+      .richmenu-navbar.d-flex
+        .richmenu-nav-item.d-flex(:class="{active: i === 1}") #[span 1. message]
+        .richmenu-nav-item.d-flex(:class="{active: i === 2}") #[span 2. postback]
+        .richmenu-nav-item.d-flex(:class="{active: i === 3}") #[span 3. URI]
+        .richmenu-nav-prevnext.d-flex: i.fa.fa-chevron-right
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 1")
+        h2 當你點擊按鈕時
+        h1 向聊天室傳送訊息
+        button.btn.btn-success(style="width: 1250px; height: 450px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]傳送訊息
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 2")
+        h2 當你點擊按鈕時
+        h1 傳送隱藏資料給機器人
+        .d-flex.w-100.justify-content-evenly
+          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]包含 displayText
+          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]沒有 displayText
+      .richmenu-body.d-flex.justify-content-evenly.align-items-stretch(v-if="i === 3")
+        .d-flex.flex-column.justify-content-evenly.align-items-stretch
+          .d-flex(style="height: 290px")
+            button.btn.btn-success(style="width: 1210px") 開啟 URL #[i.fa.ml-3.fa-external-link]
+            button.btn.btn-outline-success(style="width: 350px; line-height: 1.2; margin-left: 32px") 查看#[br]網址
+          .d-flex(style="height: 290px")
+            button.btn.btn-success(style="width: 1210px") 在外部瀏覽器開啟 #[i.fa.ml-3.fa-external-link]
+            button.btn.btn-outline-success(style="width: 350px; line-height: 1.2; margin-left: 32px") 查看#[br]網址
+          .d-flex(style="height: 290px")
+            button.btn.btn-success.d-flex.justify-content-evenly.align-items-center(style="width: 1210px")
+              .d-flex.flex-column
+                | 在APP內的Chrome開啟
+                small(style="font-size: 60px") (僅限 Android)
+              i.fa.ml-3.fa-external-link
+            button.btn.btn-outline-success(style="width: 350px; line-height: 1.2; margin-left: 32px") 查看#[br]網址
+        .d-flex.flex-column.justify-content-evenly.text-center
+          h2 當你點擊按鈕時
+          h1 以指定方式#[br]開啟URL
+    .richmenu.my-3.d-flex.flex-column(v-for="i of _.range(4, 6)")
+      .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
+        .richmenu-icons(style="visibility: hidden")
+          i.fa.fa-question.mx-3
+          i.fa.fa-times.mx-3
+        .richmenu-title {{ titles[i] }}
+        .richmenu-icons
+          i.fa.fa-question.mx-3
+          i.fa.fa-times.mx-3
+      .richmenu-navbar.d-flex
+        .richmenu-nav-prevnext.d-flex: i.fa.fa-chevron-left
+        .richmenu-nav-item.d-flex(:class="{active: i === 4}") #[span 4. 選擇日時]
+        .richmenu-nav-item.d-flex(:class="{active: i === 5}") #[span 5. 切換選單]
+        .richmenu-nav-item.d-flex(style="visibility: hidden")
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 4")
+        h2 當你點擊按鈕時
+        h1.text-center 選擇日期時間後連同#[br]隱藏資料傳送給機器人
+        .d-flex.justify-content-evenly(style="height: 560px")
+          button.btn.p-0.btn-success.d-flex.flex-column.align-items-stretch(style="width: 1485px; line-height: 1")
+            .flex-fill.d-flex.justify-content-center.align-items-center(style="border-bottom: 8px solid #ffffff")
+              i.fa.fa-fw.fa-dot-circle-o.mr-4
+              .d-flex.flex-column.justify-content-center
+                | 選擇日期與時間
+                small(style="font-size: 60px") mode=datetime
+            .flex-fill.d-flex
+              .flex-fill.d-flex.flex-column.justify-content-center.align-items-center(style="border-right: 8px solid #ffffff")
+                | 指定初始值
+                small(style="font-size: 60px") initial 屬性
+              .flex-fill.d-flex.flex-column.justify-content-center.align-items-center
+                | 指定上下限
+                small(style="font-size: 60px") min, max 屬性
+          .d-flex.ml-5.flex-column(style="width: 800px")
+            button.btn.btn-success.d-flex.justify-content-center.align-items-center(style="height: 260px")
+              i.fa.fa-fw.fa-dot-circle-o.mr-4
+              .d-flex.flex-column.justify-content-center(style="line-height: 1")
+                | 選擇日期
+                small(style="font-size: 60px") mode=date
+            button.mt-5.btn.btn-success.d-flex.justify-content-center.align-items-center(style="height: 260px")
+              i.fa.fa-fw.fa-dot-circle-o.mr-4
+              .d-flex.flex-column.justify-content-center(style="line-height: 1")
+                | 選擇時間
+                small(style="font-size: 60px") mode=time
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 5")
+        h2 當你點擊按鈕時
+        h1 切換成指定的圖文選單
+        .d-flex.w-100.justify-content-evenly
+          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成藍色選單
+          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成小型選單
+    #richmenu-blue.richmenu.my-3.d-flex.flex-column
+      .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
+        .richmenu-icons(style="visibility: hidden")
+          i.fa.fa-question.mx-3
+          i.fa.fa-times.mx-3
+        .richmenu-title {{ titles[5] }}
+        .richmenu-icons
+          i.fa.fa-question.mx-3
+          i.fa.fa-times.mx-3
+      .richmenu-navbar.d-flex
+        .richmenu-nav-prevnext.d-flex: i.fa.fa-chevron-left
+        .richmenu-nav-item.d-flex #[span 4. 選擇日時]
+        .richmenu-nav-item.d-flex.active #[span 5. 切換選單]
+        .richmenu-nav-item.d-flex(style="visibility: hidden")
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center
+        h2 當你點擊按鈕時
+        h1 切換成指定的圖文選單
+        .d-flex.w-100.justify-content-evenly
+          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-chevron-left.mr-4]換回綠色選單
+          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成小型選單
+    #richmenu-sm.my-3.d-flex.justify-content-evenly.align-items-center
+      button.btn(style="width: 1480px; height: 360px") #[i.fa.fa-fw.fa-chevron-left.mr-4]換回綠色選單
+      button.btn.d-flex.flex-column.justify-content-center.align-items-center(style="width: 576px; height: 360px")
+        .richmenu-icons: i.fa.fa-question
+        small size 說明文件
+      .richmenu-height.d-flex.flex-column.align-items-end(style="height: 421px; color: #ffffff")
+        i.fa.fa-fw.fa-arrow-up
+        .pr-3.flex-fill.d-flex.align-items-center 421px
+        i.fa.fa-fw.fa-arrow-down
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        titles: [
+          '',
+          '測試 message 動作',
+          '測試 postback 動作',
+          '測試 URI 動作',
+          '測試選擇日期和時間的動作',
+          '測試切換圖文選單的動作',
+        ],
+      },
+    })
