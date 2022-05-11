@@ -187,12 +187,12 @@ block script
         async btnEditEml (emlIdx) {
           const ctx = this.exportimport
           const pending = new Promise(resolve => { this.$set(ctx, 'resolve', resolve) })
-          this.$set(ctx, 'emls', this.h.emls)
+          this.$set(ctx, 'emls', [...this.h.emls])
           this.jqModal('modalExportImport', 'show')
           const isImport = await pending
           this.$set(ctx, 'resolve', null)
           this.jqModal('modalExportImport', 'hide')
-          if (isImport) this.$set(this.h, 'emls', ctx.emls)
+          if (isImport) this.$set(this.h, 'emls', [...ctx.emls])
         },
         async btnCopy (text, container = null) {
           if (!container) container = document.body
