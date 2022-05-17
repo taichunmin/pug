@@ -65,9 +65,9 @@ block script
         async btnReadMpCard () {
           try {
             this.showLoading('讀取中')
-            const { BufferLE } = Proxmark3
+            const { Packet } = Proxmark3
             const u8ToUtf8 = buf => _.trim(buf.utf8, '\x00')
-            const key = BufferLE.fromHex('5a11475e39f5')
+            const key = Packet.fromHex('5a11475e39f5')
             const u8Sector1 = await hf14a.CmdMfRdSc(1, 0, key)
             this.user = u8ToUtf8(u8Sector1.subarray(0, 16))
             this.mpid = u8ToUtf8(u8Sector1.subarray(16, 32))

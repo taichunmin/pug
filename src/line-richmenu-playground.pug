@@ -74,15 +74,15 @@ block style
               background-color: #ffffff
               border: 8px solid #08c356
               color: #08c356
-        &#richmenu-blue
+        &.richmenu-blue
           .richmenu-nav-prevnext
-            color: #3677da
+            color: #3677da !important
           .richmenu-nav-item
-            background-color: #1b4279
+            background-color: #1b4279 !important
           .richmenu-nav-item.active, .btn-success
-            background-color: #3677da
+            background-color: #3677da !important
           .richmenu-body
-            border-color: #3677da
+            border-color: #3677da !important
       #richmenu-sm
         font-family: 'jf-jinxuan-3.0-Book', sans-serif
         width: 2500px
@@ -115,7 +115,7 @@ block style
 
 block content
   #app.container-fluid(v-cloak)
-    .richmenu.my-3.d-flex.flex-column(v-for="i of _.range(1, 4)")
+    .richmenu.my-3.d-flex.flex-column(v-for="i of [1,2,3,6]")
       .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
         .richmenu-icons(style="visibility: hidden")
           i.fa.fa-question.mx-3
@@ -126,7 +126,7 @@ block content
           i.fa.fa-times.mx-3
       .richmenu-navbar.d-flex
         .richmenu-nav-item.d-flex(:class="{active: i === 1}") #[span 1. message]
-        .richmenu-nav-item.d-flex(:class="{active: i === 2}") #[span 2. postback]
+        .richmenu-nav-item.d-flex(:class="{active: _.includes([2, 6], i)}") #[span 2. postback]
         .richmenu-nav-item.d-flex(:class="{active: i === 3}") #[span 3. URI]
         .richmenu-nav-prevnext.d-flex: i.fa.fa-chevron-right
       .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 1")
@@ -137,8 +137,9 @@ block content
         h2 當你點擊按鈕時
         h1 傳送隱藏資料給機器人
         .d-flex.w-100.justify-content-evenly
-          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]包含 displayText
-          button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]沒有 displayText
+          button.btn.btn-success(style="width: 1045px; height: 350px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]包含 displayText
+          button.btn.btn-success(style="width: 1045px; height: 350px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]沒有 displayText
+        button.btn.btn-success(style="width: 2200px; height: 250px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]測試 inputOption 屬性（僅限手機）
       .richmenu-body.d-flex.justify-content-evenly.align-items-stretch(v-if="i === 3")
         .d-flex.flex-column.justify-content-evenly.align-items-stretch
           .d-flex(style="height: 290px")
@@ -157,6 +158,25 @@ block content
         .d-flex.flex-column.justify-content-evenly.text-center
           h2 當你點擊按鈕時
           h1 以指定方式#[br]開啟URL
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 6")
+        h2 當你在手機上點擊按鈕時
+        h1 切換輸入方式（僅限手機）
+        .d-flex.w-100.justify-content-evenly
+          button.btn.btn-success.d-flex.justify-content-center.align-items-center(style="width: 1045px; height: 300px")
+            i.fa.fa-fw.fa-dot-circle-o.mr-4
+            .d-flex.flex-column.justify-content-center(style="line-height: 1")
+              | 切換文字輸入
+              small(style="font-size: 60px") openKeyboard
+          button.btn.btn-success.d-flex.justify-content-center.align-items-center(style="width: 1045px; height: 300px")
+            i.fa.fa-fw.fa-dot-circle-o.mr-4
+            .d-flex.flex-column.justify-content-center(style="line-height: 1")
+              | 切換語音訊息
+              small(style="font-size: 60px") openVoice
+        button.btn.btn-success.d-flex.justify-content-center.align-items-center(style="width: 2200px; height: 300px")
+            i.fa.fa-fw.fa-dot-circle-o.mr-4
+            .d-flex.flex-column.justify-content-center(style="line-height: 1")
+              | 關閉及開啟圖文選單
+              small(style="font-size: 60px") openRichmenu, closeRichmenu
     .richmenu.my-3.d-flex.flex-column(v-for="i of _.range(4, 6)")
       .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
         .richmenu-icons(style="visibility: hidden")
@@ -205,7 +225,7 @@ block content
         .d-flex.w-100.justify-content-evenly
           button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成藍色選單
           button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成小型選單
-    #richmenu-blue.richmenu.my-3.d-flex.flex-column
+    .richmenu.richmenu-blue.my-3.d-flex.flex-column
       .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
         .richmenu-icons(style="visibility: hidden")
           i.fa.fa-question.mx-3
@@ -247,6 +267,7 @@ block script
           '測試 URI 動作',
           '測試選擇日期和時間的動作',
           '測試切換圖文選單的動作',
+          '測試 inputOption 屬性（點分頁返回）',
         ],
       },
     })

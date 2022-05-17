@@ -228,11 +228,11 @@ block content
 block script
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
-    const { BufferLE } = window.Proxmark3
+    const { Packet } = window.Proxmark3
     const URL_GIST = 'https://gist.githubusercontent.com/taichunmin/f4699905e583354b2cbd1a6e67484235/raw'
     class Easycard {
       constructor (buf) {
-        if (!buf || !(buf instanceof BufferLE) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
+        if (!buf || !(buf instanceof Packet) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
         this.buf = buf
         this.payload = this.getPayload()
         this.credit = this.getTxn(160) // 最近加值交易
@@ -244,7 +244,7 @@ block script
       static fromEml (eml) {
         eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
         if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
-        return new Easycard(BufferLE.fromHex(eml))
+        return new Easycard(Packet.fromHex(eml))
       }
 
       getPayload () {
@@ -253,7 +253,7 @@ block script
         const pos = buf.getUint16(192) > buf.getUint16(416) ? [192, 400] : [416, 384]
         // 找到最新轉乘交易資料
         pos.push(buf.getUint32(209) > buf.getUint32(225) ? 208 : 224)
-        const payload = new BufferLE(pos.length << 4)
+        const payload = new Packet(pos.length << 4)
         for (let i = 0; i < pos.length; i++) payload.set(buf.subarray(pos[i], pos[i] + 16), i << 4)
         return payload
       }

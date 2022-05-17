@@ -78,10 +78,8 @@ block content
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/interactjs@1/dist/interact.min.js")
   script.
-    window.areasToCsv = areas => {
-      // copy(areasToCsv(areas))
-      return Papa.unparse(_.map(areas, 'bounds'), { header: true })
-    }
+    window.RICHMENU_ALIAS = 'RICHMENU_ALIAS'
+    window.httpBuildQuery = (obj, overrides = {}) => Qs.stringify(obj, { arrayFormat: 'brackets', ...overrides })
     window.vm = new Vue({
       el: '#app',
       data: {
@@ -212,6 +210,9 @@ block script
           const resizable = _.first(areas.splice(-1, 1))
           this.$set(this.h, 'resizable', resizable)
           this.h.areas = Papa.unparse(areas, { header: true })
+        },
+        importAreas (areas) {
+          this.$set(this.h, 'areas', Papa.unparse(_.map(areas, 'bounds'), { header: true }))
         },
       },
     })

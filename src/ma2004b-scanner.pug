@@ -61,7 +61,7 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/moment@2/locale/zh-tw.min.js")
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
-    const { BufferLE } = window.Proxmark3
+    const { Packet } = window.Proxmark3
     const bluetooth = _.get(navigator, 'bluetooth')
     const DISPLAY_BATTERY = ['外部供電', '0%', '10%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '100%']
     const UUID_LINE = '0000fe6f-0000-1000-8000-00805f9b34fb'
@@ -99,7 +99,7 @@ block script
           }
         },
         async onAdvertisementReceived (event) {
-          const dv = BufferLE.fromView(event.serviceData.get(UUID_LINE))
+          const dv = Packet.fromView(event.serviceData.get(UUID_LINE))
           if (dv.byteLength < 6) return
 
           // 處理 device 的資料

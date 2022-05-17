@@ -208,10 +208,10 @@ block content
 block script
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
-    const { BufferLE } = window.Proxmark3
+    const { Packet } = window.Proxmark3
     class Ipass {
       constructor (buf) {
-        if (!buf || !(buf instanceof BufferLE) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
+        if (!buf || !(buf instanceof Packet) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
         this.buf = buf
         this.credit = this.getTxn(160) // 最近加值交易
         this.deducts = _.chain([16, 17, 18, 20, 21, 22]).map(blk => this.getTxn(blk << 4)).sortBy(['time']).value() // 最近扣款交易
@@ -220,7 +220,7 @@ block script
       static fromEml (eml) {
         eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
         if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
-        return new Ipass(BufferLE.fromHex(eml))
+        return new Ipass(Packet.fromHex(eml))
       }
 
       getUnixStr (buf, pos) {

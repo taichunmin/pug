@@ -109,25 +109,25 @@ block content
 block script
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
-    const { BufferLE } = window.Proxmark3
-    BufferLE.prototype.getUnixStr = function (pos, littleEndian = true) {
+    const { Packet } = window.Proxmark3
+    Packet.prototype.getUnixStr = function (pos, littleEndian = true) {
       return dayjs.unix(this.getUint32(pos, littleEndian) - 28800).format('YYYY-MM-DD HH:mm:ss')
     }
-    BufferLE.prototype.getDosDateStr = function (pos, littleEndian = true) {
+    Packet.prototype.getDosDateStr = function (pos, littleEndian = true) {
       const u16 = this.getUint16(pos, littleEndian)
       if (!u16) return '無資料'
       return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
     }
     class M1 {
       constructor (buf) {
-        if (!buf || !(buf instanceof BufferLE) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
+        if (!buf || !(buf instanceof Packet) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
         this.buf = buf
       }
 
       static fromEml (eml) {
         eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
         if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
-        return new M1(BufferLE.fromHex(eml))
+        return new M1(Packet.fromHex(eml))
       }
 
       get keya () {
@@ -177,7 +177,7 @@ block script
             try {
               emls[i] = M1.fromEml(this.h.emls[i])
             } catch (err) {
-              emls[i] = new M1(new BufferLE(1024))
+              emls[i] = new M1(new Packet(1024))
             }
           }
           return emls
