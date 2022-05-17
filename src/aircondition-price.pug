@@ -1,0 +1,137 @@
+extends /layout/default
+
+block beforehtml
+  - const title = '搜尋冷氣資訊'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+
+block content
+  #app.my-3.container.text-monospace(v-cloak)
+    h2.mb-3.text-center=title
+    .card.mt-3
+      h6.card-header #[i.fa.fa-search] 總共 {{ machines.length }} 筆資料
+      .card-body
+        .input-group.mb-2
+          .input-group-prepend: span.input-group-text 顯示筆數
+          input.form-control#h-keyword(type="number", inputmode="numeric", v-model.number="h.itemsPerPage")
+        .input-group
+          .input-group-prepend: span.input-group-text 模糊搜尋
+          input.form-control#h-keyword(placeholder="模糊搜尋: 型號、廠牌、註記" v-model="h.keyword")
+          .input-group-append: button.btn.btn-outline-danger(type="button", @click="h.keyword = ''") 清空
+      ul.list-group.list-group-flush
+        li.list-group-item.d-flex.flex-column(v-for="m of sortedMachines.slice(0, _.toSafeInteger(h.itemsPerPage))", :key="`${m['廠牌']}${m['型號']}`")
+          h4.my-0.badges.mx-n1
+            .badge.badge-warning.mx-1 {{ m['配管'] }}
+            .badge.badge-info.mx-1 {{ m['冷媒'] }}
+            .badge.badge-primary.mx-1 {{ m['廠牌'] }}
+          h3.text-monospace.my-1 {{ m['型號'] }}
+          .text-info 機身高寬深：{{ m['機身高寬深'] }}
+          .text-info 腳座寬深：{{ m['腳座寬深'] }}
+          small.text-muted 註記：{{ m['註記'] }}
+
+block script
+  script.
+    window.countChar = (() => {
+      const OMIT = _.toArray(' ()-./~、（）')
+      return str => _.omit(_.countBy(_.toLower(str)), OMIT)
+    })()
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        machines: [],
+        h: {
+          keyword: '',
+          itemsPerPage: 25,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        await this.init()
+      },
+      computed: {
+        sortedMachines () {
+          const keyword = _.toLower(_.trim(this.h.keyword))
+          if (!keyword) return this.machines
+          const countCharPairs = _.toPairs(window.countChar(keyword))
+          return _.orderBy(this.machines, [
+            m => _.sumBy(countCharPairs, p => Math.min(_.toSafeInteger(m.countChar[p[0]]), p[1])),
+            m => this.lcs(keyword, m.fulltext),
+          ], ['desc', 'desc'])
+        },
+      },
+      methods: {
+        async init () {
+          try {
+            this.showLoading('請稍候', '讀取資料中')
+            await this.fetchMachines()
+          } catch (err) {
+            err.message = _.get(err, 'response.data.message', err.message)
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+            location.reload()
+          } finally {
+            Swal.close()
+          }
+        },
+        async getCsv (url, cachetime = 3e4) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: _.floor(Date.now() / cachetime) },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async fetchMachines () {
+          const rows = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vSpasIcvTqLyX1gkaz-AAmRSQmDwXtUT6m8Sbn7RbsgykfDr5c32WmBwIc3nFqIAA/pub?gid=22307658&single=true&output=csv')
+          const machines = []
+          const toInt = num => _.toSafeInteger(`${num}`.replace(/[\D.]/g, ''))
+          for (const row of rows) {
+            const fulltext = _.toLower(`${row['型號']}${row['廠牌']}${row['註記']}`)
+            machines.push(_.fromPairs([
+              ..._.map(['型號', '廠牌', '機身高寬深', '配管', '腳座寬深', '冷媒', '註記'], k => [k, _.trim(row[k] ?? '')]),
+              ['countChar', window.countChar(fulltext)],
+              ['fulltext', fulltext],
+            ]))
+          }
+          this.$set(this, 'machines', machines)
+        },
+        lcs (a, b) { // longest common subsequence
+          if (!_.isString(a) || !_.isString(b) || !a.length || !b.length) return 0
+          const ctx = {}
+          ;[a, b] = _.chain([` ${a}`, ` ${b}`]).orderBy(['length'], ['desc']).value()
+          ctx.len = b.length
+          ctx.lcs = _.times(2, () => _.times(ctx.len, () => 0))
+          //- console.log(JSON.stringify(ctx))
+          for (let i = 1; i < a.length; i++) {
+            const [cur, prev] = [ctx.lcs[i & 1], ctx.lcs[1 - (i & 1)]]
+            for (let j = 1; j < b.length; j++) {
+              cur[j] = a[i] === b[j] ? (prev[j - 1] + 1) : Math.max(prev[j], cur[j - 1])
+            }
+            //- console.log(JSON.stringify({ c: a[i], cur, prev }))
+          }
+          return ctx.lcs[1 - (a.length & 1)][ctx.len - 1]
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
