@@ -336,7 +336,7 @@ block script
 
       get usageControl () {
         const FLAG_NAMES = ['已啟用', '被封鎖', '已退卡', '自動加值', 'Credit']
-        const flag = this.buf.getUint8(24)
+        const flag = this.buf.getUint8(24) | this.payload.getUint8(7)
         return _.filter(FLAG_NAMES, (v, k) => (flag >> k) & 1).join()
       }
 

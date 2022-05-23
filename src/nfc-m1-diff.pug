@@ -50,19 +50,7 @@ block content
         table#eml-inspect.table.table-bordered.table-striped
           tr
             th(scope="row") pos
-            td(colspan="2") {{ h.pos }}
-          tr
-            th(scope="row") block
-            td(colspan="2") {{ h.pos >> 4 }}
-          tr
-            th(scope="row") blockPos
-            td(colspan="2") {{ h.pos & 0xF }}
-          tr
-            th(scope="row") sector
-            td(colspan="2") {{ h.pos >> 6 }}
-          tr
-            th(scope="row") sectorBlock
-            td(colspan="2") {{ (h.pos >> 4) & 0x3 }}
+            td(colspan="2") p{{ h.pos }}, b{{ h.pos >> 4 }}p{{ h.pos & 0xF }}, s{{ h.pos >> 6 }}b{{ (h.pos >> 4) & 0x3 }}p{{ h.pos & 0xF }}
           tr
             th(scope="row") getUint8
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint8(h.pos, h.littleEndian) }}
