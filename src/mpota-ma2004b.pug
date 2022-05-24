@@ -27,6 +27,12 @@ block content
     .card.mb-4
       .card-body.text-monospace
         h5.card-title.my-0 設定值
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend
+            span.input-group-text.justify-content-end 選擇韌體
+          select.custom-select(v-model="h.fw")
+            option(value="https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_r3.bin") 正式版 R3
+            option(value="https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_t5_1.bin") 測試電壓值 (v1_0_t5_1)
         .was-validated
           .input-group.input-group-sm.mt-2
             .input-group-prepend
@@ -144,7 +150,6 @@ block script
         bleCharWrite: null,
         bleService: null,
         device: null,
-        fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_r3.bin',
         logUpdateSetting: null,
         model: 'MA2004B',
         otaEntered: 0,
@@ -152,9 +157,9 @@ block script
         uuidNotify: '7e400003-b5a3-f393-e0a9-e50e24dcca9e',
         uuidService: '7e400001-b5a3-f393-e0a9-e50e24dcca9e',
         uuidWrite: '7e400002-b5a3-f393-e0a9-e50e24dcca9e',
-        version: 'v1_0_r3',
         h: {
           autoNext: true,
+          fw: 'https://gcs-youbike2-linebot.taichunmin.idv.tw/ma2004b-firmwares/hash_MA2004B_v1_0_r3.bin',
           ma2004bCsv: '',
           registers: [],
           secret: '',
@@ -174,6 +179,12 @@ block script
         this.logUpdateSetting = new GoogleFormClass('https://docs.google.com/forms/d/e/1FAIpQLSfiiHf0vgFZ-gVpdz-5LCz51_ZE4pzX6OIShM40nStgq8z3MA/viewform?usp=pp_url&entry.135843282=snBefore&entry.1788349406=snAfter&entry.1455481659=ua&entry.1961450447=setting')
         this.ua = navigator.userAgent
       },
+      computed: {
+        version () {
+          const ver = vm.h.fw.match(/hash_MA2004B_([^.]+).bin/)
+          return ver ? ver[1] : null
+        },
+      },
       methods: {
         async btnUploadFirmware () {
           try {
@@ -183,7 +194,7 @@ block script
             await Promise.all([
               this.bleSearchDevice(),
               (async () => {
-                fw = await _.get(await axios.get(this.fw, {
+                fw = await _.get(await axios.get(this.h.fw, {
                   params: { cachebust: _.floor(Date.now() / 864e5) },
                   responseType: 'blob',
                 }), 'data').arrayBuffer()
