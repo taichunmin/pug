@@ -127,10 +127,14 @@ block script
             mbid,
             scannedAt: device.scannedAt,
             txPower: event?.txPower,
-            ...(!_.includes([14, 19], dv.byteLength) ? {} : {
+            ...(!_.includes([14, 18, 19], dv.byteLength) ? {} : { // LINE 正式 Beacon
               auth: dv.subarray(7, 11).hex,
               battery: DISPLAY_BATTERY[dv.getUint8(13)],
               maskedTimestamp: `${dv.getUint16(11, false)} (0x${dv.subarray(11, 13).hex})`,
+            }),
+            ...(dv.byteLength !== 18 ? {} : { // 電壓量測值
+              voltage: `${dv.getUint16(16, false) / 1e3} V`, // 最終顯示電壓
+              voltageAvg: `${dv.getUint16(14, false) / 1e3} V`, // 近5次平均電壓
             }),
           }
           if (this.isLineBeacon(beacon)) _.set(device, ['beacons', beaconId], beacon)
@@ -158,6 +162,8 @@ block script
             maskedTimestamp: '時戳後四碼',
             auth: '驗證資料',
             battery: '剩餘電量',
+            voltage: '最終顯示電壓',
+            voltageAvg: '近5次平均電壓',
           }
           return b => _.chain(KEY2STRING).map((zh, en) => [zh, b?.[en]]).filter(row => !_.isNil(row[1])).value()
         })(),
