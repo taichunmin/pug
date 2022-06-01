@@ -127,14 +127,17 @@ block script
             mbid,
             scannedAt: device.scannedAt,
             txPower: event?.txPower,
-            ...(!_.includes([14, 18, 19], dv.byteLength) ? {} : { // LINE 正式 Beacon
+            ...(!_.includes([14, 18, 19, 20], dv.byteLength) ? {} : { // LINE 正式 Beacon
               auth: dv.subarray(7, 11).hex,
               battery: DISPLAY_BATTERY[dv.getUint8(13)],
               maskedTimestamp: `${dv.getUint16(11, false)} (0x${dv.subarray(11, 13).hex})`,
             }),
-            ...(dv.byteLength !== 18 ? {} : { // 電壓量測值
-              voltage: `${dv.getUint16(16, false) / 1e3} V`, // 最終顯示電壓
-              voltageAvg: `${dv.getUint16(14, false) / 1e3} V`, // 近5次平均電壓
+            ...(!_.includes([18, 20], dv.byteLength) ? {} : { // 電壓量測值
+              voltage: `${dv.getUint16(16, false)} mV`, // 最終顯示電壓
+              voltageAvg: `${dv.getUint16(14, false)} mV`, // 近5次平均電壓
+            }),
+            ...(dv.byteLength !== 20 ? {} : {
+              adc: `${_.round(dv.getUint16(18, false) / 1024 * 3600)} mV (${dv.getUint16(18, false)})`, // adc = 量測值 / 最大值 (1024) * 參考電壓 3600 mV
             }),
           }
           if (this.isLineBeacon(beacon)) _.set(device, ['beacons', beaconId], beacon)
@@ -164,6 +167,7 @@ block script
             battery: '剩餘電量',
             voltage: '最終顯示電壓',
             voltageAvg: '近5次平均電壓',
+            adc: 'ADC',
           }
           return b => _.chain(KEY2STRING).map((zh, en) => [zh, b?.[en]]).filter(row => !_.isNil(row[1])).value()
         })(),
