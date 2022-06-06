@@ -31,9 +31,6 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 卡片編號
               input.form-control(readonly, :value="card?.uid")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 交易序號
-              input.form-control(readonly, :value="card?.tsqn")
-            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 餘額
               input.form-control(readonly, :value="card?.ev")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
@@ -109,8 +106,8 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘後群組
               input.form-control(readonly, :value="card?.xfer?.after")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 舊轉乘群組
-              input.form-control(readonly, :value="card?.xfer?.old")
+              .input-group-prepend: span.input-group-text.justify-content-center 轉乘代碼
+              input.form-control(readonly, :value="card?.xfer?.group")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 地點
               input.form-control(readonly, :value="card?.xfer?.location")
@@ -175,24 +172,24 @@ block content
                   td {{ txn?.location }}
                   td {{ txn?.device }}
                   td {{ txn?.rfu }}
-        .form-group(v-for="bus, busId of card?.buses")
-          label 公車{{ '上下'[busId] }}車紀錄
+        .form-group
+          label 公車紀錄
           .row.mx-n1
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 操作員編號
-              input.form-control(readonly, :value="bus?.agent")
+              input.form-control(readonly, :value="card?.bus?.agent")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 路線編號
-              input.form-control(readonly, :value="bus?.line")
+              input.form-control(readonly, :value="card?.bus?.line")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 時間
-              input.form-control(readonly, :value="bus?.time")
+              input.form-control(readonly, :value="card?.bus?.time")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 站牌編號
-              input.form-control(readonly, :value="bus?.station")
+              input.form-control(readonly, :value="card?.bus?.station")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 區段編號
-              input.form-control(readonly, :value="bus?.zone")
+              input.form-control(readonly, :value="card?.bus?.zone")
         .form-group
           label 進出站紀錄
           .table-responsive
@@ -205,13 +202,13 @@ block content
                 th 累計次數
                 th 累計金額
               tbody
-                tr(v-for="mrt of card?.mrts")
-                  td {{ mrt?.time }}
-                  td {{ mrt?.type }}
-                  td {{ mrt?.provider }}
-                  td {{ mrt?.location }}
-                  td {{ mrt?.count }}
-                  td {{ mrt?.amount }}
+                tr(v-for="inout of card?.inouts")
+                  td {{ inout?.time }}
+                  td {{ inout?.type }}
+                  td {{ inout?.provider }}
+                  td {{ inout?.location }}
+                  td {{ inout?.count }}
+                  td {{ inout?.amount }}
         .form-group
           label Mifare 卡片金鑰
           .row.mx-n1
@@ -229,65 +226,84 @@ block script
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
     const { Packet } = window.Proxmark3
+    Packet.prototype.getFatNo = function (pos) {
+      const u24 = this.getUint24(pos, false)
+      return ((u24 & 0x1FE00) >> 9) | ((u24 & 0x1FE) << 7) | ((u24 & 0x1) << 16)
+    }
+    Packet.prototype.setFatNo = function (pos, u24) {
+      this.setUint24(pos, ((u24 & 0x10000) >> 16) | ((u24 & 0xFF00) >> 7) | ((u24 & 0xFF) << 9), false)
+    }
+    Packet.prototype.getUnixStr = function (pos) {
+      return dayjs.unix(this.getUint32(pos) - 28800).format('YYYY-MM-DD HH:mm:ss')
+    }
+    Packet.prototype.getDosDateStr = function (pos) {
+      const u16 = this.getUint16(pos)
+      if (!u16) return '無資料'
+      return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
+    }
     const URL_GIST = 'https://gist.githubusercontent.com/taichunmin/f4699905e583354b2cbd1a6e67484235/raw'
     class Easycard {
-      constructor (buf) {
-        if (!buf || !(buf instanceof Packet) || buf.byteLength !== 1024) throw new TypeError('invalid buf')
-        this.buf = buf
-        this.payload = this.getPayload()
+      constructor (pack) {
+        if (!(pack instanceof Packet) || pack.byteLength !== 1024) throw new TypeError('invalid pack')
+        this.pack = pack
+
+        // 解讀 File Allocation Table
+        const fatpos = _.maxBy([384, 400], pos => this.pack.getFatNo(pos + 12))
+        this.fatblk = this.pack.subarray(fatpos, fatpos + 16)
+        this.isStale = _.flatten(_.times(8, i => {
+          const tmp = this.fatblk.getUint8(i)
+          return _.times(8, j => (tmp & (0x80 >> j)) ? 1 : 0)
+        }))
+        this.bus = this.getBus() // 公車紀錄
         this.credit = this.getTxn(160) // 最近加值交易
+        this.inouts = this.getInouts() // 進出站紀錄
+        this.tsqnblk = this.getFreshBlk(12, 26)
+        this.xferblk = this.getFreshBlk(13, 14)
         this.deducts = _.chain([16, 17, 18, 20, 21, 22]).map(blk => this.getTxn(blk << 4)).sortBy(['time']).value() // 最近扣款交易
-        this.buses = _.map([45, 46], blk => this.getBus(blk << 4)) // 公車上下車紀錄
-        this.mrts = _.chain([29, 30, 49, 50]).map(blk => this.getMrt(blk << 4)).compact().sortBy(['time']).value()
       }
 
       static fromEml (eml) {
-        eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
-        if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
-        return new Easycard(Packet.fromHex(eml))
+        const card = Packet.fromHex(eml.replace(/-/g, '0'))
+        if (card.byteLength !== 1024) throw new TypeError('錯誤的 eml')
+        return new Easycard(card)
       }
 
-      getPayload () {
-        const buf = this.buf
-        // 根據交易序號取得正確的後設資料
-        const pos = buf.getUint16(192) > buf.getUint16(416) ? [192, 400] : [416, 384]
-        // 找到最新轉乘交易資料
-        pos.push(buf.getUint32(209) > buf.getUint32(225) ? 208 : 224)
-        const payload = new Packet(pos.length << 4)
-        for (let i = 0; i < pos.length; i++) payload.set(buf.subarray(pos[i], pos[i] + 16), i << 4)
-        return payload
+      getFreshBlk (blk1, blk2) {
+        const pos = (this.isStale[blk1] ? blk2 : blk1) << 4
+        return this.pack.subarray(pos, pos + 16)
       }
 
       getTxn (pos) { // 16 bytes: 47 3CD47362 30 0100 EB0D 55 01 6C70FF 00
-        const buf = this.buf
+        const pack = this.pack
         return {
           ...this.getSploc(pos + 10),
-          tsqn: `0x${buf.subarray(pos, pos + 1).hex}`,
-          tsqnUint: buf.getUint8(pos),
-          time: this.getUnixStr(this.buf, pos + 1),
+          tsqn: `0x${pack.subarray(pos, pos + 1).hex}`,
+          tsqnUint: pack.getUint8(pos),
+          time: this.pack.getUnixStr(pos + 1),
           type: this.getTxnType(pos + 5),
-          amount: buf.getInt16(pos + 6),
-          ev: buf.getInt16(pos + 8),
-          device: `0x${buf.subarray(pos + 12, pos + 15).rhex}`,
-          rfu: `0x${buf.subarray(pos + 15, pos + 16).hex}`,
+          amount: pack.getInt16(pos + 6),
+          ev: pack.getInt16(pos + 8),
+          device: `0x${pack.subarray(pos + 12, pos + 15).rhex}`,
+          rfu: `0x${pack.subarray(pos + 15, pos + 16).hex}`,
         }
       }
 
-      getBus (pos) {
-        const buf = this.buf
+      getBus () {
+        const busblk = this.getFreshBlk(45, 46)
         return {
-          agent: `0x${buf.subarray(pos + 3, pos + 5).rhex}`,
-          line: `0x${buf.subarray(pos + 5, pos + 7).hex}`,
-          time: this.getUnixStr(this.buf, pos + 7),
-          station: buf.getUint8(pos + 11),
-          zone: buf.getUint8(pos + 12),
+          agent: `0x${busblk.subarray(3, 5).rhex}`,
+          line: `0x${busblk.subarray(5, 7).hex}`,
+          time: busblk.getUnixStr(7),
+          station: busblk.getUint8(11),
+          zone: busblk.getUint8(12),
         }
       }
 
-      getMrt (pos) { // 捷運
-        const buf = this.buf
-        if (!buf.getUint32(pos + 9)) return // 無資料
-
+      getInouts () { // 捷運
+        const blks = _.compact([
+          this.getFreshBlk(29, 30),
+          this.getFreshBlk(49, 50),
+        ])
         const sploc = window.EasycardData?.sploc ?? {}
         const mrtsploc = {
           0: sploc[2], // 台北捷運
@@ -298,36 +314,31 @@ block script
           200: sploc[200], // 捷運貓空
         }
 
-        const [sp, loc] = [buf.getUint8(pos + 15), buf.getUint8(pos + 4)]
-        return {
-          provider: mrtsploc[sp]?.[loc]?.provider ?? `${sp}`,
-          location: mrtsploc[sp]?.[loc]?.location ?? `${loc}`,
-          amount: buf.getUint16(pos + 6, false), // 捷運累計金額
-          count: buf.getUint8(pos + 5), // 捷運累計次數
-          time: this.getUnixStr(this.buf, pos + 9),
-          type: `${'出進'[buf.getUint8(pos + 3)]}站`, // 進出站
+        const mrts = []
+        for (const blk of blks) {
+          if (!blk.getUint32(9)) continue
+          const [sp, loc] = [blk.getUint8(15), blk.getUint8(4)]
+          mrts.push({
+            provider: mrtsploc[sp]?.[loc]?.provider ?? `${sp}`,
+            location: mrtsploc[sp]?.[loc]?.location ?? `${loc}`,
+            amount: blk.getUint16(6, false), // 捷運累計金額
+            count: blk.getUint8(5), // 捷運累計次數
+            time: blk.getUnixStr(9),
+            type: `${'出進'[blk.getUint8(3)]}站`, // 進出站
+          })
         }
-      }
-
-      getUnixStr (buf, pos) {
-        return dayjs.unix(buf.getUint32(pos) - 28800).format('YYYY-MM-DD HH:mm:ss')
-      }
-
-      getDosDateStr (buf, pos) {
-        const u16 = buf.getUint16(pos)
-        if (!u16) return '無資料'
-        return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
+        return _.sortBy(mrts, ['time'])
       }
 
       getSploc (pos) {
-        const buf = this.buf
+        const pack = this.pack
         const sploc = window.EasycardData?.sploc ?? {}
-        const [sp, loc] = [buf.getUint8(pos), buf.getUint8(pos + 1)]
+        const [sp, loc] = [pack.getUint8(pos), pack.getUint8(pos + 1)]
         return sploc[sp]?.[loc] ?? sploc?.[sp]?.[0] ?? { provider: `${sp}`, location: `${loc}` }
       }
 
       getNameU8 (key, pos) {
-        const hex = this.buf.subarray(pos, pos + 1).hex
+        const hex = this.pack.subarray(pos, pos + 1).hex
         return window.EasycardData?.[key]?.[hex] ?? `0x${hex}`
       }
 
@@ -336,30 +347,32 @@ block script
 
       get usageControl () {
         const FLAG_NAMES = ['已啟用', '被封鎖', '已退卡', '自動加值', 'Credit']
-        const flag = this.buf.getUint8(24) | this.payload.getUint8(7)
+        const flag = this.pack.getUint8(24) | this.tsqnblk.getUint8(7)
         return _.filter(FLAG_NAMES, (v, k) => (flag >> k) & 1).join()
       }
 
       get keya () {
-        const buf = this.buf
-        return _.uniq(_.times(16, i => buf.subarray((i << 6) + 48, (i << 6) + 54).hex)).join('\n')
+        const pack = this.pack
+        return _.uniq(_.times(16, i => pack.subarray((i << 6) + 48, (i << 6) + 54).hex)).join('\n')
       }
 
       get keyb () {
-        const buf = this.buf
-        return _.uniq(_.times(16, i => buf.subarray((i << 6) + 58, (i << 6) + 64).hex)).join('\n')
+        const pack = this.pack
+        return _.uniq(_.times(16, i => pack.subarray((i << 6) + 58, (i << 6) + 64).hex)).join('\n')
       }
 
       get eml () {
-        const buf = this.buf
-        return _.toUpper(_.times(64, i => buf.subarray(i << 4, (i + 1) << 4).hex).join('\n'))
+        const pack = this.pack
+        return _.times(64, i => pack.subarray(i << 4, (i + 1) << 4).hex).join('\n')
       }
 
       get xfer () {
-        const payload = this.payload
-        const getXferCode = pos => {
-          const hex = payload.subarray(pos, pos + 1).hex
-          return window.EasycardData?.xferCodes?.[hex] ?? `0x${hex}`
+        const { tsqnblk, xferblk } = this
+        const getXferName = offset => {
+          let hex = `0${xferblk.subarray(10, 11).hex[offset]}`
+          if (hex === '0F') hex = tsqnblk.subarray(offset + 12, offset + 13).hex
+          const xferName = window.EasycardData?.xferCodes?.[hex]
+          return xferName ? `0x${hex}: ${xferName}` : `0x${hex}`
         }
         const sploc = window.EasycardData?.sploc ?? {}
         const afterloc = {
@@ -371,41 +384,40 @@ block script
           0x14: sploc[107], // 高雄捷運
           0x16: sploc[105], // 台中捷運
         }
-        let after = payload.getUint8(42) & 0xf // 舊轉乘群組
-        if (after === 0xf) after = payload.getUint8(13) // 新轉乘群組
+        let after = xferblk.getUint8(10) & 0xf // 舊轉乘群組
+        if (after === 0xf) after = tsqnblk.getUint8(13) // 新轉乘群組
         return {
-          tsqn: `0x${payload.subarray(32, 33).rhex}`,
-          before: getXferCode(12),
-          after: getXferCode(13),
-          time: this.getUnixStr(payload, 33),
-          type: `0x${payload.subarray(37, 38).hex}`,
-          amount: payload.getInt16(38),
-          ev: payload.getInt16(40),
-          old: `0x${payload.subarray(42, 43).hex}`,
-          location: afterloc?.[after]?.[payload.getUint8(43)]?.location ?? `0x${payload.subarray(43, 44).hex}`,
-          device: `0x${payload.subarray(44, 47).rhex}`,
-          dfu: `0x${payload.subarray(47, 48).hex}`,
+          tsqn: `0x${tsqnblk.subarray(0, 2).rhex} (${tsqnblk.getUint16(0)})`,
+          before: getXferName(0),
+          after: getXferName(1),
+          time: xferblk.getUnixStr(1),
+          type: `0x${xferblk.subarray(5, 6).hex}`,
+          amount: xferblk.getInt16(6),
+          ev: xferblk.getInt16(8),
+          group: `0x${xferblk.subarray(10, 11).hex}, 0x${tsqnblk.subarray(12, 14).hex}`,
+          location: afterloc?.[after]?.[xferblk.getUint8(11)]?.location ?? `0x${xferblk.subarray(11, 12).hex}`,
+          device: `0x${xferblk.subarray(12, 15).rhex}`,
+          dfu: `0x${xferblk.subarray(15, 16).hex}`,
         }
       } // 轉乘群組
 
       get area () { return this.getNameU8('areaCodes', 90) } // 區碼
-      get autoload () { return this.buf.getUint16(81) } // 自動加值
+      get autoload () { return this.pack.getUint16(81) } // 自動加值
       get bank () { return this.getNameU8('bankCodes', 91) } // 加值銀行
-      get concessionDate () { return this.getDosDateStr(this.payload, 5) } // 優待票日期
-      get concessionPoint () { return this.payload.getUint16(3) } // 優待票點數
-      get ev () { return this.buf.getInt32(128) } // 餘額
-      get exp () { return this.getUnixStr(this.buf, 73) } // 有效時間
-      get issued () { return this.getUnixStr(this.buf, 69) } // 製造時間
-      get monthlyExp () { return this.getDosDateStr(this.payload, 14) } // 月票到期日
-      get profileExp () { return this.getUnixStr(this.buf, 961) } // 身份別到期時間
+      get concessionDate () { return this.tsqnblk.getDosDateStr(5) } // 優待票日期
+      get concessionPoint () { return this.tsqnblk.getUint16(3) } // 優待票點數
+      get ev () { return this.pack.getInt32(128) } // 餘額
+      get exp () { return this.pack.getUnixStr(73) } // 有效時間
+      get issued () { return this.pack.getUnixStr(69) } // 製造時間
+      get monthlyExp () { return this.tsqnblk.getDosDateStr(14) } // 月票到期日
+      get profileExp () { return this.pack.getUnixStr(961) } // 身份別到期時間
       get profileType () { return this.getNameU8('profiles', 960) } // 身份別
-      get quotaDaily () { return this.buf.getUint16(83) } // 日限額金額
-      get quotaDate () { return this.getDosDateStr(this.buf, 1003) } // 日限額日期
-      get quotaOnce () { return this.buf.getUint16(85) } // 日單次限額
-      get quotaUsed () { return this.buf.getUint16(1005) } // 日已用限額
-      get tsqn () { return `0x${this?.xfer?.tsqn} (${this.payload.getUint16(0)})` } // 交易序號
+      get quotaDaily () { return this.pack.getUint16(83) } // 日限額金額
+      get quotaDate () { return this.pack.getDosDateStr(1003) } // 日限額日期
+      get quotaOnce () { return this.pack.getUint16(85) } // 日單次限額
+      get quotaUsed () { return this.pack.getUint16(1005) } // 日已用限額
       get type () { return this.getNameU8('cardTypes', 93) } // 卡別
-      get uid () { return this.buf.subarray(0, 4).rhex } // 卡片編號
+      get uid () { return this.pack.subarray(0, 4).rhex } // 卡片編號
     }
     window.vm = new Vue({
       el: '#app',

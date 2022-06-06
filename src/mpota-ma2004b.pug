@@ -182,7 +182,7 @@ block script
       },
       computed: {
         version () {
-          const ver = vm.h.fw.match(/hash_MA2004B_([^.]+).bin/)
+          const ver = this.h.fw.match(/hash_MA2004B_([^.]+).bin/)
           return ver ? ver[1] : null
         },
       },

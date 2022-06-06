@@ -113,9 +113,9 @@ block script
       }
 
       static fromEml (eml) {
-        eml = eml.replace(/-/g, '0').replace(/[^0-9A-Fa-f]/g, '')
-        if (eml.length !== 2048) throw new TypeError('錯誤的 eml')
-        return new M1(Packet.fromHex(eml))
+        const card = Packet.fromHex(eml.replace(/-/g, '0'))
+        if (card.byteLength !== 1024) throw new TypeError('錯誤的 eml')
+        return new M1(card)
       }
 
       get keya () {
@@ -130,7 +130,7 @@ block script
 
       get eml () {
         const buf = this.buf
-        return _.toUpper(_.times(64, i => buf.subarray(i << 4, (i + 1) << 4).hex).join('\n'))
+        return _.times(64, i => buf.subarray(i << 4, (i + 1) << 4).hex).join('\n')
       }
 
       get uid () { return this.buf.subarray(0, 4).hex } // 卡片編號

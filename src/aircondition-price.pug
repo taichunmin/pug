@@ -97,7 +97,6 @@ block script
         async fetchMachines () {
           const rows = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vSpasIcvTqLyX1gkaz-AAmRSQmDwXtUT6m8Sbn7RbsgykfDr5c32WmBwIc3nFqIAA/pub?gid=22307658&single=true&output=csv')
           const machines = []
-          const toInt = num => _.toSafeInteger(`${num}`.replace(/[\D.]/g, ''))
           for (const row of rows) {
             const fulltext = _.toLower(`${row['型號']}${row['廠牌']}${row['註記']}`)
             machines.push(_.fromPairs([
