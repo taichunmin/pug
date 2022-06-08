@@ -250,10 +250,7 @@ block script
         // 解讀 File Allocation Table
         const fatpos = _.maxBy([384, 400], pos => this.pack.getFatNo(pos + 12))
         this.fatblk = this.pack.subarray(fatpos, fatpos + 16)
-        this.isStale = _.flatten(_.times(8, i => {
-          const tmp = this.fatblk.getUint8(i)
-          return _.times(8, j => (tmp & (0x80 >> j)) ? 1 : 0)
-        }))
+        this.isStale = _.flatten(_.times(8, i => _.times(8, j => (this.fatblk[i] & (0x80 >> j)) ? 1 : 0)))
         this.bus = this.getBus() // 公車紀錄
         this.credit = this.getTxn(160) // 最近加值交易
         this.inouts = this.getInouts() // 進出站紀錄
@@ -266,6 +263,68 @@ block script
         const card = Packet.fromHex(eml.replace(/-/g, '0'))
         if (card.byteLength !== 1024) throw new TypeError('錯誤的 eml')
         return new Easycard(card)
+      }
+
+      makeTxnWithXfer ({ cost = 0, time, xferCode = null }) { // 進行轉乘交易
+        const pack = this.pack.slice() // 複製卡片資料
+        const cur = {}
+        const next = {}
+        // 讀取 FAT 資料並解析
+        const getblkByPos = pos => pack.subarray(pos, pos + 16)
+        ;[next.fat, cur.fat] = _.map(_.sortBy([384, 400], pos => pack.getFatNo(pos + 12)), getblkByPos)
+        cur.isStale = _.flatten(_.times(8, i => _.times(8, j => (cur.fat[i] & (0x80 >> j)) ? 1 : 0)))
+
+        ;[cur.tsqn, next.tsqn] = _.map(_.sortBy([12, 26], blk => cur.isStale[blk]), blk => getblkByPos(blk << 4))
+        ;[cur.xfer, next.xfer] = _.map(_.sortBy([13, 14], blk => cur.isStale[blk]), blk => getblkByPos(blk << 4))
+        next.txn = getblkByPos(_.minBy([256, 272, 288, 320, 336, 352], pos => {
+          const curtxn = getblkByPos(pos)
+          const tsqntime = Packet.fromHex(`${cur.tsqn.subarray(0, 2).rhex}${curtxn.subarray(1, 5).rhex}`)
+          if (tsqntime[0] > 0 && curtxn[0] >= 0x80) tsqntime[0]--
+          tsqntime[1] = curtxn[0]
+          return tsqntime.hex
+        }))
+
+        // next.xorStale
+        next.xorStale = new Array(64).fill(0)
+
+        // 產生新的交易序號
+        next.tsqn.setUint16(0, cur.tsqn.getUint16(0) + 1) // tsqn
+        next.tsqn[2] = _.floor(time / 86400) === _.floor(cur.xfer.getUint32(1) / 86400) ? cur.tsqn[2] + 1 : 0 // 日交易次數
+        next.tsqn.set(cur.tsqn.subarray(3, 16), 3)
+        for (const blk of [12, 26]) next.xorStale[blk] = 1 // tsqn
+
+        // 更新餘額
+        pack.setInt32(128, pack.getInt32(128) - cost) // cost
+        for (const pos of [136, 144, 152]) pack.setInt32(pos, pack.getInt32(128))
+        for (const pos of [132, 148]) pack.setInt32(pos, ~pack.getInt32(128))
+
+        // 產生新的交易紀錄
+        next.txn[0] = next.tsqn[0] // tsqn (1 byte)
+        next.txn.setUint32(1, time) // time
+        next.txn[5] = 0x20 // txn type
+        next.txn.setUint16(6, cost) // cost
+        next.txn.set(pack.subarray(128, 130), 8) // ev
+        next.txn.set(Packet.fromHex('600103306000'), 10) // spid, locId, deviceId, rfu
+
+        // 設定轉乘群組
+        if (xferCode) {
+          next.tsqn.set(xferCode, 12) // xferCode
+          next.xfer[0] = next.tsqn[0] // tsqn (1 byte)
+          next.xfer.set(next.txn.subarray(1, 16), 1) // copy from next.txn
+          next.xfer[10] = (_.clamp(xferCode[0], 15) << 4) | _.clamp(xferCode[1], 15)
+          for (const blk of [13, 14]) next.xorStale[blk] = 1 // xfer
+        }
+
+        // 維護 fat
+        next.fat.set(cur.fat)
+        for (let i = 0; i < 8; i++) {
+          next.fat[i] ^= _.reduce(next.xorStale.slice(i * 8, i * 8 + 8), (xor, val, key) => xor | (val ? (0x80 >> key) : 0))
+        }
+        next.fat.setFatNo(12, next.fat.getFatNo(12) + 1)
+        next.fat[15] = 0
+        for (const byte of next.fat.subarray(0, 15)) next.fat[15] ^= byte
+
+        return pack
       }
 
       getFreshBlk (blk1, blk2) {
