@@ -25,6 +25,21 @@ block content
     #card.text-monospace.d-flex.flex-column.flex-md-row
       .mr-sm-3
         .form-group
+          label 產生轉乘交易
+          .row.mx-n1
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 轉乘時間
+              input.form-control(type="text", v-model="h.xferTime")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 扣款金額
+              input.form-control(type="number", v-model.number="h.xferCost")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 轉乘群組
+              select.form-control(v-model="h.xferGroup")
+                option(v-for="pair of _.sortBy(_.toPairs(ecc?.xferGroups), 0)", :value="pair[0]") 0x{{ pair[0] }}: {{ pair[1] }}
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3
+              button.btn.btn-sm.btn-block.btn-primary(type="button", @click="btnMakeTxnWithXfer") 複製 EML
+        .form-group
           label 卡片基本資料
           .row.mx-n1
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
@@ -265,7 +280,7 @@ block script
         return new Easycard(card)
       }
 
-      makeTxnWithXfer ({ cost = 0, time, xferCode = null }) { // 進行轉乘交易
+      makeTxnWithXfer ({ cost = 0, time, group = null }) { // 進行轉乘交易
         const pack = this.pack.slice() // 複製卡片資料
         const cur = {}
         const next = {}
@@ -276,6 +291,10 @@ block script
 
         ;[cur.tsqn, next.tsqn] = _.map(_.sortBy([12, 26], blk => cur.isStale[blk]), blk => getblkByPos(blk << 4))
         ;[cur.xfer, next.xfer] = _.map(_.sortBy([13, 14], blk => cur.isStale[blk]), blk => getblkByPos(blk << 4))
+        cur.txn = _.chain([160, 256, 272, 288, 320, 336, 352]) // 找出最後一筆交易
+          .orderBy(pos => pack.getUint32(pos + 1), ['desc'])
+          .find(pos => pack[pos] === cur.tsqn[0])
+          .thru(getblkByPos).value()
         next.txn = getblkByPos(_.minBy([256, 272, 288, 320, 336, 352], pos => {
           const curtxn = getblkByPos(pos)
           const tsqntime = Packet.fromHex(`${cur.tsqn.subarray(0, 2).rhex}${curtxn.subarray(1, 5).rhex}`)
@@ -288,8 +307,12 @@ block script
         next.xorStale = new Array(64).fill(0)
 
         // 產生新的交易序號
+        const isSameDate = (unix1, unix2) => {
+          ;[unix1, unix2] = _.map([unix1, unix2], unix => _.floor(unix / 86400))
+          return unix1 === unix2
+        }
         next.tsqn.setUint16(0, cur.tsqn.getUint16(0) + 1) // tsqn
-        next.tsqn[2] = _.floor(time / 86400) === _.floor(cur.xfer.getUint32(1) / 86400) ? cur.tsqn[2] + 1 : 0 // 日交易次數
+        next.tsqn[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.tsqn[2] : 0) + 1 // 日交易次數
         next.tsqn.set(cur.tsqn.subarray(3, 16), 3)
         for (const blk of [12, 26]) next.xorStale[blk] = 1 // tsqn
 
@@ -307,11 +330,12 @@ block script
         next.txn.set(Packet.fromHex('600103306000'), 10) // spid, locId, deviceId, rfu
 
         // 設定轉乘群組
-        if (xferCode) {
-          next.tsqn.set(xferCode, 12) // xferCode
+        if (group) {
+          next.tsqn[12] = (cur.xfer[10] & 0xF) === 15 ? cur.tsqn[13] : (cur.xfer[10] & 0xF)
+          next.tsqn[13] = group[0]
           next.xfer[0] = next.tsqn[0] // tsqn (1 byte)
           next.xfer.set(next.txn.subarray(1, 16), 1) // copy from next.txn
-          next.xfer[10] = (_.clamp(xferCode[0], 15) << 4) | _.clamp(xferCode[1], 15)
+          next.xfer[10] = (_.clamp(next.tsqn[12], 15) << 4) | _.clamp(next.tsqn[13], 15)
           for (const blk of [13, 14]) next.xorStale[blk] = 1 // xfer
         }
 
@@ -324,7 +348,7 @@ block script
         next.fat[15] = 0
         for (const byte of next.fat.subarray(0, 15)) next.fat[15] ^= byte
 
-        return pack
+        return new Easycard(pack)
       }
 
       getFreshBlk (blk1, blk2) {
@@ -378,8 +402,8 @@ block script
           if (!blk.getUint32(9)) continue
           const [sp, loc] = [blk.getUint8(15), blk.getUint8(4)]
           mrts.push({
-            provider: mrtsploc[sp]?.[loc]?.provider ?? `${sp}`,
-            location: mrtsploc[sp]?.[loc]?.location ?? `${loc}`,
+            provider: `${sp}: ${mrtsploc[sp]?.[loc]?.provider ?? '未知'}`,
+            location: `${loc}: ${mrtsploc[sp]?.[loc]?.location ?? '未知'}`,
             amount: blk.getUint16(6, false), // 捷運累計金額
             count: blk.getUint8(5), // 捷運累計次數
             time: blk.getUnixStr(9),
@@ -391,14 +415,16 @@ block script
 
       getSploc (pos) {
         const pack = this.pack
-        const sploc = window.EasycardData?.sploc ?? {}
-        const [sp, loc] = [pack.getUint8(pos), pack.getUint8(pos + 1)]
-        return sploc[sp]?.[loc] ?? sploc?.[sp]?.[0] ?? { provider: `${sp}`, location: `${loc}` }
+        const sploc = _.get(window, ['EasycardData', 'sploc'], [])
+        const [sp, loc] = [pack[pos], pack[pos + 1]]
+        const name = sploc[sp]?.[loc] ?? sploc?.[sp]?.[0] ?? {}
+        return { provider: `${sp}: ${name.provider ?? '未知'}`, location: `${loc}: ${name.location ?? '未知'}` }
       }
 
       getNameU8 (key, pos) {
+        const ecc = window.EasycardData ?? {}
         const hex = this.pack.subarray(pos, pos + 1).hex
-        return window.EasycardData?.[key]?.[hex] ?? `0x${hex}`
+        return `0x${hex}: ${_.get(ecc, [key, hex], '未知')}`
       }
 
       getAuthProfile (pos) { return this.getNameU8('authProfiles', pos) }
@@ -430,7 +456,7 @@ block script
         const getXferName = offset => {
           let hex = `0${xferblk.subarray(10, 11).hex[offset]}`
           if (hex === '0F') hex = tsqnblk.subarray(offset + 12, offset + 13).hex
-          const xferName = window.EasycardData?.xferCodes?.[hex]
+          const xferName = window.EasycardData?.xferGroups?.[hex]
           return xferName ? `0x${hex}: ${xferName}` : `0x${hex}`
         }
         const sploc = window.EasycardData?.sploc ?? {}
@@ -450,11 +476,11 @@ block script
           before: getXferName(0),
           after: getXferName(1),
           time: xferblk.getUnixStr(1),
-          type: `0x${xferblk.subarray(5, 6).hex}`,
+          type: this.getTxnType(xferblk.byteOffset + 5),
           amount: xferblk.getInt16(6),
           ev: xferblk.getInt16(8),
           group: `0x${xferblk.subarray(10, 11).hex}, 0x${tsqnblk.subarray(12, 14).hex}`,
-          location: afterloc?.[after]?.[xferblk.getUint8(11)]?.location ?? `0x${xferblk.subarray(11, 12).hex}`,
+          location: `0x${xferblk.subarray(11, 12).hex}: ${afterloc?.[after]?.[xferblk.getUint8(11)]?.location ?? '未知'}`,
           device: `0x${xferblk.subarray(12, 15).rhex}`,
           dfu: `0x${xferblk.subarray(15, 16).hex}`,
         }
@@ -482,8 +508,12 @@ block script
       el: '#app',
       data: {
         ready: false,
+        ecc: null,
         h: {
           eml: '',
+          xferGroup: '',
+          xferCost: 0,
+          xferTime: '',
         },
       },
       async mounted () {
@@ -533,10 +563,12 @@ block script
             }
           }
         },
-        async initMappingJson5 () {
-          const json5 = JSON5.parse(_.get(await axios.get(`${URL_GIST}/mapping.json5`), 'data'))
-          window.EasycardData = {}
-          _.each(json5, (val, key) => { _.set(window, `EasycardData.${key}`, val) })
+        async initMappingJson5 (cachetime = 3e4) {
+          const json5 = JSON5.parse(_.get(await axios.get(`${URL_GIST}/mapping.json5`, { params: { cachebust: _.floor(Date.now() / cachetime) } }), 'data'))
+          if (!window.EasycardData) window.EasycardData = {}
+          const ecc = window.EasycardData
+          _.each(json5, (pairs, key) => _.set(ecc, key, _.fromPairs(pairs)))
+          this.$set(this, 'ecc', ecc)
         },
         async getCsv (url, cachetime = 3e4) {
           const csv = _.trim(_.get(await axios.get(url, {
@@ -557,6 +589,20 @@ block script
           document.execCommand('copy')
           container.removeChild(dom)
           await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        async btnMakeTxnWithXfer () {
+          try {
+            if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(this.h.xferTime)) throw new TypeError('invalid time')
+            const next = await this.card.makeTxnWithXfer({
+              cost: this.h.xferCost ?? 0,
+              time: dayjs(this.h.xferTime).unix() + 28800,
+              group: Packet.fromHex(this.h.xferGroup),
+            })
+            await this.btnCopy(next.eml)
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
         },
       },
     })
