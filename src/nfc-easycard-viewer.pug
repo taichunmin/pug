@@ -280,7 +280,7 @@ block script
         return new Easycard(card)
       }
 
-      makeTxnWithXfer ({ cost = 0, time, group = null }) { // 進行轉乘交易
+      makeTxnWithXfer ({ cost = 0, time, group = -1 }) { // 進行轉乘交易
         const pack = this.pack.slice() // 複製卡片資料
         const cur = {}
         const next = {}
@@ -330,9 +330,9 @@ block script
         next.txn.set(Packet.fromHex('600103306000'), 10) // spid, locId, deviceId, rfu
 
         // 設定轉乘群組
-        if (group) {
+        if (group >= 0) {
           next.tsqn[12] = (cur.xfer[10] & 0xF) === 15 ? cur.tsqn[13] : (cur.xfer[10] & 0xF)
-          next.tsqn[13] = group[0]
+          next.tsqn[13] = group
           next.xfer[0] = next.tsqn[0] // tsqn (1 byte)
           next.xfer.set(next.txn.subarray(1, 16), 1) // copy from next.txn
           next.xfer[10] = (_.clamp(next.tsqn[12], 15) << 4) | _.clamp(next.tsqn[13], 15)
@@ -511,7 +511,7 @@ block script
         ecc: null,
         h: {
           eml: '',
-          xferGroup: '',
+          xferGroup: 0,
           xferCost: 0,
           xferTime: '',
         },
@@ -593,10 +593,11 @@ block script
         async btnMakeTxnWithXfer () {
           try {
             if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(this.h.xferTime)) throw new TypeError('invalid time')
+            if (this.h.xferCost < 0) throw new TypeError('invalid cost')
             const next = await this.card.makeTxnWithXfer({
               cost: this.h.xferCost ?? 0,
               time: dayjs(this.h.xferTime).unix() + 28800,
-              group: Packet.fromHex(this.h.xferGroup),
+              group: _.parseInt(this.h.xferGroup, 16),
             })
             await this.btnCopy(next.eml)
           } catch (err) {

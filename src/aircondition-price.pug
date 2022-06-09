@@ -23,7 +23,7 @@ block content
           input.form-control#h-keyword(placeholder="模糊搜尋: 型號、廠牌、註記" v-model="h.keyword")
           .input-group-append: button.btn.btn-outline-danger(type="button", @click="h.keyword = ''") 清空
       ul.list-group.list-group-flush
-        li.list-group-item.d-flex.flex-column(v-for="m of sortedMachines.slice(0, _.toSafeInteger(h.itemsPerPage))", :key="`${m['廠牌']}${m['型號']}`")
+        li.list-group-item.d-flex.flex-column(v-for="m of _.take(sortedMachines, h.itemsPerPage)", :key="m.id")
           h4.my-0.badges.mx-n1
             .badge.badge-warning.mx-1 {{ m['配管'] }}
             .badge.badge-info.mx-1 {{ m['冷媒'] }}
@@ -97,12 +97,13 @@ block script
         async fetchMachines () {
           const rows = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vSpasIcvTqLyX1gkaz-AAmRSQmDwXtUT6m8Sbn7RbsgykfDr5c32WmBwIc3nFqIAA/pub?gid=22307658&single=true&output=csv')
           const machines = []
-          for (const row of rows) {
-            const fulltext = _.toLower(`${row['型號']}${row['廠牌']}${row['註記']}`)
+          for (const [rowId, row] of _.toPairs(rows)) {
+            const fulltext = _.toLower(`${row['廠牌']}${row['型號']}${row['註記']}`)
             machines.push(_.fromPairs([
               ..._.map(['型號', '廠牌', '機身高寬深', '配管', '腳座寬深', '冷媒', '註記'], k => [k, _.trim(row[k] ?? '')]),
               ['countChar', window.countChar(fulltext)],
               ['fulltext', fulltext],
+              ['id', rowId],
             ]))
           }
           this.$set(this, 'machines', machines)
