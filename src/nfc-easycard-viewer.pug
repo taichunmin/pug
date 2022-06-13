@@ -30,6 +30,11 @@ block content
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 轉乘時間
               input.form-control(type="text", v-model="h.xferTime")
+              .input-group-append
+                button.btn.btn-outline-secondary.rounded-right(type="button", data-toggle="dropdown") #[i.fa.fa-chevron-down]
+                .dropdown-menu.dropdown-menu-right
+                  button.dropdown-item(type="button", @click="btnSetXferTimeBeforeNow(10)") 距今 10 分鐘前
+                  button.dropdown-item(type="button", @click="btnSetXferTimeBeforeNow(82)") 距今 82 分鐘前
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 扣款金額
               input.form-control(type="number", v-model.number="h.xferCost")
@@ -604,6 +609,9 @@ block script
             console.error(err)
             await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
           }
+        },
+        btnSetXferTimeBeforeNow (min) {
+          this.$set(this.h, 'xferTime', dayjs().subtract(min, 'minute').format('YYYY-MM-DD HH:mm:ss'))
         },
       },
     })
