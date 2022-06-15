@@ -292,34 +292,27 @@ block script
         // 讀取 FAT 資料並解析
         const getblkByPos = pos => pack.subarray(pos, pos + 16)
         ;[next.fat, cur.fat] = _.map(_.sortBy([384, 400], pos => pack.getFatNo(pos + 12)), getblkByPos)
-        cur.isStale = _.flatten(_.times(8, i => _.times(8, j => (cur.fat[i] & (0x80 >> j)) ? 1 : 0)))
+        cur.stale = _.flatten(_.times(8, i => _.times(8, j => (cur.fat[i] & (0x80 >> j)) ? 1 : 0)))
+        next.stale = cur.stale.slice()
 
-        ;[cur.tsqn, next.tsqn] = _.map(_.sortBy([12, 26], blk => cur.isStale[blk]), blk => getblkByPos(blk << 4))
-        ;[cur.xfer, next.xfer] = _.map(_.sortBy([13, 14], blk => cur.isStale[blk]), blk => getblkByPos(blk << 4))
-        cur.txn = _.chain([160, 256, 272, 288, 320, 336, 352]) // 找出最後一筆交易
-          .orderBy(pos => pack.getUint32(pos + 1), ['desc'])
-          .find(pos => pack[pos] === cur.tsqn[0])
-          .thru(getblkByPos).value()
-        next.txn = getblkByPos(_.minBy([256, 272, 288, 320, 336, 352], pos => {
-          const curtxn = getblkByPos(pos)
-          const tsqntime = Packet.fromHex(`${cur.tsqn.subarray(0, 2).rhex}${curtxn.subarray(1, 5).rhex}`)
-          if (tsqntime[0] > 0 && curtxn[0] >= 0x80) tsqntime[0]--
-          tsqntime[1] = curtxn[0]
-          return tsqntime.hex
-        }))
+        ;[cur.tsqn, next.tsqn] = _.map(_.sortBy([12, 26], blk => cur.stale[blk]), blk => getblkByPos(blk << 4))
+        ;[cur.xfer, next.xfer] = _.map(_.sortBy([13, 14], blk => cur.stale[blk]), blk => getblkByPos(blk << 4))
 
-        // next.xorStale
-        next.xorStale = new Array(64).fill(0)
+        // 取得最新的交易紀錄 及 最舊的扣值交易
+        const txnSortKey = pos => {
+          let tsqn = (cur.tsqn[1] << 8) | pack[pos]
+          if (tsqn > cur.tsqn.getUint16(0)) tsqn -= 256
+          return tsqn * 0x100000000 + pack.getUint32(pos + 1)
+        }
+        cur.txn = getblkByPos(_.maxBy([160, 256, 272, 288, 320, 336, 352], txnSortKey))
+        next.txn = getblkByPos(_.minBy([256, 272, 288, 320, 336, 352], txnSortKey))
 
         // 產生新的交易序號
-        const isSameDate = (unix1, unix2) => {
-          ;[unix1, unix2] = _.map([unix1, unix2], unix => _.floor(unix / 86400))
-          return unix1 === unix2
-        }
+        const isSameDate = (t1, t2) => _.floor(t1 / 86400) === _.floor(t2 / 86400)
         next.tsqn.setUint16(0, cur.tsqn.getUint16(0) + 1) // tsqn
         next.tsqn[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.tsqn[2] : 0) + 1 // 日交易次數
         next.tsqn.set(cur.tsqn.subarray(3, 16), 3)
-        for (const blk of [12, 26]) next.xorStale[blk] = 1 // tsqn
+        for (const blk of [12, 26]) next.stale[blk] = 1 - next.stale[blk] // tsqn
 
         // 更新餘額
         pack.setInt32(128, pack.getInt32(128) - cost) // cost
@@ -341,13 +334,14 @@ block script
           next.xfer[0] = next.tsqn[0] // tsqn (1 byte)
           next.xfer.set(next.txn.subarray(1, 16), 1) // copy from next.txn
           next.xfer[10] = (_.clamp(next.tsqn[12], 15) << 4) | _.clamp(next.tsqn[13], 15)
-          for (const blk of [13, 14]) next.xorStale[blk] = 1 // xfer
+          for (const blk of [13, 14]) next.stale[blk] = 1 - next.stale[blk] // xfer
         }
 
         // 維護 fat
         next.fat.set(cur.fat)
         for (let i = 0; i < 8; i++) {
-          next.fat[i] ^= _.reduce(next.xorStale.slice(i * 8, i * 8 + 8), (xor, val, key) => xor | (val ? (0x80 >> key) : 0))
+          next.fat[i] = 0
+          for (let j = 0; j < 8; j++) next.fat[i] |= next.stale[i * 8 + j] ? (0x80 >> j) : 0
         }
         next.fat.setFatNo(12, next.fat.getFatNo(12) + 1)
         next.fat[15] = 0
