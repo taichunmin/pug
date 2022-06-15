@@ -1,4 +1,4 @@
-extends /layout/dark
+extends /layout/default
 
 block beforehtml
   - const title = 'NFC EasyCard Viewer'
@@ -285,7 +285,7 @@ block script
         return new Easycard(card)
       }
 
-      makeTxnWithXfer ({ cost = 0, time, group = -1 }) { // 進行轉乘交易
+      makeTxnWithXfer ({ cost = 0, time, group = 0 }) { // 進行轉乘交易
         const pack = this.pack.slice() // 複製卡片資料
         const cur = {}
         const next = {}
@@ -307,17 +307,17 @@ block script
         cur.txn = getblkByPos(_.maxBy([160, 256, 272, 288, 320, 336, 352], txnSortKey))
         next.txn = getblkByPos(_.minBy([256, 272, 288, 320, 336, 352], txnSortKey))
 
+        // 更新餘額
+        pack.setInt32(128, pack.getInt32(128) - cost) // cost
+        for (const pos of [136, 144, 152]) pack.setInt32(pos, pack.getInt32(128))
+        for (const pos of [132, 148]) pack.setInt32(pos, ~pack.getInt32(128))
+
         // 產生新的交易序號
         const isSameDate = (t1, t2) => _.floor(t1 / 86400) === _.floor(t2 / 86400)
         next.tsqn.setUint16(0, cur.tsqn.getUint16(0) + 1) // tsqn
         next.tsqn[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.tsqn[2] : 0) + 1 // 日交易次數
         next.tsqn.set(cur.tsqn.subarray(3, 16), 3)
         for (const blk of [12, 26]) next.stale[blk] = 1 - next.stale[blk] // tsqn
-
-        // 更新餘額
-        pack.setInt32(128, pack.getInt32(128) - cost) // cost
-        for (const pos of [136, 144, 152]) pack.setInt32(pos, pack.getInt32(128))
-        for (const pos of [132, 148]) pack.setInt32(pos, ~pack.getInt32(128))
 
         // 產生新的交易紀錄
         next.txn[0] = next.tsqn[0] // tsqn (1 byte)
@@ -328,7 +328,7 @@ block script
         next.txn.set(Packet.fromHex('600103306000'), 10) // spid, locId, deviceId, rfu
 
         // 設定轉乘群組
-        if (group >= 0) {
+        if (group > 0) {
           next.tsqn[12] = (cur.xfer[10] & 0xF) === 15 ? cur.tsqn[13] : (cur.xfer[10] & 0xF)
           next.tsqn[13] = group
           next.xfer[0] = next.tsqn[0] // tsqn (1 byte)
@@ -510,7 +510,7 @@ block script
         ecc: null,
         h: {
           eml: '',
-          xferGroup: 0,
+          xferGroup: '00',
           xferCost: 0,
           xferTime: '',
         },

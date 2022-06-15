@@ -1,4 +1,4 @@
-extends /layout/dark
+extends /layout/default
 
 block beforehtml
   - const title = 'NFC iPass Viewer'
@@ -24,6 +24,26 @@ block content
     h2.mb-3.text-center=title
     #card.text-monospace.d-flex.flex-column.flex-md-row
       .mr-sm-3
+        .form-group
+          label 產生轉乘交易
+          .row.mx-n1
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 轉乘時間
+              input.form-control(type="text", v-model="h.xferTime")
+              .input-group-append
+                button.btn.btn-outline-secondary.rounded-right(type="button", data-toggle="dropdown") #[i.fa.fa-chevron-down]
+                .dropdown-menu.dropdown-menu-right
+                  button.dropdown-item(type="button", @click="btnSetXferTimeBeforeNow(10)") 距今 10 分鐘前
+                  button.dropdown-item(type="button", @click="btnSetXferTimeBeforeNow(82)") 距今 82 分鐘前
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 扣款金額
+              input.form-control(type="number", v-model.number="h.xferCost")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 轉乘群組
+              select.form-control(v-model="h.xferGroup")
+                option(v-for="pair of _.sortBy(_.toPairs(ipass?.xferGroups), 0)", :value="pair[0]") 0x{{ pair[0] }}: {{ pair[1] }}
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3
+              button.btn.btn-sm.btn-block.btn-primary(type="button", @click="btnMakeTxnWithXfer") 複製 EML
         .form-group
           label 卡片基本資料
           .row.mx-n1
@@ -212,6 +232,20 @@ block script
     Packet.prototype.getUnixStr = function (pos) {
       return dayjs.unix(this.getUint32(pos)).format('YYYY-MM-DD HH:mm:ss')
     }
+    window.ipass = {
+      xferGroups: {
+        '00': '無轉乘',
+        '06': '台鐵',
+        '0B': '高雄捷運',
+        '17': '高雄輕軌',
+        '0C': '高雄市區公車',
+        'FE': '高雄客運1',
+        'B3': '高雄客運2',
+        'B4': '高雄客運3',
+        'B2': '渡輪',
+        'A2': '高雄 YouBike',
+      }
+    }
     class Ipass {
       constructor (pack) {
         if (!pack || !(pack instanceof Packet) || pack.byteLength !== 1024) throw new TypeError('invalid pack')
@@ -224,6 +258,48 @@ block script
         const card = Packet.fromHex(eml.replace(/-/g, '0'))
         if (card.byteLength !== 1024) throw new TypeError('錯誤的 eml')
         return new Ipass(card)
+      }
+
+      makeTxnWithXfer ({ cost = 0, time, group = 0 }) { // 進行轉乘交易
+        const pack = this.pack.slice() // 複製卡片資料
+        const cur = {}
+        const next = {}
+        const getblkByPos = pos => pack.subarray(pos, pos + 16)
+        next.xfer = getblkByPos(192)
+        cur.xfer = next.xfer.slice() // 複製資料
+
+        // 取得最新的交易紀錄 及 最舊的扣值交易
+        const txnSortKey = pos => {
+          let tsqn = (cur.xfer[1] << 8) | pack[pos]
+          if (tsqn > cur.xfer.getUint16(0)) tsqn -= 256
+          return tsqn * 0x100000000 + pack.getUint32(pos + 1)
+        }
+        cur.txn = getblkByPos(_.maxBy([160, 256, 272, 288, 320, 336, 352], txnSortKey))
+        next.txn = getblkByPos(_.minBy([256, 272, 288, 320, 336, 352], txnSortKey))
+
+        // 更新餘額
+        pack.setInt32(128, pack.getInt32(128) - cost) // cost
+        for (const pos of [136, 144, 152]) pack.setInt32(pos, pack.getInt32(128))
+        for (const pos of [132, 148]) pack.setInt32(pos, ~pack.getInt32(128))
+
+        // 產生新的轉乘交易
+        const isSameDate = (t1, t2) => _.floor(t1 / 86400) === _.floor(t2 / 86400)
+        next.xfer.setUint16(0, cur.xfer.getUint16(0) + 1) // tsqn
+        next.xfer[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.xfer[2] + 1 : 0) // 日交易次數
+        next.xfer.setUint32(3, time)
+        next.xfer[7] = cur.xfer[8]
+        next.xfer[8] = group
+        next.xfer.set(Packet.fromHex('20AD012EBD0100'), 9)
+
+        // 產生新的交易紀錄
+        next.txn[0] = next.xfer[0] // tsqn (1 byte)
+        next.txn.setUint32(1, time)
+        next.txn[5] = 0x20
+        next.txn.setUint16(6, cost)
+        next.txn.set(pack.subarray(128, 130), 8)
+        next.txn.set(Packet.fromHex('AD012EBD0100'), 10)
+
+        return new Ipass(pack)
       }
 
       getTxn (pos) { // 16 bytes: 34 7C3D4E62 30 2823 F726 AD 01 2EBD0100
@@ -290,6 +366,9 @@ block script
         ready: false,
         h: {
           eml: '',
+          xferCost: 0,
+          xferGroup: '00',
+          xferTime: '',
         },
       },
       async mounted () {
@@ -333,6 +412,24 @@ block script
           document.execCommand('copy')
           container.removeChild(dom)
           await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        async btnMakeTxnWithXfer () {
+          try {
+            if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(this.h.xferTime)) throw new TypeError('invalid time')
+            if (this.h.xferCost < 0) throw new TypeError('invalid cost')
+            const next = await this.card.makeTxnWithXfer({
+              cost: this.h.xferCost ?? 0,
+              time: dayjs(this.h.xferTime).unix(),
+              group: _.parseInt(this.h.xferGroup, 16),
+            })
+            await this.btnCopy(next.eml)
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        btnSetXferTimeBeforeNow (min) {
+          this.$set(this.h, 'xferTime', dayjs().subtract(min, 'minute').format('YYYY-MM-DD HH:mm:ss'))
         },
       },
     })
