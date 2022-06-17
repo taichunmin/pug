@@ -265,13 +265,13 @@ block script
         const cur = {}
         const next = {}
         const getblkByPos = pos => pack.subarray(pos, pos + 16)
-        next.xfer = getblkByPos(192)
-        cur.xfer = next.xfer.slice() // 複製資料
+        next.tsqn = getblkByPos(192)
+        cur.tsqn = next.tsqn.slice() // 複製資料
 
         // 取得最新的交易紀錄 及 最舊的扣值交易
         const txnSortKey = pos => {
-          let tsqn = (cur.xfer[1] << 8) | pack[pos]
-          if (tsqn > cur.xfer.getUint16(0)) tsqn -= 256
+          let tsqn = (cur.tsqn[1] << 8) | pack[pos]
+          if (tsqn > cur.tsqn.getUint16(0)) tsqn -= 256
           return tsqn * 0x100000000 + pack.getUint32(pos + 1)
         }
         cur.txn = getblkByPos(_.maxBy([160, 256, 272, 288, 320, 336, 352], txnSortKey))
@@ -284,15 +284,15 @@ block script
 
         // 產生新的轉乘交易
         const isSameDate = (t1, t2) => _.floor(t1 / 86400) === _.floor(t2 / 86400)
-        next.xfer.setUint16(0, cur.xfer.getUint16(0) + 1) // tsqn
-        next.xfer[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.xfer[2] + 1 : 0) // 日交易次數
-        next.xfer.setUint32(3, time)
-        next.xfer[7] = cur.xfer[8]
-        next.xfer[8] = group
-        next.xfer.set(Packet.fromHex('20AD012EBD0100'), 9)
+        next.tsqn.setUint16(0, cur.tsqn.getUint16(0) + 1) // tsqn
+        next.tsqn[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.tsqn[2] + 1 : 0) // 日交易次數
+        next.tsqn.setUint32(3, time)
+        next.tsqn[7] = cur.tsqn[8]
+        next.tsqn[8] = group
+        next.tsqn.set(Packet.fromHex('20AD012EBD0100'), 9)
 
         // 產生新的交易紀錄
-        next.txn[0] = next.xfer[0] // tsqn (1 byte)
+        next.txn[0] = next.tsqn[0] // tsqn (1 byte)
         next.txn.setUint32(1, time)
         next.txn[5] = 0x20
         next.txn.setUint16(6, cost)
