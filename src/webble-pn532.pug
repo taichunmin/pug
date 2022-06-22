@@ -58,11 +58,13 @@ block script
           //- console.log(await window.pn532.mfAuthenticateBlock({ block, isKeyB: 1, key: 'ffffffffffff', uid: 'F235061B' }))
           //- console.log(await window.pn532.mfWriteBlock({ block, data: '00010203040506070809101112131415' }))
           //- console.log(await window.pn532.mfReadBlock({ block }))
-          //- console.log(await window.pn532.mfMagicUnlock())
-          //- console.log(await window.pn532.mfMagicWipe({ uid: 'F235061B' }))
+          //- const epaper = new window.Pn532Waveshare(window.pn532)
+          //- await epaper.update_1_54b()
           try {
-            const epaper = new window.Pn532Waveshare(window.pn532)
-            await epaper.update_1_54b()
+            pn532m1 = new Pn532M1(window.pn532)
+            console.log(await window.pn532.hf14aListPassiveTarget())
+            console.log(await window.pn532m1.magicUnlock())
+            console.log(await window.pn532m1.magicWipe({ uid: 'F235061B' }))
           } catch (err) {
             console.error(err)
           }

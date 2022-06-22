@@ -65,9 +65,9 @@ script.
         this.device = null
         this.resHandlers = null
         this.service = null
-        this.uuidRecv = 0xffe1
-        this.uuidSend = 0xffe2
-        this.uuidServ = 0xffe0
+        this.uuidRecv = 0xff01
+        this.uuidSend = 0xff02
+        this.uuidServ = 0xff00
         this.verbose = false
       }
 
@@ -381,6 +381,7 @@ script.
           filters: [
             { name: 'JDY-33-BLE' },
             { name: 'PN532-BLE' },
+            { name: 'NFC-PRO' },
           ],
           optionalServices: [this.uuidServ],
         })
@@ -752,8 +753,8 @@ script.
       }
 
       async magicWipe ({ atqa = null, sak = null, tg = 1, uid = null } = {}) {
-        const blockData = this.u8FromHex('00000000000000000000000000000000')
-        const blockKey = this.u8FromHex('FFFFFFFFFFFF08778F00FFFFFFFFFFFF')
+        const blockData = this.pn532.u8FromHex('00000000000000000000000000000000')
+        const blockKey = this.pn532.u8FromHex('FFFFFFFFFFFF08778F00FFFFFFFFFFFF')
 
         await this.magicSetUid({ atqa, sak, tg, uid })
         for (let block = 1; block < 64; block++) { // skip block 0
@@ -765,7 +766,7 @@ script.
               break
             } catch (err) {}
           }
-          if (isWriteFailed) this.logTime(`magicWipe failed on block ${block}`)
+          if (isWriteFailed) this.pn532.logTime(`magicWipe failed on block ${block}`)
         }
       }
     }
