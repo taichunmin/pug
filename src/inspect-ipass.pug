@@ -1,7 +1,7 @@
 extends /layout/default
 
 block beforehtml
-  - const title = 'NFC iPass Viewer'
+  - const title = 'Inspect iPass'
 
 block style
   style
@@ -233,18 +233,18 @@ block script
       return dayjs.unix(this.getUint32(pos)).format('YYYY-MM-DD HH:mm:ss')
     }
     window.ipass = {
-      xferGroups: {
-        '00': '無轉乘',
-        '06': '台鐵',
-        '0B': '高雄捷運',
-        '17': '高雄輕軌',
-        '0C': '高雄市區公車',
-        'FE': '高雄客運1',
-        'B3': '高雄客運2',
-        'B4': '高雄客運3',
-        'B2': '渡輪',
-        'A2': '高雄 YouBike',
-      }
+      xferGroups: _.fromPairs([
+        ['00', '無轉乘'],
+        ['06', '台鐵'],
+        ['0B', '高雄捷運'],
+        ['17', '高雄輕軌'],
+        ['0C', '高雄市區公車'],
+        ['FE', '高雄客運1'],
+        ['B3', '高雄客運2'],
+        ['B4', '高雄客運3'],
+        ['B2', '渡輪'],
+        ['A2', '高雄 YouBike'],
+      ]),
     }
     class Ipass {
       constructor (pack) {
