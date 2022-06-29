@@ -287,8 +287,8 @@ block script
         next.tsqn.setUint16(0, cur.tsqn.getUint16(0) + 1) // tsqn
         next.tsqn[2] = (isSameDate(time, cur.txn.getUint32(1)) ? cur.tsqn[2] + 1 : 0) // 日交易次數
         next.tsqn.setUint32(3, time)
-        next.tsqn[7] = cur.tsqn[8]
-        next.tsqn[8] = group
+        next.tsqn[8] = cur.tsqn[7]
+        next.tsqn[7] = group
         next.tsqn.set(Packet.fromHex('20AD012EBD0100'), 9)
 
         // 產生新的交易紀錄
