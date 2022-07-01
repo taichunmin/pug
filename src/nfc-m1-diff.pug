@@ -47,10 +47,13 @@ block content
             template(v-for="j of _.range(i * 16, i * 16 + 16)")
               td.align-middle.p-0(:class="byteClass(j)", @click="h.pos = j") {{ eml.buf.subarray(j, j + 1).hex }}
       .table-responsive.flex-fill.mx-1
+        .custom-control.custom-switch.my-2
+          input.custom-control-input#h-littleEndian(type="checkbox", v-model="h.littleEndian")
+          label.custom-control-label(for="h-littleEndian") Little Endian
         table#eml-inspect.table.table-bordered.table-striped
           tr
             th(scope="row") pos
-            td(colspan="2") p{{ h.pos }}, b{{ h.pos >> 4 }}p{{ h.pos & 0xF }}, s{{ h.pos >> 6 }}b{{ (h.pos >> 4) & 0x3 }}p{{ h.pos & 0xF }}
+            td(colspan="2") P#[span.text-success {{ h.pos }}], B#[span.text-success {{ h.pos >> 4 }}]P#[span.text-success {{ h.pos & 0xF }}], S#[span.text-success {{ h.pos >> 6 }}]B#[span.text-success {{ (h.pos >> 4) & 0x3 }}]P#[span.text-success {{ h.pos & 0xF }}]
           tr
             th(scope="row") getUint8
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint8(h.pos, h.littleEndian) }}
@@ -77,10 +80,13 @@ block content
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getInt32(h.pos, h.littleEndian) }}
           tr(v-if="h.pos + 1 < 1024")
             th(scope="row") getDosDateStr
-            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getDosDateStr(h.pos) }}
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getDosDateStr(h.pos, h.littleEndian) }}
           tr(v-if="h.pos + 3 < 1024")
-            th(scope="row") getUnixStr
-            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUnixStr(h.pos) }}
+            th(scope="row") getUnixStr#[br]-08:00
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUnixStr(h.pos, 28800, h.littleEndian) }}
+          tr(v-if="h.pos + 3 < 1024")
+            th(scope="row") getUnixStr#[br]+00:00
+            td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUnixStr(h.pos, 0, h.littleEndian) }}
     #modal-exportimport.modal.fade(data-backdrop="static", data-keyboard="false", tabindex="-1", ref="modalExportImport")
       .modal-dialog.modal-dialog-centered.modal-xl.align-items-stretch
         .modal-content
@@ -98,7 +104,7 @@ block script
   script(crossorigin="anonymous", src="https://taichunmin.idv.tw/proxmark3.js/proxmark3.min.js")
   script.
     const { Packet } = window.Proxmark3
-    Packet.prototype.getUnixStr = function (pos, littleEndian = true) {
+    Packet.prototype.getUnixStr = function (pos, utfOffset = 0, littleEndian = true) {
       return dayjs.unix(this.getUint32(pos, littleEndian) - 28800).format('YYYY-MM-DD HH:mm:ss')
     }
     Packet.prototype.getDosDateStr = function (pos, littleEndian = true) {
