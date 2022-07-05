@@ -72,14 +72,14 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 已用限額
               input.form-control(readonly, :value="card?.quotaUsed")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 卡別
+              input.form-control(readonly, :value="card?.type")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 身份別
               input.form-control(readonly, :value="card?.profileType")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 身份到期
               input.form-control(readonly, :value="card?.profileExp")
-            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 卡別
-              input.form-control(readonly, :value="card?.type")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 區碼
               input.form-control(readonly, :value="card?.area")
@@ -94,10 +94,10 @@ block content
               input.form-control(readonly, :value="card?.monthlyExp")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 社福日期
-              input.form-control(readonly, :value="card?.concessionDate")
+              input.form-control(readonly, :value="card?.welfareDate")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 社福點數
-              input.form-control(readonly, :value="card?.concessionPoint")
+              input.form-control(readonly, :value="card?.welfareUsed")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 票卡狀態
               input.form-control(readonly, :value="card?.usageControl")
@@ -488,14 +488,14 @@ block script
       get area () { return this.getNameU8('areaCodes', 90) } // 區碼
       get autoload () { return this.pack.getUint16(81) } // 自動加值
       get bank () { return this.getNameU8('bankCodes', 91) } // 加值銀行
-      get concessionDate () { return this.tsqnblk.getDosDateStr(5) } // 社福日期
-      get concessionPoint () { return this.tsqnblk.getUint16(3) } // 社福點數
+      get welfareDate () { return this.tsqnblk.getDosDateStr(5) } // 社福日期
+      get welfareUsed () { return `已用${this.tsqnblk.getUint16(3)}點` } // 社福點數
       get ev () { return this.pack.getInt32(128) } // 餘額
       get exp () { return this.pack.getUnixStr(73) } // 卡片效期
       get issued () { return this.pack.getUnixStr(69) } // 發卡時間
       get monthlyExp () { return this.tsqnblk.getDosDateStr(14) } // 月票到期日
-      get profileExp () { return this.pack.getUnixStr(961) } // 身份別到期時間
-      get profileType () { return this.getNameU8('profiles', 960) } // 身份別
+      get profileExp () { return this.pack.getDosDateStr(88) } // 身份別到期時間
+      get profileType () { return this.getNameU8('profiles', 87) } // 身份別
       get quotaDaily () { return this.pack.getUint16(83) } // 日限額金額
       get quotaDate () { return this.pack.getDosDateStr(1003) } // 日限額日期
       get quotaOnce () { return this.pack.getUint16(85) } // 日單次限額

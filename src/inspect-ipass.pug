@@ -232,6 +232,11 @@ block script
     Packet.prototype.getUnixStr = function (pos) {
       return dayjs.unix(this.getUint32(pos)).format('YYYY-MM-DD HH:mm:ss')
     }
+    Packet.prototype.getDosDateStr = function (pos) {
+      const u16 = this.getUint16(pos)
+      if (!u16) return '無資料'
+      return dayjs(`${1980 + (u16 >> 9)}-${(u16 >> 5) & 0xF}-${u16 & 0x1F}`).format('YYYY-MM-DD')
+    }
     window.ipass = {
       xferGroups: _.fromPairs([
         ['00', '無轉乘'],
@@ -331,19 +336,26 @@ block script
         return _.times(64, i => pack.subarray(i << 4, (i + 1) << 4).hex).join('\n')
       }
 
-      get uid () { return this.pack.subarray(0, 4).hex } // 卡片編號
+      get area () { return this.pack.subarray(65, 66).hex } // 區域編號 (1 byte)
+      get busCardType () { return `0x${this.pack.subarray(512, 513).hex}` } // 公車卡類別 (1 byte)
       get csn () { return this.pack.subarray(0, 16).hex } // 卡號 (16 bytes)
-      get type () { return `0x${this.pack.subarray(448, 449).hex}` } // 一卡通票卡種類 (1 byte)
-      get issuer () { return `0x${this.pack.subarray(64, 65).hex}` } // 發卡單位編號 (1 byte)
-      get ev () { return this.pack.getUint32(128) } // 電子票值 (4 bytes)
       get ctsn () { return `0x${this.pack.subarray(192, 194).rhex}` } // 交易序號
+      get ev () { return this.pack.getUint32(128) } // 電子票值 (4 bytes)
+      get exp () { return this.pack.getUnixStr(73) } // 票卡有效日期 (4 bytes)
+      get issued () { return this.pack.getUnixStr(69) } // 票卡發行日期 (4 bytes)
+      get issuer () { return `0x${this.pack.subarray(64, 65).hex}` } // 發卡單位編號 (1 byte)
+      get profileExp () { return this.pack.getUnixStr(385) } // 身份到期 (4 byte)
+      get profileType () { return `0x${this.pack.subarray(384, 385).hex}` } // 個人身份別 (1 byte)
       get quotaEv () { return this.pack.getUint16(83) } // 儲值最大票值數額 (2 bytes)
       get quotaTxn () { return this.pack.getUint16(85) } // 單筆最大扣值金額 (2 bytes)
-      get profileType () { return `0x${this.pack.subarray(384, 385).hex}` } // 個人身份別 (1 byte)
-      get profileExp () { return this.pack.getUnixStr(181) } // 身份到期 (4 byte)
-      get issued () { return this.pack.getUnixStr(69) } // 票卡發行日期 (4 bytes)
-      get exp () { return this.pack.getUnixStr(73) } // 票卡發行日期 (4 bytes)
+      get type () { return `0x${this.pack.subarray(78, 79).hex}` } // 一卡通票卡種類 (1 byte)
+      get uid () { return this.pack.subarray(0, 4).hex } // 卡片編號
       get version () { return `0x${this.pack.subarray(77, 78).hex}` } // 票卡版本 (1 byte)
+      get welfareDate () { return this.pack.getDosDateStr(519) } // 社福日期 (2 byte)
+      get welfareIdentity () { return `0x${this.pack.subarray(514, 515).hex}` } // 社福類別 (1 byte)
+      get welfareLimit () { return this.pack.getUint16(523) } // 社福上限 (2 byte)
+      get welfareProvider () { return `0x${this.pack.subarray(513, 514).hex}` } // 社福單位 (1 byte)
+      get welfareUsed () { return this.pack.getUint16(521) } // 社福已用 (2 byte)
 
       get xfer () { // 轉乘
         const txnIdx = this.pack.getUint8(194) // 交易紀錄位置
