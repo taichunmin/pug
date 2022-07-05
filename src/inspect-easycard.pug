@@ -81,8 +81,11 @@ block content
               .input-group-prepend: span.input-group-text.justify-content-center 身份到期
               input.form-control(readonly, :value="card?.profileExp")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
-              .input-group-prepend: span.input-group-text.justify-content-center 區碼
+              .input-group-prepend: span.input-group-text.justify-content-center 地區
               input.form-control(readonly, :value="card?.area")
+            .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
+              .input-group-prepend: span.input-group-text.justify-content-center 地區身份
+              input.form-control(readonly, :value="card?.areaProfile")
             .mb-1.px-1.col-12.col-md-6.col-lg-4.col-xl-3: .input-group.input-group-sm
               .input-group-prepend: span.input-group-text.justify-content-center 發卡時間
               input.form-control(readonly, :value="card?.issued")
@@ -426,7 +429,6 @@ block script
         return `0x${hex}: ${_.get(ecc, [key, hex], '未知')}`
       }
 
-      getAuthProfile (pos) { return this.getNameU8('authProfiles', pos) }
       getTxnType (pos) { return this.getNameU8('txnTypes', pos) }
 
       get usageControl () {
@@ -485,7 +487,26 @@ block script
         }
       } // 轉乘群組
 
-      get area () { return this.getNameU8('areaCodes', 90) } // 區碼
+      get areaProfile () {
+        const [area, auth] = _.map([90, 92], i => this.pack[i])
+        const tmp = []
+        if (area === 0x03 && auth & 0x1) tmp.push('基隆學生') // bit0: 基隆專用-學生身份認證
+        if (area === 0x06) { // 連江
+          if (auth & 0x2) tmp.push('連江軍警') // bit1: 馬祖專用-軍警身份認證
+          // bit2~3: 身份識別旗標，與區碼搭配使用
+          tmp.push(`連江${['南竿', '北竿', '東引', '莒光'][(auth >> 2) & 0b11]}`)
+        }
+        if (auth & 0x10) tmp.push('限制通路') // bit4: 小額消費專用-限制通路使用旗標
+
+        // bit5~6: 身份識別旗標 2，與區碼搭配使用，以區分各縣市市民卡、認同卡 榮譽市民卡、原住民等身份
+        if (area === 0x08) tmp.push(`新竹市${['市民卡', '認同卡', '榮譽市民卡'][(auth >> 5) & 0b11]}`)
+        if (area === 0x0A) tmp.push(`台中${['市民', '原住民'][(auth >> 5) & 0b11]}`)
+        if (area === 0x15) tmp.push(`苗栗${['市民', '原住民'][(auth >> 5) & 0b11]}`)
+        if (area === 0x01) tmp.push(`台北${['市民', '65歳以上愛心'][(auth >> 5) & 0b11]}`)
+        return tmp.join(',')
+      } // 地區身份
+
+      get area () { return this.getNameU8('areaCodes', 90) } // 地區
       get autoload () { return this.pack.getUint16(81) } // 自動加值
       get bank () { return this.getNameU8('bankCodes', 91) } // 加值銀行
       get welfareDate () { return this.tsqnblk.getDosDateStr(5) } // 社福日期
