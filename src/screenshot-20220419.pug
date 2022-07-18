@@ -22,6 +22,15 @@ block content
     h1.text-center= title
     #merged.my-2.px-1.py-2.d-flex
       .screenshot.mx-1(v-for="img of images" :style="{'background-image': `url(${img.url})`, 'flex-grow': img.flex}")
+    //- #merged.my-2.px-1.py-2.d-flex.flex-column
+    //-   .flex-fill.d-flex
+    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/xuna4zV.png)'}")
+    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/iRbnMTT.png)'}")
+    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/phSK2zz.png)'}")
+    //-   .flex-fill.d-flex
+    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/GjSm4C0.png)'}")
+    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/0KBhjYO.png)'}")
+    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/YoOvVYl.png)'}")
     .from-group
       .input-group.mt-2
         .input-group-prepend: button.btn.btn-primary(type="button", @click="btnMergeImages") 點此#[br]合併#[br]截圖
