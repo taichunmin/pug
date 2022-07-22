@@ -53,7 +53,7 @@ block content
         table#eml-inspect.table.table-bordered.table-striped
           tr
             th(scope="row") pos
-            td(colspan="2") P#[span.text-info {{ h.pos }}], B#[span.text-info {{ h.pos >> 4 }}]P#[span.text-info {{ h.pos & 0xF }}], S#[span.text-info {{ h.pos >> 6 }}]B#[span.text-info {{ (h.pos >> 4) & 0x3 }}]P#[span.text-info {{ h.pos & 0xF }}]
+            td(colspan="2") P#[span.text-info {{ h.pos }}], B#[span.text-info {{ h.pos >> 4 }}]##[span.text-info {{ h.pos & 0xF }}], S#[span.text-info {{ h.pos >> 6 }}]B#[span.text-info {{ (h.pos >> 4) & 0x3 }}]##[span.text-info {{ h.pos & 0xF }}]
           tr
             th(scope="row") getUint8
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUint8(h.pos, h.littleEndian) }}
