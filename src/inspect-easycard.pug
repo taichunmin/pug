@@ -522,7 +522,7 @@ block script
       get quotaOnce () { return this.pack.getUint16(85) } // 日單次限額
       get quotaUsed () { return this.pack.getUint16(1005) } // 日已用限額
       get type () { return this.getNameU8('cardTypes', 93) } // 卡別
-      get uid () { return this.pack.subarray(0, 4).rhex } // 卡片編號
+      get uid () { return this.pack.getUint32(0) } // 卡片編號
     }
     window.vm = new Vue({
       el: '#app',
