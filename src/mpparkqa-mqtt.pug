@@ -1,0 +1,319 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'MPPARKQA 主控端'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .img-plate
+        width: 60%
+        aspect-ratio: 16/9
+        border-radius: .25rem 0 0 .25rem
+
+block content
+  #app.my-3.container.text-monospace(v-cloak)
+    h2.mb-3.text-center= title
+    .row
+      .col-12.col-md-3
+        .form-group
+          label.mb-0.d-flex.align-items-center
+            i.mr-1.fa.fa-wifi.text-success(v-if="conn")
+            i.mr-1.fa.fa-wifi.text-danger(v-else)
+            | MQTT 伺服器
+          button.btn.mt-2.btn-block.btn-success(type="button", @click="btnMqttConnect") 連線到伺服器
+          button.btn.mt-2.btn-block.btn-primary(type="button", @click="btnDeviceAdd('plate')") 新增車牌螢幕
+          button.btn.mt-2.btn-block.btn-outline-danger(type="button", @click="btnReset") 重設所有資料
+        .form-group
+          label.mb-0 車牌相簿
+          button.btn.mt-2.btn-block.btn-success(type="button") 重新抓取相簿
+          button.btn.mt-2.btn-block.btn-primary(type="button") 修改 CSV 網址
+      .col-12.col-md-9
+        .card(v-for="device of devices")
+          .d-flex
+            template(v-for="deviceImg of [device?.config?.img ?? 'https://i.imgur.com/aFjrHcA.png']")
+              img.img-plate(:src="deviceImg", :key="deviceImg")
+            .card-body
+              h5.card-title.d-flex.align-items-center
+                template(v-for="deviceStatus of [device?.state?.status]")
+                  i.mr-1.fa.fa-wifi.text-success(v-if="deviceStatus === 'online'")
+                  i.mr-1.fa.fa-wifi.text-danger(v-else-if="deviceStatus === 'offline'")
+                  i.mr-1.fa.fa-question-circle.text-secondary(v-else)
+                span.mr-1 車牌螢幕
+                pre.mb-0 {{ device.id }}
+              button.btn.btn-sm.mt-2.btn-block.btn-success(type="button", @click="btnDeviceQr(device)") 螢幕 QR 碼
+              button.btn.btn-sm.mt-2.btn-block.btn-primary(type="button", @click="btnPlateSetImg(device)") 切換圖片
+              button.btn.btn-sm.mt-2.btn-block.btn-outline-danger(type="button", @click="btnPlateDel(device)") 刪除設備
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/mqtt@4/dist/mqtt.min.js")
+  script.
+    window.middlewareCompose = middleware => {
+      // 型態檢查
+      if (!_.isArray(middleware)) throw new TypeError('Middleware stack must be an array!')
+      if (_.some(middleware, fn => !_.isFunction(fn))) throw new TypeError('Middleware must be composed of functions!')
+
+      return async (context = {}, next) => {
+        const cloned = [...middleware, ...(_.isFunction(next) ? [next] : [])]
+        const executed = _.times(cloned.length + 1, () => 0)
+        const dispatch = async cur => {
+          if (executed[cur] !== 0) throw new Error(`middleware[${cur}] called multiple times`)
+          if (cur >= cloned.length) {
+            executed[cur] = 2
+            return
+          }
+          try {
+            executed[cur] = 1
+            const result = await cloned[cur](context, () => dispatch(cur + 1))
+            if (executed[cur + 1] === 1) throw new Error(`next() in middleware[${cur}] should be awaited`)
+            executed[cur] = 2
+            return result
+          } catch (err) {
+            executed[cur] = 3
+            throw err
+          }
+        }
+        return await dispatch(0)
+      }
+    }
+    const mqttOnMessageHandler = window.middlewareCompose([
+      async (ctx, next) => { // 處理設備 config 及 state
+        const { message, topic, vm } = ctx
+        const topicMatch = /^mpparkqa\/([^/]+)\/(config|state)$/.exec(topic)
+        if (!topicMatch) return await next()
+        const device = _.find(vm.devices, d => d.id === topicMatch[1])
+        if (!device) return await next()
+        if (message.type !== 'plate') return
+        vm.$set(device, topicMatch[2], message)
+      },
+    ])
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        conn: null,
+        devices: [],
+        h: {
+          album: '',
+          mqttHost: 'wss://rw:readwrite@test.mosquitto.org:8091',
+          devices: [],
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      methods: {
+        async btnMqttConnect () {
+          try {
+            const { value: mqttHost } = await Swal.fire({
+              input: 'url',
+              inputLabel: '只能輸入 wss:// 的網址',
+              inputValue: this.h.mqttHost,
+              showCancelButton: true,
+              title: 'MQTT 伺服器網址',
+              inputAttributes: {
+                autocapitalize: 'none',
+                autocorrect: 'off',
+                inputmode: 'url',
+              },
+              inputValidator: value => {
+                try {
+                  const tmp = new URL(value)
+                  if (tmp.protocol !== 'wss:') throw new Error('只能輸入 wss:// 的網址')
+                } catch (err) {
+                  return err.message
+                }
+              },
+            })
+            if (!mqttHost) return
+
+            this.showLoading('請稍候', '正在連線到 MQTT 伺服器')
+            // 連線到 MQTT 伺服器
+            this.h.mqttHost = mqttHost
+            this.conn = await new Promise((resolve, reject) => {
+              const conn = window.mqtt.connect(mqttHost)
+              conn.on('connect', () => resolve(conn))
+              conn.on('error', err => reject(err))
+            })
+            this.conn.on('message', this.mqttOnMessage)
+
+            // 取得所有設備的狀態
+            await Promise.all(_.map(this.h.devices, async device => {
+              if (device.type === 'plate') return await this.mqttPlateAdd(device)
+            }))
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '連線失敗', text: err.message })
+          }
+        },
+        async btnDeviceAdd (type) {
+          const { value: deviceId } = await Swal.fire({
+            input: 'text',
+            inputLabel: `程式會幫設備名稱前加上 ${type}- 前綴`,
+            showCancelButton: true,
+            title: '請輸入設備名稱',
+            inputValidator: value => /^[^/#+]+$/.test(value) ? null : '含有非法字元',
+            inputAttributes: {
+              autocapitalize: 'none',
+              autocorrect: 'off',
+              inputmode: 'url',
+            },
+          })
+          if (!deviceId) return
+          const device = { type, id: `${type}-${deviceId}` }
+          this.h.devices.push(device)
+          await this.mqttPlateAdd(device)
+        },
+        async btnDeviceQr (device) {
+          try {
+            const url = new URL('mpparkqa-mqtt-plate.html', location)
+            url.searchParams.set('device', device.id)
+            url.searchParams.set('host', this.h.mqttHost)
+            const svg = await QRCode.toString(url.href, { margin: 0 })
+            await Swal.fire({ title: device.id, html: svg })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnPlateSetImg (device) {
+          try {
+            const { value: img } = await Swal.fire({
+              input: 'url',
+              inputLabel: '只能輸入 https:// 的網址',
+              inputValue: device?.config?.img,
+              showCancelButton: true,
+              title: '新的圖片網址',
+              inputAttributes: {
+                autocapitalize: 'none',
+                autocorrect: 'off',
+                inputmode: 'url',
+              },
+              inputValidator: value => {
+                try {
+                  const tmp = new URL(value)
+                  if (tmp.protocol !== 'https:') throw new Error('只能輸入 https:// 的網址')
+                } catch (err) {
+                  return err.message
+                }
+              },
+            })
+            if (!img) return
+            this.showLoading('請稍候', '正在切換圖片...')
+            await this.mqttPublish(device.topicConfig, { type: 'plate', img }, { qos: 1, retain: true })
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設資料',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否重設本頁面的資料？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+        async mqttSubscribe (topic, options) {
+          return await new Promise((resolve, reject) => {
+            this.conn.subscribe(topic, options, (err, granted) => err ? reject(err) : resolve(granted))
+          })
+        },
+        async mqttUnsubscribe (topic) {
+          return await new Promise((resolve, reject) => {
+            this.conn.unsubscribe(topic, err => err ? reject(err) : resolve())
+          })
+        },
+        async mqttPublish (topic, message, options) {
+          if (!_.isString(topic)) throw new Error('topic is required')
+          if (!_.isString(message)) message = JSON.stringify(message)
+          return await new Promise((resolve, reject) => {
+            this.conn.publish(topic, message, options, err => err ? reject(err) : resolve())
+          })
+        },
+        async mqttOnMessage (topic, message) {
+          try {
+            message = JSON.parse(message.toString())
+            console.log({ topic, message })
+            await mqttOnMessageHandler({
+              message,
+              topic,
+              vm: this,
+            })
+          } catch (err) {
+            console.error(err)
+          }
+        },
+        async mqttPlateAdd (device) {
+          try {
+            if (!device?.id) throw new Error('device.id is required')
+            this.showLoading('請稍候', '正在新增設備...')
+            device = {
+              ...device,
+              config: null,
+              state: null,
+              topicConfig: `mpparkqa/${device.id}/config`,
+              topicState: `mpparkqa/${device.id}/state`,
+            }
+            this.devices.push(device)
+            await this.mqttSubscribe([
+              device.topicConfig,
+              device.topicState,
+            ], { qos: 1 })
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnPlateDel (device) {
+          try {
+            this.showLoading('請稍候', '正在移除設備...')
+            await this.mqttUnsubscribe([ // unsubscribe mqtt
+              device.topicConfig,
+              device.topicState,
+            ])
+            let tmp = this.devices.indexOf(device)
+            if (tmp >= 0) this.devices.splice(tmp, 1)
+            tmp = _.findIndex(this.h.devices, ['id', device.id])
+            if (tmp >= 0) this.h.devices.splice(tmp, 1)
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => Swal.showLoading(),
+          })
+        },
+      },
+    })

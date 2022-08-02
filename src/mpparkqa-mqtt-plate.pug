@@ -1,0 +1,124 @@
+extends /layout/default
+
+block beforehtml
+  - const title = 'MPPARKQA 車牌螢幕'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+
+block content
+  #app.my-3.container-fluid.text-monospace(v-cloak)
+    h2.mb-3.text-center {{ title }}
+    .d-flex.justify-content-center.align-items-center(ref="img", @click="btnFullScreen")
+      img.w-100(:src="img", :key="img")
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/mqtt@4/dist/mqtt.min.js")
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        conn: null,
+        device: '',
+        img: '',
+        title: 'MPPARKQA 車牌螢幕',
+        topicConfig: null,
+        topicState: null,
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        await this.init()
+      },
+      methods: {
+        async init () {
+          try {
+            // /mpparkqa-mqtt-plate.html?device=plate-0001&host=wss%3A%2F%2Frw%3Areadwrite%40test.mosquitto.org%3A8091
+            this.showLoading('請稍候', '讀取資料中')
+            const device = this.param('device')
+            if (!device) throw new Error('device is required')
+            this.title = `MPPARKQA 車牌螢幕 (${device})` // 顯示設備名稱
+            this.device = device
+            const host = this.param('host')
+            if (!host) throw new Error('host is required')
+
+            this.topicConfig = `mpparkqa/${device}/config`
+            this.topicState = `mpparkqa/${device}/state`
+
+            this.conn = await new Promise((resolve, reject) => {
+              const conn = window.mqtt.connect(host, {
+                will: {
+                  payload: JSON.stringify({ type: 'plate', status: 'offline' }),
+                  qos: 1,
+                  retain: true,
+                  topic: this.topicState,
+                },
+              })
+              conn.on('connect', () => resolve(conn))
+              conn.on('error', err => reject(err))
+            })
+
+            this.conn.on('message', this.mqttOnMessage)
+            await this.mqttSubscribe(this.topicConfig, { qos: 1 })
+            await this.mqttPublish(this.topicState, { type: 'plate', status: 'online' }, { qos: 1, retain: true })
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+            location.reload()
+          }
+        },
+        async mqttSubscribe (topic, options) {
+          if (!_.isString(topic)) throw new Error('topic is required')
+          return await new Promise((resolve, reject) => {
+            this.conn.subscribe(topic, options, (err, granted) => err ? reject(err) : resolve(granted))
+          })
+        },
+        async mqttPublish (topic, message, options) {
+          if (!_.isString(topic)) throw new Error('topic is required')
+          if (!_.isString(message)) message = JSON.stringify(message)
+          return await new Promise((resolve, reject) => {
+            this.conn.publish(topic, message, options, err => err ? reject(err) : resolve())
+          })
+        },
+        async mqttOnMessage (topic, message) {
+          console.log({ topic, message })
+          if (topic === this.topicConfig) {
+            // await vm.mqttPublish(vm.topicConfig, { type: 'plate', img: 'https://i.imgur.com/ALfHsUN.png' }, { qos: 1, retain: true })
+            const data = JSON.parse(message.toString())
+            if (data.type !== 'plate' && !data.img) return
+            this.img = data.img
+          }
+        },
+        async btnFullScreen () {
+          const dom = this.$refs.img
+          const fn = _.find(['requestFullscreen', 'msRequestFullscreen', 'mozRequestFullScreen', 'webkitRequestFullscreen'], i => dom[i])
+          if (fn) dom[fn]()
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => Swal.showLoading(),
+          })
+        },
+        param (key, defaultValue) {
+          const val = new URL(location).searchParams.get(key)
+          return _.isNil(val) ? defaultValue : val
+        },
+      },
+    })
