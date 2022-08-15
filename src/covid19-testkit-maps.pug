@@ -98,12 +98,13 @@ block script
         async showNews () {
           // 2022/04/27 https://i.imgur.com/bMYwVbC.jpeg
           // 2022/06/06 https://i.imgur.com/1LXGFkC.jpeg
-          const NEWS_TIMESTAMP = '2022/06/06'
+          // 2022/08/15 https://i.imgur.com/wcmhqEu.jpeg
+          const NEWS_TIMESTAMP = '2022/08/15'
           if (this.h.lastNews === NEWS_TIMESTAMP) return
           const result = await Swal.fire({
             cancelButtonText: '與開發者聯絡',
             confirmButtonText: '我知道了',
-            imageUrl: 'https://i.imgur.com/1LXGFkC.jpeg',
+            imageUrl: 'https://i.imgur.com/wcmhqEu.jpeg',
             reverseButtons: true,
             showCancelButton: true,
             customClass: {
