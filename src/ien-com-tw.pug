@@ -231,33 +231,33 @@ block script
             console.error(err)
           }
         },
-        async fetchIenConfig (cid) { // copy(await vm.fetchIenConfig(2831))
-            const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='loadConfigFile' customerid='${cid}' page='0' querylevel=''></request>`
-            let xml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-            }), 'data')
-            xml = _.unescape(/<xml>(.*)<\/xml>/.exec(xml.replace(/\r?\n/g, ''))?.[1])
-            //- console.log(xml)
-            xml = xml.replace(/> +</g, '><').replace(/'/g, '"').replace(/<(?!Component)[^>]+>/g, '').replace('GraphicControl.action', '').replace(/\s+(fontfamily|gaugesetting|group|height|minimum|mouseover|name|precision|priorityalias|rangeimagesetting|rowheight|tagsystemtype|tagtype|textalign|tooltip|type|valuealiases|width)="[^"]*"/g, '').replace(/\w+=""/g, '')
-            const doc = new DOMParser().parseFromString(`<config>${xml}</config>`, 'text/xml')
-            const parseAttrVal = val => {
-              if (/^([1-9]\d{0,9}|0)$/.test(val)) return _.toSafeInteger(val)
-              return val
-            }
-            let compons = doc.querySelectorAll('Component')
-            compons = _.map(compons, c => _.fromPairs(_.sortBy(_.map(c.attributes, attr => [attr.name, parseAttrVal(attr.value)]), [0])))
-            compons = _.orderBy(compons, ['x', 'y'], ['asc', 'asc'])
-            for (let i = 0; i < compons.length; i++) {
-              for (let j = i + 1; j < compons.length; j++) {
-                const [c1, c2] = [compons[i], compons[j]]
-                if (c2.x - c1.x > 4) {
-                  i = j - 1
-                  break
-                }
-                c2.x = c1.x
+        async fetchIenConfig (cid) { // await vm.fetchIenConfig(2831)
+          const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='loadConfigFile' customerid='${cid}' page='0' querylevel=''></request>`
+          let xml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+          }), 'data')
+          xml = _.unescape(/<xml>(.*)<\/xml>/.exec(xml.replace(/\r?\n/g, ''))?.[1])
+          //- console.log(xml)
+          xml = xml.replace(/> +</g, '><').replace(/'/g, '"').replace(/<(?!Component)[^>]+>/g, '').replace('GraphicControl.action', '').replace(/\s+(fontfamily|gaugesetting|group|height|minimum|mouseover|name|precision|priorityalias|rangeimagesetting|rowheight|tagsystemtype|tagtype|textalign|tooltip|type|valuealiases|width)="[^"]*"/g, '').replace(/\w+=""/g, '')
+          const doc = new DOMParser().parseFromString(`<config>${xml}</config>`, 'text/xml')
+          const parseAttrVal = val => {
+            if (/^([1-9]\d{0,9}|0)$/.test(val)) return _.toSafeInteger(val)
+            return val
+          }
+          let compons = doc.querySelectorAll('Component')
+          compons = _.map(compons, c => _.fromPairs(_.sortBy(_.map(c.attributes, attr => [attr.name, parseAttrVal(attr.value)]), [0])))
+          compons = _.orderBy(compons, ['x', 'y'], ['asc', 'asc'])
+          for (let i = 0; i < compons.length; i++) {
+            for (let j = i + 1; j < compons.length; j++) {
+              const [c1, c2] = [compons[i], compons[j]]
+              if (c2.x - c1.x > 4) {
+                i = j - 1
+                break
               }
+              c2.x = c1.x
             }
-            return _.orderBy(compons, ['x', 'y'], ['asc', 'asc'])
+          }
+          return _.orderBy(compons, ['x', 'y'], ['asc', 'asc'])
         },
         progressPercent (numerator, denominator) {
           ;[numerator, denominator] = _.map([numerator, denominator], _.toFinite)
