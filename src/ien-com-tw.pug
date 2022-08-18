@@ -12,58 +12,76 @@ block style
         font-family: 'Noto Sans TC', sans-serif
       .letter-spacing-n15
         letter-spacing: -1.5px
+      .font-size-dot8
+        font-size: 80%
 
 block content
-  #app.my-3.container-fluid.text-monospace(v-cloak)
-    h2.mb-3.text-center 現在時間 {{ cur?.format('HH:mm:ss') }}
-    //- .row.mx-n1.row-cols-1.row-cols-md-2.row-cols-lg-3
-    //-   .col.px-1.mb-3(v-for="ien of iens")
-    //-     .card.text-monospace
-    //-       .card-header.d-flex.align-items-center.px-3
-    //-         a.flex-fill(target="_blank", :href="`https://ien.com.tw/portal/iengcHTML5/canvas.html?customerid=${ien.id}&page=0`") {{ ien.名稱 }} #[i.fa.fa-external-link]
-    //-         small.letter-spacing-n15(:class="(cur ?? 0) - (ien.時間 ?? 0) >= 5e3 ? 'text-danger' : 'text-muted'") #[i.fa.fa-clock-o.mr-1]{{ ien.時間?.format('HH:mm:ss') ?? '?' }}
-    //-       .card-body.px-2.pt-2.pb-0
-    //-         .row.mx-n1
-    //-           .col-6.px-1.mb-2(v-if="ien.溫度"): .input-group.input-group-sm
-    //-             .input-group-prepend: span.input-group-text.letter-spacing-n15 溫度
-    //-             input.form-control.text-right(readonly, :value="`${_.round(ien.溫度, 1)} ℃`")
-    //-           .col-6.px-1.mb-2(v-if="ien.日照強度"): .input-group.input-group-sm
-    //-             .input-group-prepend: span.input-group-text.letter-spacing-n15 日照強度
-    //-             input.form-control.text-right(readonly, :value="`${_.round(ien.日照強度, 1)} W/m²`")
-    //-           .col-6.px-1.mb-2(v-if="ien.RA值"): .input-group.input-group-sm
-    //-             .input-group-prepend: span.input-group-text.letter-spacing-n15 RA值
-    //-             input.form-control.text-right(readonly, :value="`${_.round(ien.RA值, 1)} %`")
-    //-       ul.list-group.list-group-flush
-    //-         li.list-group-item.p-2.d-flex.flex-column(v-for="device of ien.設備")
-    //-           h6 #[i.fa.fa-sun-o] {{ device.名稱 }}
-    //-           template(v-for="dp of [progressPercent(device.交流輸出功率, device.max)]")
-    //-             small.row.no-gutters
-    //-               .col-4.text-muted 交流輸出功率
-    //-               .col-8.text-right.letter-spacing-n15 {{ _.round(device.交流輸出功率, 1) }} / {{ _.round(device.max, 1) }} ({{ _.round(dp, 1) }} %)
-    //-             .progress(style="height: 0.5rem")
-    //-               .progress-bar(:style="{ 'background-color': '#1fb52d', width: `${_.clamp(dp, 40)}%` }")
-    //-               .progress-bar(:style="{ 'background-color': '#ebeb1f', width: `${_.clamp(dp, 60) - 40}%` }", v-if="dp >= 40")
-    //-               .progress-bar(:style="{ 'background-color': '#eb631f', width: `${_.clamp(dp, 80) - 60}%` }", v-if="dp >= 60")
-    //-               .progress-bar(:style="{ 'background-color': '#eb1f1f', width: `${_.clamp(dp, 100) - 80}%` }", v-if="dp >= 80")
-    //-           small.mt-2.row.no-gutters
-    //-             .col-3.text-muted 狀態
-    //-             .col-9.mx-n1
-    //-               template(v-for="status, statusIdx of device.狀態")
-    //-                 span.badge.badge-pill.ml-1.badge-success(v-if="status === '2.0'", title="運轉中") {{ statusIdx + 1 }}
-    //-                 span.badge.badge-pill.ml-1.badge-warning(v-else-if="status === '3.0'", title="無直流") {{ statusIdx + 1 }}
-    //-                 span.badge.badge-pill.ml-1.badge-danger(v-else-if="status === '4.0'", title="異常") {{ statusIdx + 1 }}
-    //-                 span.badge.badge-pill.ml-1.badge-secondary(v-else, :title="`其他 (${status})`") {{ statusIdx + 1 }}
+  #app.my-3.container.text-monospace(v-cloak)
+    h3.mb-3.text-center(v-if="!updatedAt") 正在更新資料...
+    h3.mb-3.text-center(v-else, :class="(cur ?? 0) - (updatedAt ?? 0) >= 5e3 ? 'text-danger' : ''") 更新於 {{ updatedAt?.format('HH:mm') }} ({{ formatDuration(cur - updatedAt) }})
+    .table-responsive
+      table.table.table-bordered.table-sm.text-center.table-monospace
+        thead.thead-dark.font-size-dot8: tr
+          th.text-nowrap(scope="col", style="min-width: 4rem") 名稱
+          th.text-nowrap(scope="col", style="width: 20%") 溫度
+          th.text-nowrap(scope="col", style="width: 20%") 日照強度
+          th.text-nowrap(scope="col", style="width: 20%") RA值
+        tbody
+          template(v-for="device of _.map(devices, tagEval)")
+            tr
+              td.align-middle(rowspan="2")
+                | {{ device.名稱 }}
+                a.ml-2(v-if="device.編號", target="_blank", :href="`https://ien.com.tw/portal/iengcHTML5/canvas.html?customerid=${device.編號}&page=0`")
+                  i.fa.fa-external-link
+              td.letter-spacing-n15.font-size-dot8.text-nowrap #[i.fa.fa-thermometer-half] {{ _.isNil(device.溫度) ? '?' : _.round(device.溫度, 1) }} ℃
+              td.letter-spacing-n15.font-size-dot8.text-nowrap #[i.fa.fa-sun-o] {{ _.isNil(device.日照強度) ? '?' : _.round(device.日照強度, 1) }} W/m²
+              td.letter-spacing-n15.font-size-dot8.text-nowrap #[i.fa.fa-tachometer] {{ _.isNil(device.RA值) ? '?' : _.round(device.RA值, 1) }} %
+            tr: td.text-left.px-3(colspan="3")
+              template(v-for="dp of [progressPercent(device.交流輸出功率, device.交流輸出功率上限)]")
+                .font-size-dot8.d-flex.justify-content-between
+                  .text-muted.text-nowrap #[i.fa.fa-random] 交流輸出功率
+                  .text-nowrap.letter-spacing-n15 {{ _.round(device.交流輸出功率, 1) }} / {{ _.round(device.交流輸出功率上限, 1) }} ({{ _.round(dp, 1) }} %)
+                .progress(style="height: 0.5rem")
+                  .progress-bar(:style="{ 'background-color': '#1fb52d', width: `${_.clamp(dp, .1, 40)}%` }")
+                  .progress-bar(:style="{ 'background-color': '#ebeb1f', width: `${_.clamp(dp, 60) - 40}%` }", v-if="dp >= 40")
+                  .progress-bar(:style="{ 'background-color': '#eb631f', width: `${_.clamp(dp, 80) - 60}%` }", v-if="dp >= 60")
+                  .progress-bar(:style="{ 'background-color': '#eb1f1f', width: `${_.clamp(dp, 100) - 80}%` }", v-if="dp >= 80")
+              .font-size-dot8.d-flex.justify-content-between.mt-2
+                .text-muted.text-nowrap #[i.fa.fa-heartbeat] 逆變器狀態
+                .d-flex.justify-content-end.align-items-center
+                  template(v-for="inv, invIdx of device.invs")
+                    span.badge.badge-pill.ml-1.badge-success(v-if="inv.狀態 === 2", title="運轉中") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.badge-warning(v-else-if="inv.狀態 === 3", title="無直流") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.badge-danger(v-else-if="inv.狀態 === 4", title="異常") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.badge-secondary(v-else, :title="`其他 (${inv.狀態})`") {{ invIdx }}
+              template(v-for="directMax of [_.max(_.map(device.invs, inv => _.keys(inv.直流輸入電流).length))]")
+                details.mt-2(v-if="directMax > 0")
+                  summary.font-size-dot8.letter-spacing-n15 點此收合逆變器的「直流輸入電流」表格
+                  .table-responsive
+                    table.table.table-sm.text-center.mb-1
+                      thead.thead-dark: tr
+                        th.font-size-dot8(scope="col") &nbsp;
+                        th.font-size-dot8.text-nowrap(v-for="directIdx of directMax", scope="col") {{ directIdx }}
+                      tbody(v-for="invIdxMax of [_.keys(device.invs).length]")
+                        tr(v-for="invIdx of invIdxMax")
+                          th.text-nowrap.font-size-dot8(scope="row") INV {{ invIdx }}
+                          td(v-for="directIdx of directMax")
+                            .font-size-dot8(v-if="!_.hasIn(device.invs, `${invIdx}.直流輸入電流.${directIdx}`)") &nbsp;
+                            template(v-else, v-for="directCurrent of [device.invs[invIdx].直流輸入電流[directIdx] ?? null]")
+                              .font-size-dot8.letter-spacing-n15.text-nowrap {{ _.isNil(directCurrent) ? '?' : _.round(directCurrent, 1) }} A
 
 block script
   script.
-    window.sleep = t => new Promise(resolve => setTimeout(resolve, t))
+    const isFiniteStr = str => _.isString(str) && /^([1-9]\d*|0)([.]\d+)?$/.test(str)
+    const isHex32 = str => /^[0-9a-fA-F]{32}$/.test(str)
+    const sleep = t => new Promise(resolve => setTimeout(resolve, t))
     window.vm = new Vue({
       el: '#app',
       data: {
         cur: null,
         devices: {},
-        ienSetter: new Map(),
-        invPaths: new Map(),
+        ienTags: new Map(),
+        updatedAt: null,
       },
       async mounted () {
         await this.init()
@@ -71,16 +89,19 @@ block script
       methods: {
         async init () {
           try {
-            await this.initIenSetter()
-            //- this.loopFn(() => this.updateIenValue())
+            this.showLoading('請稍候…', '正在載入中')
+            await this.initConf()
+            await this.updateIenValue()
+            this.loopFn(() => this.updateIenValue())
             this.loopFn(() => this.cur = dayjs())
+            Swal.close()
           } catch (err) {
             console.error(err)
             await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
             location.reload()
           }
         },
-        async initIenSetter () {
+        async initConf () {
           const [confDevices, confInverters] = await Promise.all([
             this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTLb0um9gIogNQ9gLxtGoMDyjto1C3FoROTPS-q3nz1KQrc7lMLiAeaNVbgmwqbp4ioQ6tITfYokXgz/pub?gid=0&single=true&output=csv'), // 光電設備資料
             this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTLb0um9gIogNQ9gLxtGoMDyjto1C3FoROTPS-q3nz1KQrc7lMLiAeaNVbgmwqbp4ioQ6tITfYokXgz/pub?gid=405324759&single=true&output=csv'), // 逆變器直流迴路資料
@@ -88,59 +109,42 @@ block script
           console.log({ confDevices, confInverters })
           for (const row of confDevices) {
             const device = {
-              日照強度: null,
-              交流輸出功率: null,
-              溫度: null,
               invs: {},
-              max: _.toSafeInteger(row.交流輸出功率上限),
-              name: row.名稱,
-              RA值: null,
             }
-            if (!device.max || !device.name) continue
+            for (let [k, v] of _.toPairs(row)) {
+              ;[k, v] = _.map([k, v], _.trim)
+              if (isHex32(v)) this.ienTags.set(v, null)
 
-            for (let [field, uuid] of _.toPairs(row)) {
-              uuid = _.trim(uuid)
-              if (!/^[0-9a-fA-F]{32}$/.test(uuid)) continue
-
-              if (/^逆變器\d+$/.test(field)) { // 設定逆變器狀態
-                const invNo = _.toSafeInteger(field.slice(3))
-                device.invs[invNo] = { 狀態: null, directNoMax: 0, 直流輸入電流: {} }
-                this.invPaths.set(uuid, [device.name, invNo])
-                this.ienSetter.set(uuid, ({ newVal, nowts }) => {
-                  const tmp = this?.devices?.[device.name]?.invs?.[invNo]
-                  if (!tmp) return
-                  this.$set(tmp, '狀態', _.toSafeInteger(newVal))
-                })
-              } else if (_.includes(['溫度', '日照強度', 'RA值', '交流輸出功率'], field)) {
-                this.ienSetter.set(uuid, ({ newVal, nowts }) => {
-                  const tmp = this?.devices?.[device.name]
-                  if (!tmp) return
-                  this.$set(tmp, field, _.toFinite(newVal))
-                })
+              if (/^逆變器\d+$/.test(k)) { // 設定逆變器狀態
+                if (!isHex32(v)) continue
+                const invNo = _.toSafeInteger(k.slice(3))
+                _.set(device, `invs.${invNo}`, { 狀態: v, 直流輸入電流: {} })
+              } else if (isFiniteStr(v)) _.set(device, k, _.toFinite(v)) // 設定浮點數資料
+              else _.set(device, k, v === '' ? null : v) // 設定其他資料
+            }
+            this.$set(this.devices, device.名稱, device)
+          }
+          const findInvByUuid = uuid => {
+            uuid = _.trim(uuid)
+            if (!isHex32(uuid)) return null
+            for (const tmpDevice of _.values(this.devices)) {
+              for (const tmpInv of _.values(tmpDevice.invs)) {
+                if (tmpInv.狀態 === uuid) return tmpInv
               }
             }
-            this.$set(this.devices, device.name, device)
+            return null
           }
-
           for (const row of confInverters) {
-            const invUuid = row.逆變器
-            if (!/^[0-9a-fA-F]{32}$/.test(invUuid)) continue
-            const [deviceName, invNo] = this.invPaths.get(invUuid)
-            const inv = this?.devices?.[deviceName]?.invs?.[invNo]
+            const inv = findInvByUuid(row.逆變器)
             if (!inv) continue
 
-            for (let [field, uuid] of _.toPairs(row)) {
-              uuid = _.trim(uuid)
-              if (!/^[0-9a-fA-F]{32}$/.test(uuid)) continue
-
-              if (/^直流輸入電流\d+$/.test(field)) { // 設定直流輸入電流
-                const directNo = _.toSafeInteger(field.slice(6))
-                this.$set(inv, 'directNoMax', Math.max(inv.directNoMax, directNo))
-                this.ienSetter.set(uuid, ({ newVal, nowts }) => {
-                  const tmp = this?.devices?.[deviceName]?.invs?.[invNo]
-                  if (!tmp) return
-                  this.$set(tmp.直流輸入電流, directNo, _.toSafeInteger(newVal))
-                })
+            for (let [k, v] of _.toPairs(row)) {
+              ;[k, v] = _.map([k, v], _.trim)
+              if (!isHex32(v)) continue
+              this.ienTags.set(v, null)
+              if (/^直流輸入電流\d+$/.test(k)) { // 設定直流輸入電流
+                const directNo = _.toSafeInteger(k.slice(6))
+                this.$set(inv.直流輸入電流, directNo, v)
               }
             }
           }
@@ -154,22 +158,21 @@ block script
         },
         async updateIenValue () {
           try {
-            const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>` + _.map([...this.ienSetter.keys()], key => `<tag id='${key}'/>`).join('') + `</request>`
+            const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>` + _.map([...this.ienTags.keys()], key => `<tag id='${key}'/>`).join('') + `</request>`
             const resxml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
               headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
             }), 'data')
-            const nowts = dayjs()
             for (const match of resxml.matchAll(/id="([^"]+)"[^>]+result="([^"]+)"[^>]+value="([^"]+)"/g)) {
               try {
-                this.ienSetter.get(match[1])?.({
-                  newVal: match[2] === '0' ? match[3] : null,
-                  nowts,
-                })
+                let v = match[2] === '0' ? _.trim(match[3]) : null
+                if (isFiniteStr(v)) v = _.toFinite(v)
+                this.ienTags.set(match[1], v)
               } catch (err) {
                 console.error(err)
                 console.log(`match = ${JSON.stringify(match.slice(1))}`)
               }
             }
+            this.updatedAt = dayjs()
           } catch (err) {
             console.error(err)
           }
@@ -183,10 +186,30 @@ block script
             header: true,
           }), 'data', [])
         },
+        tagEval (obj) {
+          if (_.isArray(obj)) return _.map(obj, this.tagEval)
+          if (!_.isPlainObject(obj)) return (_.isString(obj) && isHex32(obj)) ? this.ienTags.get(obj) : obj
+          return _.mapValues(obj, this.tagEval)
+        },
+        formatDuration (tsInterval) {
+          if (_.isNaN(tsInterval)) return '? 秒前'
+          tsInterval = Math.max(0, tsInterval)
+          if (tsInterval < 1e5) return `${_.floor(tsInterval / 1e3)} 秒前` // 100 秒
+          if (tsInterval < 6e6) return `${_.floor(tsInterval / 6e4, 1)} 分鐘前` // 100 分鐘
+        },
         progressPercent (numerator, denominator) {
           ;[numerator, denominator] = _.map([numerator, denominator], _.toFinite)
           const percent = _.clamp(numerator / denominator * 100, 100)
           return _.isNaN(percent) ? 0 : percent
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
         },
       },
     })
