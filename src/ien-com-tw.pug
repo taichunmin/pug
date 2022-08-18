@@ -16,43 +16,43 @@ block style
 block content
   #app.my-3.container-fluid.text-monospace(v-cloak)
     h2.mb-3.text-center 現在時間 {{ cur?.format('HH:mm:ss') }}
-    .row.mx-n1.row-cols-1.row-cols-md-2.row-cols-lg-3
-      .col.px-1.mb-3(v-for="ien of iens")
-        .card.text-monospace
-          .card-header.d-flex.align-items-center.px-3
-            a.flex-fill(target="_blank", :href="`https://ien.com.tw/portal/iengcHTML5/canvas.html?customerid=${ien.id}&page=0`") {{ ien.名稱 }} #[i.fa.fa-external-link]
-            small.letter-spacing-n15(:class="(cur ?? 0) - (ien.時間 ?? 0) >= 5e3 ? 'text-danger' : 'text-muted'") #[i.fa.fa-clock-o.mr-1]{{ ien.時間?.format('HH:mm:ss') ?? '?' }}
-          .card-body.px-2.pt-2.pb-0
-            .row.mx-n1
-              .col-6.px-1.mb-2(v-if="ien.溫度"): .input-group.input-group-sm
-                .input-group-prepend: span.input-group-text.letter-spacing-n15 溫度
-                input.form-control.text-right(readonly, :value="`${_.round(ien.溫度, 1)} ℃`")
-              .col-6.px-1.mb-2(v-if="ien.日照強度"): .input-group.input-group-sm
-                .input-group-prepend: span.input-group-text.letter-spacing-n15 日照強度
-                input.form-control.text-right(readonly, :value="`${_.round(ien.日照強度, 1)} W/m²`")
-              .col-6.px-1.mb-2(v-if="ien.RA值"): .input-group.input-group-sm
-                .input-group-prepend: span.input-group-text.letter-spacing-n15 RA值
-                input.form-control.text-right(readonly, :value="`${_.round(ien.RA值, 1)} %`")
-          ul.list-group.list-group-flush
-            li.list-group-item.p-2.d-flex.flex-column(v-for="device of ien.設備")
-              h6 #[i.fa.fa-sun-o] {{ device.名稱 }}
-              template(v-for="dp of [progressPercent(device.交流輸出功率, device.max)]")
-                small.row.no-gutters
-                  .col-4.text-muted 交流輸出功率
-                  .col-8.text-right.letter-spacing-n15 {{ _.round(device.交流輸出功率, 1) }} / {{ _.round(device.max, 1) }} ({{ _.round(dp, 1) }} %)
-                .progress(style="height: 0.5rem")
-                  .progress-bar(:style="{ 'background-color': '#1fb52d', width: `${_.clamp(dp, 40)}%` }")
-                  .progress-bar(:style="{ 'background-color': '#ebeb1f', width: `${_.clamp(dp, 60) - 40}%` }", v-if="dp >= 40")
-                  .progress-bar(:style="{ 'background-color': '#eb631f', width: `${_.clamp(dp, 80) - 60}%` }", v-if="dp >= 60")
-                  .progress-bar(:style="{ 'background-color': '#eb1f1f', width: `${_.clamp(dp, 100) - 80}%` }", v-if="dp >= 80")
-              small.mt-2.row.no-gutters
-                .col-3.text-muted 狀態
-                .col-9.mx-n1
-                  template(v-for="status, statusIdx of device.狀態")
-                    span.badge.badge-pill.ml-1.badge-success(v-if="status === '2.0'", title="運轉中") {{ statusIdx + 1 }}
-                    span.badge.badge-pill.ml-1.badge-warning(v-else-if="status === '3.0'", title="無直流") {{ statusIdx + 1 }}
-                    span.badge.badge-pill.ml-1.badge-danger(v-else-if="status === '4.0'", title="異常") {{ statusIdx + 1 }}
-                    span.badge.badge-pill.ml-1.badge-secondary(v-else, :title="`其他 (${status})`") {{ statusIdx + 1 }}
+    //- .row.mx-n1.row-cols-1.row-cols-md-2.row-cols-lg-3
+    //-   .col.px-1.mb-3(v-for="ien of iens")
+    //-     .card.text-monospace
+    //-       .card-header.d-flex.align-items-center.px-3
+    //-         a.flex-fill(target="_blank", :href="`https://ien.com.tw/portal/iengcHTML5/canvas.html?customerid=${ien.id}&page=0`") {{ ien.名稱 }} #[i.fa.fa-external-link]
+    //-         small.letter-spacing-n15(:class="(cur ?? 0) - (ien.時間 ?? 0) >= 5e3 ? 'text-danger' : 'text-muted'") #[i.fa.fa-clock-o.mr-1]{{ ien.時間?.format('HH:mm:ss') ?? '?' }}
+    //-       .card-body.px-2.pt-2.pb-0
+    //-         .row.mx-n1
+    //-           .col-6.px-1.mb-2(v-if="ien.溫度"): .input-group.input-group-sm
+    //-             .input-group-prepend: span.input-group-text.letter-spacing-n15 溫度
+    //-             input.form-control.text-right(readonly, :value="`${_.round(ien.溫度, 1)} ℃`")
+    //-           .col-6.px-1.mb-2(v-if="ien.日照強度"): .input-group.input-group-sm
+    //-             .input-group-prepend: span.input-group-text.letter-spacing-n15 日照強度
+    //-             input.form-control.text-right(readonly, :value="`${_.round(ien.日照強度, 1)} W/m²`")
+    //-           .col-6.px-1.mb-2(v-if="ien.RA值"): .input-group.input-group-sm
+    //-             .input-group-prepend: span.input-group-text.letter-spacing-n15 RA值
+    //-             input.form-control.text-right(readonly, :value="`${_.round(ien.RA值, 1)} %`")
+    //-       ul.list-group.list-group-flush
+    //-         li.list-group-item.p-2.d-flex.flex-column(v-for="device of ien.設備")
+    //-           h6 #[i.fa.fa-sun-o] {{ device.名稱 }}
+    //-           template(v-for="dp of [progressPercent(device.交流輸出功率, device.max)]")
+    //-             small.row.no-gutters
+    //-               .col-4.text-muted 交流輸出功率
+    //-               .col-8.text-right.letter-spacing-n15 {{ _.round(device.交流輸出功率, 1) }} / {{ _.round(device.max, 1) }} ({{ _.round(dp, 1) }} %)
+    //-             .progress(style="height: 0.5rem")
+    //-               .progress-bar(:style="{ 'background-color': '#1fb52d', width: `${_.clamp(dp, 40)}%` }")
+    //-               .progress-bar(:style="{ 'background-color': '#ebeb1f', width: `${_.clamp(dp, 60) - 40}%` }", v-if="dp >= 40")
+    //-               .progress-bar(:style="{ 'background-color': '#eb631f', width: `${_.clamp(dp, 80) - 60}%` }", v-if="dp >= 60")
+    //-               .progress-bar(:style="{ 'background-color': '#eb1f1f', width: `${_.clamp(dp, 100) - 80}%` }", v-if="dp >= 80")
+    //-           small.mt-2.row.no-gutters
+    //-             .col-3.text-muted 狀態
+    //-             .col-9.mx-n1
+    //-               template(v-for="status, statusIdx of device.狀態")
+    //-                 span.badge.badge-pill.ml-1.badge-success(v-if="status === '2.0'", title="運轉中") {{ statusIdx + 1 }}
+    //-                 span.badge.badge-pill.ml-1.badge-warning(v-else-if="status === '3.0'", title="無直流") {{ statusIdx + 1 }}
+    //-                 span.badge.badge-pill.ml-1.badge-danger(v-else-if="status === '4.0'", title="異常") {{ statusIdx + 1 }}
+    //-                 span.badge.badge-pill.ml-1.badge-secondary(v-else, :title="`其他 (${status})`") {{ statusIdx + 1 }}
 
 block script
   script.
@@ -61,149 +61,89 @@ block script
       el: '#app',
       data: {
         cur: null,
-        iens: [
-          {
-            日照強度: null,
-            名稱: '晉燁',
-            時間: null,
-            溫度: null,
-            id: 2944,
-            RA值: null,
-            設備: [
-              { 交流輸出功率: null, 名稱: '晉燁', max: 450, 狀態: [] },
-            ],
-            mapping: {
-              'ca770a1d67021df6ea055bb2b570aff3': '溫度',
-              'b437a414d5b197018172e90a306ce600': '日照強度',
-              '7907f3f18d0b952554e97e2c726291a5': 'RA值',
-              'f88f7d05fdc8d1ae589652568db4add9': '設備.0.交流輸出功率',
-              '1370c0139ada7862e638cfec34e8afed': '設備.0.狀態.0',
-              'bb761d552705b5ea0223e036887fa38a': '設備.0.狀態.1',
-              '502ce9cfd68831b55ce2d4e3ca2c168b': '設備.0.狀態.2',
-              'b205f3e2f7b49b5040905ac0fe36313a': '設備.0.狀態.3',
-              '854ac53cd35e87e39fce27e2ec135075': '設備.0.狀態.4',
-              'ba6a17436999c30a206a7c12d574c5b0': '設備.0.狀態.5',
-              'beac82f89a3531da78b3c012f8b22337': '設備.0.狀態.6',
-            },
-          },
-          {
-            日照強度: null,
-            名稱: '安立鋼構',
-            時間: null,
-            溫度: null,
-            id: 2867,
-            RA值: null,
-            設備: [
-              { 交流輸出功率: null, 名稱: '安立鋼構', max: 240, 狀態: [] },
-            ],
-            mapping: {
-              '7f25d858831e49dcce5fc705023e5dd9': '溫度',
-              '37ed013465e387422c0798254968b39e': '日照強度',
-              '6cc4e2e0ffb86187320c22fc0b871b80': 'RA值',
-              '2b1e250705f93f9b3b9475949729b7ab': '設備.0.交流輸出功率',
-              '07edd15056f96a0c9a9c58f033f20ea9': '設備.0.狀態.0',
-              '3a78696c4425730bf18573550c581d3c': '設備.0.狀態.1',
-              '44aad8ac93b69d3a6769ff9e467150e8': '設備.0.狀態.2',
-              '6103ea7cf7e04733f7b96d21fb6a05cf': '設備.0.狀態.3',
-              '81fc09e69b7ee641f7eca0960f59d430': '設備.0.狀態.4',
-              '3710e6303bddd373e6c800133e207efa': '設備.0.狀態.5',
-              '8aa24935ce7b73f8d70a03d0cdfbab3a': '設備.0.狀態.6',
-              '11c300e7f39e3c02c6e8e3b0fea7db0f': '設備.0.狀態.7',
-            },
-          },
-          {
-            日照強度: null,
-            名稱: '信鋐工業',
-            時間: null,
-            溫度: null,
-            id: 2831,
-            RA值: null,
-            設備: [
-              { 交流輸出功率: null, 名稱: '信鋐工業', max: 240, 狀態: [] },
-            ],
-            mapping: {
-              '14d7a7661f5e7e8590f98e919fcf6e60': '溫度',
-              '6d54bc4fc1fdaff99f7bd782558c35d0': '日照強度',
-              '6c04ae13d22be5e0ec9e4b660f86ad61': 'RA值',
-              'adacf8b55406b0916e5eec1c3f9630c7': '設備.0.交流輸出功率',
-              '5fe8fc986e5d4bc3d730cf49320538a7': '設備.0.狀態.0',
-              '6d6a977d397b4b1ee499fb19c59d78df': '設備.0.狀態.1',
-              '9c258b62fe6794ad3ac6d0721d9f4369': '設備.0.狀態.2',
-              '9c995e5057d0eec7098b606ddcb25eb4': '設備.0.狀態.3',
-              '165a5845a9f12e543dbe8c5527515618': '設備.0.狀態.4',
-              'cc87cd541ae714435aaf0b280c8dfb13': '設備.0.狀態.5',
-              '1a1c61567c4f952d8570721c6f5ea604': '設備.0.狀態.6',
-              '55d44cd94d3834f1ed96ffc39c9c8cd0': '設備.0.狀態.7',
-            },
-          },
-          {
-            日照強度: null,
-            名稱: '瑞興-王河鐘',
-            時間: null,
-            溫度: null,
-            id: 2715,
-            RA值: null,
-            設備: [
-              { 交流輸出功率: null, 名稱: '瑞興-王河鐘', max: 150, 狀態: [] },
-            ],
-            mapping: {
-              '9aa342d9788071c19db3d8a797637766': '溫度',
-              '693a2effe099423e798051c66b393f39': '日照強度',
-              '08253e918981c5a0550b5e9499f22f70': 'RA值',
-              '9c7aa180733ab83507e18784a5935e3a': '設備.0.交流輸出功率',
-              '5d82a23330d70194a48f97800d517e1f': '設備.0.狀態.0',
-              'ce07b925613fec77d7ddca99fc53a501': '設備.0.狀態.1',
-              '57bce5ae262cb96373a2dc8024c8d6c6': '設備.0.狀態.2',
-              '76027af19c21798ef2eb4efb3076d411': '設備.0.狀態.3',
-              '90ca1b46ae59bc681b27c2d1501678ee': '設備.0.狀態.4',
-            },
-          },
-          {
-            日照強度: null,
-            名稱: '東隆興業',
-            時間: null,
-            溫度: null,
-            id: 1371,
-            RA值: null,
-            設備: [
-              { 交流輸出功率: null, 名稱: '4號', max: 350, 狀態: [] },
-              { 交流輸出功率: null, 名稱: '8號', max: 380, 狀態: [] },
-              { 交流輸出功率: null, 名稱: '11號', max: 450, 狀態: [] },
-            ],
-            mapping: {
-              '37e9ed3cea10300241f6d13a3a72829e': '溫度',
-              '29b10e7f95f47329d15f79158357cae8': '日照強度',
-              '4df21e947cf80414e2152bd969f60186': '設備.0.交流輸出功率',
-              'b4a7cfac12edbb649ce39a445f55f74b': '設備.0.狀態.0',
-              '20e767d62dec968ce17349180cbe6228': '設備.0.狀態.1',
-              '0ef20084c39f653be2c2b2ab8e3c9fdc': '設備.0.狀態.2',
-              'a0060ea35687d7be9f046be75ac74bc7': '設備.0.狀態.3',
-              '8b4fe9121f93cc15ebfb856df03f2e78': '設備.0.狀態.4',
-              '15eaed236edb92de1f3e06ff91c3b65f': '設備.1.交流輸出功率',
-              '903a6b5096451cd444409987a8d73437': '設備.1.狀態.0',
-              '2a7ae2215ed454ca011306bae714017c': '設備.1.狀態.1',
-              'e02ab399f401627499b0027f93b5b5b1': '設備.1.狀態.2',
-              '6a98ef19187fa7a893e384270d1ccc9b': '設備.1.狀態.3',
-              '06cdf765cd11e08b52b66c28cc444397': '設備.1.狀態.4',
-              '1a6f9edfa1bbe62656df14fd105277f9': '設備.1.狀態.5',
-              '9118b4c92b9e0f915aec7b7babb3aa56': '設備.2.交流輸出功率',
-              '573e153db5849ac7ca047ec049672fa4': '設備.2.狀態.0',
-              'e4eb3a240d8b0ce5dc029ce1fa3a3f9f': '設備.2.狀態.1',
-              '4b62a8961be7ee3b9aaf711ed1bdc786': '設備.2.狀態.2',
-              '180c476642a21d2140007a2fa0ec6bb6': '設備.2.狀態.3',
-              '79915e16a6ccb033274126a23aa9226b': '設備.2.狀態.4',
-              'a10a73d9e260329e7de61fc122bb8121': '設備.2.狀態.5',
-              'ea478cf53be23789039833f35fa0f03f': '設備.2.狀態.6',
-            },
-          },
-        ],
+        devices: {},
+        ienSetter: new Map(),
+        invPaths: new Map(),
       },
       async mounted () {
         await this.init()
       },
       methods: {
         async init () {
-          for (const k of _.keys(this.iens)) this.loopFn(() => this.updateIenValue(this.iens, k))
+          try {
+            await this.initIenSetter()
+            //- this.loopFn(() => this.updateIenValue())
+            this.loopFn(() => this.cur = dayjs())
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+            location.reload()
+          }
+        },
+        async initIenSetter () {
+          const [confDevices, confInverters] = await Promise.all([
+            this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTLb0um9gIogNQ9gLxtGoMDyjto1C3FoROTPS-q3nz1KQrc7lMLiAeaNVbgmwqbp4ioQ6tITfYokXgz/pub?gid=0&single=true&output=csv'), // 光電設備資料
+            this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTLb0um9gIogNQ9gLxtGoMDyjto1C3FoROTPS-q3nz1KQrc7lMLiAeaNVbgmwqbp4ioQ6tITfYokXgz/pub?gid=405324759&single=true&output=csv'), // 逆變器直流迴路資料
+          ])
+          console.log({ confDevices, confInverters })
+          for (const row of confDevices) {
+            const device = {
+              日照強度: null,
+              交流輸出功率: null,
+              溫度: null,
+              invs: {},
+              max: _.toSafeInteger(row.交流輸出功率上限),
+              name: row.名稱,
+              RA值: null,
+            }
+            if (!device.max || !device.name) continue
+
+            for (let [field, uuid] of _.toPairs(row)) {
+              uuid = _.trim(uuid)
+              if (!/^[0-9a-fA-F]{32}$/.test(uuid)) continue
+
+              if (/^逆變器\d+$/.test(field)) { // 設定逆變器狀態
+                const invNo = _.toSafeInteger(field.slice(3))
+                device.invs[invNo] = { 狀態: null, directNoMax: 0, 直流輸入電流: {} }
+                this.invPaths.set(uuid, [device.name, invNo])
+                this.ienSetter.set(uuid, ({ newVal, nowts }) => {
+                  const tmp = this?.devices?.[device.name]?.invs?.[invNo]
+                  if (!tmp) return
+                  this.$set(tmp, '狀態', _.toSafeInteger(newVal))
+                })
+              } else if (_.includes(['溫度', '日照強度', 'RA值', '交流輸出功率'], field)) {
+                this.ienSetter.set(uuid, ({ newVal, nowts }) => {
+                  const tmp = this?.devices?.[device.name]
+                  if (!tmp) return
+                  this.$set(tmp, field, _.toFinite(newVal))
+                })
+              }
+            }
+            this.$set(this.devices, device.name, device)
+          }
+
+          for (const row of confInverters) {
+            const invUuid = row.逆變器
+            if (!/^[0-9a-fA-F]{32}$/.test(invUuid)) continue
+            const [deviceName, invNo] = this.invPaths.get(invUuid)
+            const inv = this?.devices?.[deviceName]?.invs?.[invNo]
+            if (!inv) continue
+
+            for (let [field, uuid] of _.toPairs(row)) {
+              uuid = _.trim(uuid)
+              if (!/^[0-9a-fA-F]{32}$/.test(uuid)) continue
+
+              if (/^直流輸入電流\d+$/.test(field)) { // 設定直流輸入電流
+                const directNo = _.toSafeInteger(field.slice(6))
+                this.$set(inv, 'directNoMax', Math.max(inv.directNoMax, directNo))
+                this.ienSetter.set(uuid, ({ newVal, nowts }) => {
+                  const tmp = this?.devices?.[deviceName]?.invs?.[invNo]
+                  if (!tmp) return
+                  this.$set(tmp.直流輸入電流, directNo, _.toSafeInteger(newVal))
+                })
+              }
+            }
+          }
         },
         async loopFn (fn, tsSleep = 500) {
           if (!fn || !_.isFunction(fn)) return
@@ -212,52 +152,36 @@ block script
             await sleep(tsSleep)
           }
         },
-        async updateIenValue (obj, key) {
+        async updateIenValue () {
           try {
-            const ien = JSON.parse(JSON.stringify(obj[key]))
-            const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='${ien.id}' querylevel='1'>` +
-              _.map(ien.mapping, (value, key) => `<tag id='${key}'/>`).join('') +
-              `</request>`
+            const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>` + _.map([...this.ienSetter.keys()], key => `<tag id='${key}'/>`).join('') + `</request>`
             const resxml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
               headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
             }), 'data')
-            _.each([...resxml.matchAll(/id="([^"]+)"[^>]+result="([^"]+)"[^>]+value="([^"]+)"/g)], match => {
-              _.set(ien, ien.mapping[match[1]], match[2] === '0' ? match[3] : null)
-            })
-            ien.時間 = dayjs()
-            this.$set(obj, key, ien)
-            this.cur = dayjs()
+            const nowts = dayjs()
+            for (const match of resxml.matchAll(/id="([^"]+)"[^>]+result="([^"]+)"[^>]+value="([^"]+)"/g)) {
+              try {
+                this.ienSetter.get(match[1])?.({
+                  newVal: match[2] === '0' ? match[3] : null,
+                  nowts,
+                })
+              } catch (err) {
+                console.error(err)
+                console.log(`match = ${JSON.stringify(match.slice(1))}`)
+              }
+            }
           } catch (err) {
             console.error(err)
           }
         },
-        async fetchIenConfig (cid) { // await vm.fetchIenConfig(2831)
-          const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='loadConfigFile' customerid='${cid}' page='0' querylevel=''></request>`
-          let xml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-          }), 'data')
-          xml = _.unescape(/<xml>(.*)<\/xml>/.exec(xml.replace(/\r?\n/g, ''))?.[1])
-          //- console.log(xml)
-          xml = xml.replace(/> +</g, '><').replace(/'/g, '"').replace(/<(?!Component)[^>]+>/g, '').replace('GraphicControl.action', '').replace(/\s+(fontfamily|gaugesetting|group|height|minimum|mouseover|name|precision|priorityalias|rangeimagesetting|rowheight|tagsystemtype|tagtype|textalign|tooltip|type|valuealiases|width)="[^"]*"/g, '').replace(/\w+=""/g, '')
-          const doc = new DOMParser().parseFromString(`<config>${xml}</config>`, 'text/xml')
-          const parseAttrVal = val => {
-            if (/^([1-9]\d{0,9}|0)$/.test(val)) return _.toSafeInteger(val)
-            return val
-          }
-          let compons = doc.querySelectorAll('Component')
-          compons = _.map(compons, c => _.fromPairs(_.sortBy(_.map(c.attributes, attr => [attr.name, parseAttrVal(attr.value)]), [0])))
-          compons = _.orderBy(compons, ['x', 'y'], ['asc', 'asc'])
-          for (let i = 0; i < compons.length; i++) {
-            for (let j = i + 1; j < compons.length; j++) {
-              const [c1, c2] = [compons[i], compons[j]]
-              if (c2.x - c1.x > 4) {
-                i = j - 1
-                break
-              }
-              c2.x = c1.x
-            }
-          }
-          return _.orderBy(compons, ['x', 'y'], ['asc', 'asc'])
+        async getCsv (url, cachetime = 3e4) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: _.floor(Date.now() / cachetime) },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
         },
         progressPercent (numerator, denominator) {
           ;[numerator, denominator] = _.map([numerator, denominator], _.toFinite)
