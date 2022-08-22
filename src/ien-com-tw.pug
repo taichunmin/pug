@@ -48,27 +48,26 @@ block content
                   .progress-bar(:style="{ 'background-color': '#eb1f1f', width: `${_.clamp(dp, 100) - 80}%` }", v-if="dp >= 80")
               .font-size-dot8.d-flex.justify-content-between.mt-2
                 .text-muted.text-nowrap #[i.fa.fa-heartbeat] 逆變器狀態
-                .d-flex.justify-content-end.align-items-center
+                .d-flex.flex-wrap.justify-content-end.align-items-center
                   template(v-for="inv, invIdx of device.invs")
-                    span.badge.badge-pill.ml-1.badge-success(v-if="inv.狀態 === 2", title="運轉中") {{ invIdx }}
-                    span.badge.badge-pill.ml-1.badge-warning(v-else-if="inv.狀態 === 3", title="無直流") {{ invIdx }}
-                    span.badge.badge-pill.ml-1.badge-danger(v-else-if="inv.狀態 === 4", title="異常") {{ invIdx }}
-                    span.badge.badge-pill.ml-1.badge-secondary(v-else, :title="`其他 (${inv.狀態})`") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.mb-1.badge-success(v-if="inv.狀態 === 2", title="運轉中") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.mb-1.badge-warning(v-else-if="inv.狀態 === 3", title="無直流") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.mb-1.badge-danger(v-else-if="inv.狀態 === 4", title="異常") {{ invIdx }}
+                    span.badge.badge-pill.ml-1.mb-1.badge-secondary(v-else, :title="`其他 (${inv.狀態})`") {{ invIdx }}
               template(v-for="directMax of [_.max(_.map(device.invs, inv => _.keys(inv.直流輸入電流).length))]")
-                details.mt-2(v-if="directMax > 0")
-                  summary.font-size-dot8.letter-spacing-n15 點此收合逆變器的「直流輸入電流」表格
-                  .table-responsive
-                    table.table.table-sm.text-center.mb-1
-                      thead.thead-dark: tr
-                        th.font-size-dot8(scope="col") &nbsp;
-                        th.font-size-dot8.text-nowrap(v-for="directIdx of directMax", scope="col") {{ directIdx }}
-                      tbody(v-for="invIdxMax of [_.keys(device.invs).length]")
-                        tr(v-for="invIdx of invIdxMax")
-                          th.text-nowrap.font-size-dot8(scope="row") INV {{ invIdx }}
-                          td(v-for="directIdx of directMax")
-                            .font-size-dot8(v-if="!_.hasIn(device.invs, `${invIdx}.直流輸入電流.${directIdx}`)") &nbsp;
-                            template(v-else, v-for="directCurrent of [device.invs[invIdx].直流輸入電流[directIdx] ?? null]")
-                              .font-size-dot8.letter-spacing-n15.text-nowrap {{ _.isNil(directCurrent) ? '?' : _.round(directCurrent, 1) }} A
+                details.mt-1(v-if="directMax > 0")
+                  summary.font-size-dot8.letter-spacing-n15 逆變器「直流輸入電流」表格
+                  table.table.table-sm.text-center.mb-1
+                    thead.thead-dark: tr
+                      th.font-size-dot8(scope="col") &nbsp;
+                      th.font-size-dot8.text-nowrap(v-for="directIdx of directMax", scope="col") {{ directIdx }}
+                    tbody(v-for="invIdxMax of [_.keys(device.invs).length]")
+                      tr(v-for="invIdx of invIdxMax")
+                        th.text-nowrap.font-size-dot8(scope="row") INV {{ invIdx }}
+                        td(v-for="directIdx of directMax")
+                          .font-size-dot8(v-if="!_.hasIn(device.invs, `${invIdx}.直流輸入電流.${directIdx}`)") &nbsp;
+                          template(v-else, v-for="directCurrent of [device.invs[invIdx].直流輸入電流[directIdx] ?? null]")
+                            .font-size-dot8.letter-spacing-n15.text-nowrap {{ _.isNil(directCurrent) ? '?' : _.round(directCurrent, 1) }} A
 
 block script
   script.
@@ -158,18 +157,20 @@ block script
         },
         async updateIenValue () {
           try {
-            const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>` + _.map([...this.ienTags.keys()], key => `<tag id='${key}'/>`).join('') + `</request>`
-            const resxml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-            }), 'data')
-            for (const match of resxml.matchAll(/id="([^"]+)"[^>]+result="([^"]+)"[^>]+value="([^"]+)"/g)) {
-              try {
-                let v = match[2] === '0' ? _.trim(match[3]) : null
-                if (isFiniteStr(v)) v = _.toFinite(v)
-                this.ienTags.set(match[1], v)
-              } catch (err) {
-                console.error(err)
-                console.log(`match = ${JSON.stringify(match.slice(1))}`)
+            for (const chunk of _.chunk([...this.ienTags.keys()], 100)) {
+              const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>` + _.map(chunk, key => `<tag id='${key}'/>`).join('') + `</request>`
+              const resxml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+              }), 'data')
+              for (const match of resxml.matchAll(/id="([^"]+)"[^>]+result="([^"]+)"[^>]+value="([^"]+)"/g)) {
+                try {
+                  let v = match[2] === '0' ? _.trim(match[3]) : null
+                  if (isFiniteStr(v)) v = _.toFinite(v)
+                  this.ienTags.set(match[1], v)
+                } catch (err) {
+                  console.error(err)
+                  console.log(`match = ${JSON.stringify(match.slice(1))}`)
+                }
               }
             }
             this.updatedAt = dayjs()
