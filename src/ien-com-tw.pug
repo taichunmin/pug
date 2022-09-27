@@ -92,7 +92,7 @@ block script
             await this.initConf()
             await this.updateIenValue()
             this.loopFn(() => this.updateIenValue())
-            this.loopFn(() => this.cur = dayjs())
+            this.loopFn(() => { this.cur = dayjs() })
             Swal.close()
           } catch (err) {
             console.error(err)
@@ -158,7 +158,7 @@ block script
         async updateIenValue () {
           await Promise.all(_.map(_.chunk([...this.ienTags.keys()], 100), async chunk => {
             try {
-              const reqdata = `<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>` + _.map(chunk, key => `<tag id='${key}'/>`).join('') + `</request>`
+              const reqdata = "<?xml version='1.0' encoding='UTF-8'?><request xmlns='http://chttl.com/iengc/core' method='getTagValue' customerid='2944' querylevel='1'>" + _.map(chunk, key => `<tag id='${key}'/>`).join('') + '</request>'
               const resxml = _.get(await axios.post('https://ien.com.tw/portal/GraphicController', Qs.stringify({ data: reqdata }), {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
               }), 'data')
