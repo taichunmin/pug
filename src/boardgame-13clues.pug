@@ -20,10 +20,65 @@ block style
         display: none
       body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
         font-family: 'Noto Sans TC', sans-serif
+      .no-select
+        user-select: none
 
 block content
   #app.my-3.container(v-cloak)
     h2.mb-3.text-center= title
+    .card.mt-2
+      .card-header.d-flex.align-items-center.no-select(@click="minify.known=!minify.known")
+        i.fa.fa-fw.fa-chevron-right(v-if="minify.known")
+        i.fa.fa-fw.fa-chevron-down(v-else)
+        .ml-1 請輸入已知卡片
+      ul.list-group.list-group-flush(v-if="!minify.known")
+        li.list-group-item
+          h6 自己 #[small.text-muted (點選表格輸入)]
+          .table-responsive.rounded
+            table.table.table-bordered.table-sm.text-center.mb-0
+              thead: tr
+                th(colspan="2") 屏幕內卡片
+              tbody: tr
+                td(v-for="card of h?.known?.[0]?.cards?.slice?.(3)") {{ CARD_NAMES[card] ?? '?' }}
+        li.list-group-item
+          h6 其他玩家 #[small.text-muted (點選表格輸入)]
+          .table-responsive.rounded
+            table.table.table-bordered.table-sm.text-center.mb-0
+              thead: tr
+                th(scope="col") #
+                th(scope="col") 人
+                th(scope="col") 地
+                th(scope="col") 武
+              tbody
+                tr(v-for="player of h?.known?.slice?.(1)")
+                  td {{ player.name }}
+                  td(v-for="card of player?.cards?.slice?.(0, 3)") {{ CARD_NAMES[card] ?? '?' }}
+        li.list-group-item(v-if="h?.informant?.length")
+          h6 線民 #[small.text-muted (點選表格輸入)]
+          .table-responsive.rounded
+            table.table.table-bordered.table-sm.text-center.mb-0
+              thead: tr
+                th(v-for="i of h.informant.length") {{ ' ABCDEF'[i] }}
+              tbody: tr
+                td(v-for="card of h.informant") {{ CARD_NAMES[card] ?? '?' }}
+    .card.mt-2
+      .card-header.d-flex.align-items-center.no-select(@click="minify.casebook=!minify.casebook")
+        i.fa.fa-fw.fa-chevron-right(v-if="minify.casebook")
+        i.fa.fa-fw.fa-chevron-down(v-else)
+        .ml-1 案情筆記
+      .table-responsive(v-if="!minify.casebook", style="font-size: 90%")
+        table.table.table-bordered.table-sm.text-center.mb-0
+          thead: tr
+            th(scope="col") #
+            th(scope="col") 男女
+            th(scope="col") 內外
+            th(scope="col") 遠近
+          tbody
+            tr(v-for="i of _.range(10)")
+              th(scope="row") {{ CARD_NAMES[i][0] }}
+              td.px-0(v-for="j of _.range(i, i + 30, 10)", @click="$set(h.casebook, j, (h.casebook[j] + 1) % 4)")
+                i.fa.fa-fw.mr-1(:class="['', 'fa-times', 'fa-check', 'fa-question'][h.casebook[j]]")
+                | {{ CARD_NAMES[j] }}
 
 block script
   script.
@@ -35,11 +90,15 @@ block script
     window.vm = new Vue({
       el: '#app',
       data: {
+        minify: {
+          known: false,
+          casebook: false,
+        },
         h: {
-          page: 'setting',
-          players: [],
-          secrets: [],
           clues: [],
+          informant: [],
+          known: [],
+          casebook: [],
         },
       },
       async mounted () {
@@ -56,5 +115,26 @@ block script
       },
       methods: {
         async init () {},
+        async btnNewGame (size) {
+          try {
+            if (!_.inRange(size, 3, 7)) throw new Error('僅支援 3~6 人的遊戲')
+            const h = {
+              clues: [],
+              informant: Array((6 - size) * 2).fill(null),
+              casebook: Array(30).fill(0),
+              known: _.times(size, i => ({
+                name: i === 0 ? '自己' : `對手 ${i}`,
+                cards: Array(5).fill(null),
+              })),
+            }
+            this.$set(this, 'h', { ...this.h, ...h })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnAddClue () {
+
+        },
       },
     })

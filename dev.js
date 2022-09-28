@@ -1,3 +1,4 @@
+const _ = require('lodash')
 const { build } = require('./build')
 const { getBaseurl } = require('./utils')
 const { promises: fsPromises } = require('fs')
@@ -37,14 +38,14 @@ async function main () {
     }),
   })
 
-  watch(['./component', './layout', './src'], { recursive: true }, async (e, name) => {
+  watch(['./component', './layout', './src'], { recursive: true }, _.debounce(async (e, name) => {
     if (e !== 'update') return
     const match = name.match(/^src[\\/](.+)\.pug$/)
     await build()
     if (!match) log(`"${name}" changed.`)
     else log(`${baseUrl}${match[1].replace(/\\/g, '/')}.html`)
     livereloadServer.refresh('')
-  })
+  }, 500))
 }
 
 main()
