@@ -23,7 +23,7 @@ block style
       .no-select
         user-select: none
       .opacity-dot5
-        opacity: 0.5
+        opacity: 0.3
       .letter-spacing-n1
         letter-spacing: -1px
 
@@ -109,26 +109,31 @@ block content
               tbody: tr
                 td(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ myclues[c] ?? 0 }}
           template(v-for="player of h.players.slice(1)")
-            .table-responsive
-              table.table.table-bordered.table-sm.text-center.mb-0
-                thead
-                  tr: th(colspan="6") {{ player.name }}
-                  tr.table-secondary
-                    th(v-for="c of '男女內外遠近'", @click="btnPlayerSetClue(player, c)") {{ c }}
-                tbody: tr
-                  template(v-for="c of '男女內外遠近'")
-                    td(@click="btnPlayerSetClue(player, c)")
-                      template(v-if="player?.clues?.[c]") {{ player.clues[c] }}
-                      template(v-else) &nbsp;
-            .table-responsive
-              table.table.table-bordered.table-sm.text-center.mb-0
-                thead: tr.table-secondary
-                  th(v-for="c of '紫粉紅綠黃藍橘白棕灰'", @click="btnPlayerSetClue(player, c)") {{ c }}
-                tbody: tr
-                  template(v-for="c of '紫粉紅綠黃藍橘白棕灰'")
-                    td(@click="btnPlayerSetClue(player, c)")
-                      template(v-if="player?.clues?.[c]") {{ player.clues[c] }}
-                      template(v-else) &nbsp;
+            template(v-for="tempClues of [cluesSub(publicPlayersClues, cardsToClues(_.take(player.cards, 3)))]")
+              .table-responsive
+                table.table.table-bordered.table-sm.text-center.mb-0
+                  thead
+                    tr: th(colspan="6") {{ player.name }}
+                    tr.table-secondary
+                      th(v-for="c of '男女內外遠近'", @click="btnPlayerSetClue(player, c)") {{ c }}
+                  tbody: tr
+                    template(v-for="c of '男女內外遠近'")
+                      td(@click="btnPlayerSetClue(player, c)")
+                        template(v-if="!_.isNil(player?.clues?.[c])")
+                          | {{ player.clues[c] }}
+                          sup.text-success {{ player.clues[c] - (tempClues[c] ?? 0) }}
+                        template(v-else) &nbsp;
+              .table-responsive
+                table.table.table-bordered.table-sm.text-center.mb-0
+                  thead: tr.table-secondary
+                    th(v-for="c of '紫粉紅綠黃藍橘白棕灰'", @click="btnPlayerSetClue(player, c)") {{ c }}
+                  tbody: tr
+                    template(v-for="c of '紫粉紅綠黃藍橘白棕灰'")
+                      td(@click="btnPlayerSetClue(player, c)")
+                        template(v-if="!_.isNil(player?.clues?.[c])")
+                          | {{ player.clues[c] }}
+                          sup.text-success {{ player.clues[c] - (tempClues[c] ?? 0) }}
+                        template(v-else) &nbsp;
     .card.mt-3
       .card-header.d-flex.align-items-center.no-select(@click="minify.setting=!minify.setting")
         i.fa.fa-fw.fa-chevron-right(v-if="minify.setting")
@@ -231,16 +236,14 @@ block script
           return dup.sort()
         },
         myclues () {
-          const clues = {}
           const cards = _.flatten([
             this.h.players[0].cards.slice(3),
             ..._.map(this.h.players.slice(1), p => _.take(p.cards, 3)),
           ])
-          for (const card of cards) {
-            if (!card) continue
-            for (const c of CARD_NAMES[card]) clues[c] = (clues[c] ?? 0) + 1
-          }
-          return clues
+          return this.cardsToClues(cards)
+        },
+        publicPlayersClues () {
+          return this.cardsToClues(_.flatten(_.map(this.h.players.slice(1), p => _.take(p.cards, 3))))
         },
       },
       methods: {
@@ -372,6 +375,20 @@ block script
         },
         filterNil (arr) {
           return _.filter(arr, v => !_.isNil(v))
+        },
+        cardsToClues (cards) {
+          const clues = {}
+          for (const card of cards) {
+            if (!card) continue
+            for (const c of CARD_NAMES[card]) clues[c] = (clues[c] ?? 0) + 1
+          }
+          return clues
+        },
+        cluesSub (cluesA, cluesB) {
+          const tmp = {}
+          for (const [k, v] of _.toPairs(cluesA)) tmp[k] = v
+          for (const [k, v] of _.toPairs(cluesB)) tmp[k] = (tmp[k] ?? 0) - v
+          return _.fromPairs(_.filter(_.toPairs(tmp), p => p[1]))
         },
         nothing () {},
       },
