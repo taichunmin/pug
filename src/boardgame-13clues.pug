@@ -39,7 +39,7 @@ block content
             h6 自己 #[small.text-muted (請點表格輸入)]
             .table-responsive.rounded
               table.table.table-bordered.table-sm.text-center.mb-0
-                thead: tr
+                thead: tr.table-secondary
                   th(colspan="2") 屏幕內卡片
                 tbody: tr(@click="btnPickMyself")
                   td(v-for="card of h?.players?.[0]?.cards?.slice?.(3)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
@@ -47,23 +47,40 @@ block content
             h6 對手 #[small.text-muted (請點表格輸入)]
             .table-responsive.rounded
               table.table.table-bordered.table-sm.text-center.mb-0
-                thead: tr
+                thead: tr.table-secondary
                   th(scope="col") #
                   th(scope="col") 人
                   th(scope="col") 地
                   th(scope="col") 武
                 tbody
                   tr(v-for="player of h?.players?.slice?.(1)", @click="btnPickPlayer(player)")
-                    td {{ player.name }}
+                    th.table-secondary {{ player.name }}
                     td(v-for="card of _.take(player?.cards, 3)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
           li.list-group-item(v-if="h?.informant?.length")
             h6 線民 #[small.text-muted (請點表格輸入)]
             .table-responsive.rounded
               table.table.table-bordered.table-sm.text-center.mb-0
-                thead: tr
+                thead: tr.table-secondary
                   th(v-for="i of h.informant.length") {{ ' ABCDEF'[i] }}
                 tbody: tr
                   td(v-for="card, informantIdx of h.informant", @click="btnPickInformant(informantIdx)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
+      .card.mt-2
+        .card-header.d-flex.align-items-center(@click="minify.myclues=!minify.myclues")
+          i.fa.fa-fw.fa-chevron-right(v-if="minify.myclues")
+          i.fa.fa-fw.fa-chevron-down(v-else)
+          .ml-1 我的線索
+        .table-responsive(v-if="!minify.myclues", style="font-size: 90%")
+          table.table.table-bordered.table-sm.text-center.mb-0
+            thead: tr.table-secondary
+              th(v-for="c of '男女內外遠近'") {{ c }}
+            tbody: tr
+              td(v-for="c of '男女內外遠近'") {{ myclues[c] ?? 0 }}
+        .table-responsive(v-if="!minify.myclues", style="font-size: 90%")
+          table.table.table-bordered.table-sm.text-center.mb-0
+            thead: tr.table-secondary
+              th(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ c }}
+            tbody: tr
+              td(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ myclues[c] ?? 0 }}
       .card.mt-2
         .card-header.d-flex.align-items-center(@click="minify.casebook=!minify.casebook")
           i.fa.fa-fw.fa-chevron-right(v-if="minify.casebook")
@@ -71,14 +88,14 @@ block content
           .ml-1 案情筆記
         .table-responsive(v-if="!minify.casebook", style="font-size: 90%")
           table.table.table-bordered.table-sm.text-center.mb-0
-            thead: tr
+            thead: tr.table-secondary
               th(scope="col") #
               th(scope="col") 男 / 女
               th(scope="col") 內 / 外
               th(scope="col") 遠 / 近
             tbody
               tr(v-for="i of _.range(4 + h.players.length)")
-                th(scope="row") {{ CARD_NAMES[i][0] }}
+                th.table-secondary(scope="row") {{ CARD_NAMES[i][0] }}
                 template(v-for="j of _.range(i, i + 30, 10)")
                   td.px-0.opacity-dot5(v-if="!_.includes(unknown, j)", @click="nothing")
                     i.fa.fa-fw.mr-1
@@ -132,6 +149,7 @@ block script
         minify: {
           casebook: false,
           known: false,
+          myclues: false,
           setting: false,
         },
         h: {
@@ -170,6 +188,17 @@ block script
             else tmp.add(card)
           }
           return dup.sort()
+        },
+        myclues () {
+          const clues = {}
+          const cards = _.flatten([
+            this.h.players[0].cards.slice(3),
+            ..._.map(this.h.players.slice(1), p => _.take(p.cards, 3))
+          ])
+          for (const card of cards) {
+            for (const c of CARD_NAMES[card]) clues[c] = (clues[c] ?? 0) + 1
+          }
+          return clues
         },
       },
       methods: {
