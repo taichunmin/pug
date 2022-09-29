@@ -155,9 +155,10 @@ block script
       },
       computed: {
         unknown () {
+          const colors = 4 + this.h.players.length
           return _.difference(
-            _.range((4 + this.h.players.length) * 3),
-            _.flatten([..._.map(this.h.players, 'cards'), this.h.informant])
+            _.flatten(_.times(3, i => _.range(i * 10, i * 10 + colors))),
+            _.flatten([..._.map(this.h.players, 'cards'), this.h.informant]),
           )
         },
         duplicated () {
@@ -202,7 +203,7 @@ block script
           }
 
           if (ctx.type === 'myself') { // 自己
-            const selected = _.take([target, ...ctx.selected], 2)
+            const selected = _.takeRight([...ctx.selected, target], 2)
             this.$set(ctx, 'selected', selected)
           } else if (ctx.type === 'player') { // 對手
             const selected = _.uniqBy([target, ...ctx.selected], val => _.floor(val / 10))
@@ -226,7 +227,7 @@ block script
           $ref.modal('hide')
           this.$set(this.cardPicker, 'cb', null)
           if (newVal) {
-            newVal = _.take([...newVal, ...Array(2).fill(null)], 2).sort()
+            newVal = _.take([...newVal, ...Array(2).fill(null)], 2)
             this.h.players[0].cards.splice(3, 2, ...newVal)
           }
         },
