@@ -24,19 +24,21 @@ block style
         user-select: none
       .opacity-dot5
         opacity: 0.5
+      .letter-spacing-n1
+        letter-spacing: -1px
 
 block content
   #app.my-3.container.no-select(v-cloak)
     h2.mb-3.text-center= title
     template(v-if="h.players.length >= 3")
-      .card.mt-2
+      .card.mt-3
         .card-header.d-flex.align-items-center.no-select(@click="minify.known=!minify.known")
           i.fa.fa-fw.fa-chevron-right(v-if="minify.known")
           i.fa.fa-fw.fa-chevron-down(v-else)
-          .ml-1 選擇已知卡片
+          .ml-1 選擇已知卡片 #[small.text-muted (請點表格輸入)]
         ul.list-group.list-group-flush(v-if="!minify.known")
           li.list-group-item
-            h6 自己 #[small.text-muted (請點表格輸入)]
+            h6 自己
             .table-responsive.rounded
               table.table.table-bordered.table-sm.text-center.mb-0
                 thead: tr.table-secondary
@@ -44,7 +46,7 @@ block content
                 tbody: tr(@click="btnPickMyself")
                   td(v-for="card of h?.players?.[0]?.cards?.slice?.(3)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
           li.list-group-item
-            h6 對手 #[small.text-muted (請點表格輸入)]
+            h6 對手
             .table-responsive.rounded
               table.table.table-bordered.table-sm.text-center.mb-0
                 thead: tr.table-secondary
@@ -57,36 +59,19 @@ block content
                     th.table-secondary {{ player.name }}
                     td(v-for="card of _.take(player?.cards, 3)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
           li.list-group-item(v-if="h?.informant?.length")
-            h6 線民 #[small.text-muted (請點表格輸入)]
-            .table-responsive.rounded
+            h6 線民
+            .table-responsive.rounded.letter-spacing-n1
               table.table.table-bordered.table-sm.text-center.mb-0
                 thead: tr.table-secondary
                   th(v-for="i of h.informant.length") {{ ' ABCDEF'[i] }}
                 tbody: tr
                   td(v-for="card, informantIdx of h.informant", @click="btnPickInformant(informantIdx)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
-      .card.mt-2
-        .card-header.d-flex.align-items-center(@click="minify.myclues=!minify.myclues")
-          i.fa.fa-fw.fa-chevron-right(v-if="minify.myclues")
-          i.fa.fa-fw.fa-chevron-down(v-else)
-          .ml-1 我的線索
-        .table-responsive(v-if="!minify.myclues", style="font-size: 90%")
-          table.table.table-bordered.table-sm.text-center.mb-0
-            thead: tr.table-secondary
-              th(v-for="c of '男女內外遠近'") {{ c }}
-            tbody: tr
-              td(v-for="c of '男女內外遠近'") {{ myclues[c] ?? 0 }}
-        .table-responsive(v-if="!minify.myclues", style="font-size: 90%")
-          table.table.table-bordered.table-sm.text-center.mb-0
-            thead: tr.table-secondary
-              th(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ c }}
-            tbody: tr
-              td(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ myclues[c] ?? 0 }}
-      .card.mt-2
+      .card.mt-3
         .card-header.d-flex.align-items-center(@click="minify.casebook=!minify.casebook")
           i.fa.fa-fw.fa-chevron-right(v-if="minify.casebook")
           i.fa.fa-fw.fa-chevron-down(v-else)
-          .ml-1 案情筆記
-        .table-responsive(v-if="!minify.casebook", style="font-size: 90%")
+          .ml-1 案情筆記 #[small.text-muted (請點表格切換符號)]
+        .table-responsive.letter-spacing-n1(v-if="!minify.casebook", style="font-size: 90%")
           table.table.table-bordered.table-sm.text-center.mb-0
             thead: tr.table-secondary
               th(scope="col") #
@@ -103,7 +88,48 @@ block content
                   td.px-0(v-else, @click="$set(h.casebook, j, (h.casebook[j] + 1) % 4)")
                     i.fa.fa-fw.mr-1(:class="['', 'fa-times text-danger', 'fa-check text-success', 'fa-question text-muted'][h.casebook[j]]")
                     | {{ CARD_NAMES[j] }}
-    .card.mt-2
+      .card.mt-3
+        .card-header.d-flex.align-items-center(@click="minify.clues=!minify.clues")
+          i.fa.fa-fw.fa-chevron-right(v-if="minify.clues")
+          i.fa.fa-fw.fa-chevron-down(v-else)
+          .ml-1 線索筆記 #[small.text-muted (請點表格輸入)]
+        .letter-spacing-n1(v-if="!minify.clues", style="font-size: 90%")
+          .table-responsive
+            table.table.table-bordered.table-sm.text-center.mb-0
+              thead
+                tr: th(colspan="6") 自己
+                tr.table-secondary
+                  th(v-for="c of '男女內外遠近'") {{ c }}
+              tbody: tr
+                td(v-for="c of '男女內外遠近'") {{ myclues[c] ?? 0 }}
+          .table-responsive
+            table.table.table-bordered.table-sm.text-center.mb-0
+              thead: tr.table-secondary
+                th(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ c }}
+              tbody: tr
+                td(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ myclues[c] ?? 0 }}
+          template(v-for="player of h.players.slice(1)")
+            .table-responsive
+              table.table.table-bordered.table-sm.text-center.mb-0
+                thead
+                  tr: th(colspan="6") {{ player.name }}
+                  tr.table-secondary
+                    th(v-for="c of '男女內外遠近'", @click="btnPlayerSetClue(player, c)") {{ c }}
+                tbody: tr
+                  template(v-for="c of '男女內外遠近'")
+                    td(@click="btnPlayerSetClue(player, c)")
+                      template(v-if="player?.clues?.[c]") {{ player.clues[c] }}
+                      template(v-else) &nbsp;
+            .table-responsive
+              table.table.table-bordered.table-sm.text-center.mb-0
+                thead: tr.table-secondary
+                  th(v-for="c of '紫粉紅綠黃藍橘白棕灰'", @click="btnPlayerSetClue(player, c)") {{ c }}
+                tbody: tr
+                  template(v-for="c of '紫粉紅綠黃藍橘白棕灰'")
+                    td(@click="btnPlayerSetClue(player, c)")
+                      template(v-if="player?.clues?.[c]") {{ player.clues[c] }}
+                      template(v-else) &nbsp;
+    .card.mt-3
       .card-header.d-flex.align-items-center.no-select(@click="minify.setting=!minify.setting")
         i.fa.fa-fw.fa-chevron-right(v-if="minify.setting")
         i.fa.fa-fw.fa-chevron-down(v-else)
@@ -134,6 +160,21 @@ block content
           .modal-footer
             button.btn.btn-secondary(type="button", @click="cardPicker?.cb?.()") 取消
             button.btn.btn-primary(type="button", @click="cardPicker?.cb?.(cardPicker.selected)") 確定
+    .modal.fade(data-backdrop="static", data-keyboard="false", tabindex="-1", ref="cluePicker")
+      .modal-dialog.modal-dialog-centered.modal-xl
+        .modal-content
+          .modal-header
+            h6.modal-title {{ cluePicker.name }}
+            button.close(type="button", data-dismiss="modal"): span &times;
+          .modal-body.text-nowrap
+            .row.mx-n1
+              .col.px-1(v-for="cnt of _.range(4)")
+                button.btn.btn-block.btn-outline-primary(@click="cluePicker?.cb?.(cnt)") {{ cnt }}
+            .row.mx-n1.mt-2
+              .col.px-1(v-for="cnt of _.range(4, 6)")
+                button.btn.btn-block.btn-outline-primary(@click="cluePicker?.cb?.(cnt)") {{ cnt }}
+              .col.px-1
+                button.btn.btn-block.btn-outline-primary(@click="cluePicker?.cb?.('clear')") 清除
 
 block script
   script.
@@ -146,14 +187,14 @@ block script
       el: '#app',
       data: {
         cardPicker: { cb: null, name: '', type: null, selected: [] },
+        cluePicker: { cb: null, name: '', cur: null },
         minify: {
           casebook: false,
+          clues: false,
           known: false,
-          myclues: false,
           setting: false,
         },
         h: {
-          clues: [],
           informant: [],
           players: [],
           casebook: [],
@@ -193,9 +234,10 @@ block script
           const clues = {}
           const cards = _.flatten([
             this.h.players[0].cards.slice(3),
-            ..._.map(this.h.players.slice(1), p => _.take(p.cards, 3))
+            ..._.map(this.h.players.slice(1), p => _.take(p.cards, 3)),
           ])
           for (const card of cards) {
+            if (!card) continue
             for (const c of CARD_NAMES[card]) clues[c] = (clues[c] ?? 0) + 1
           }
           return clues
@@ -208,12 +250,12 @@ block script
             if (!await this.confirm(`確定要刪除資料並開新的 ${size} 人遊戲嗎？`, '確定', '取消')) return
             if (!_.inRange(size, 3, 7)) throw new Error('僅支援 3~6 人的遊戲')
             const h = {
-              clues: [],
               informant: Array((6 - size) * 2).fill(null),
               casebook: Array(30).fill(0),
               players: _.times(size, i => ({
-                name: i === 0 ? '自己' : `對手 ${i}`,
                 cards: Array(5).fill(null),
+                clues: {},
+                name: i === 0 ? '自己' : `對手 ${i}`,
               })),
             }
             this.$set(this, 'h', { ...this.h, ...h })
@@ -255,14 +297,13 @@ block script
           })
           $ref.modal('hide')
           this.$set(this.cardPicker, 'cb', null)
-          if (newVal) {
-            newVal = _.take([...newVal, ...Array(2).fill(null)], 2)
-            this.h.players[0].cards.splice(3, 2, ...newVal)
-          }
+          if (!_.isNil(newVal)) return
+          newVal = _.take([...newVal, ...Array(2).fill(null)], 2)
+          this.h.players[0].cards.splice(3, 2, ...newVal)
         },
         async btnPickInformant (idx) {
           const $ref = window.jQuery(this.$refs.cardPicker)
-          let newVal = await new Promise(resolve => {
+          const newVal = await new Promise(resolve => {
             this.$set(this, 'cardPicker', {
               cb: resolve,
               name: `線民 ${'ABCDEF'[idx]}`,
@@ -277,7 +318,7 @@ block script
         },
         async btnPickPlayer (player) {
           const $ref = window.jQuery(this.$refs.cardPicker)
-          let newVal = await new Promise(resolve => {
+          const newVal = await new Promise(resolve => {
             this.$set(this, 'cardPicker', {
               cb: resolve,
               name: player.name,
@@ -288,13 +329,24 @@ block script
           })
           $ref.modal('hide')
           this.$set(this.cardPicker, 'cb', null)
-          if (newVal) {
-            player.cards.splice(0, 3, null, null, null)
-            for (const card of newVal) this.$set(player.cards, _.floor(card / 10), card)
-          }
+          if (_.isNil(newVal)) return
+          player.cards.splice(0, 3, null, null, null)
+          for (const card of newVal) this.$set(player.cards, _.floor(card / 10), card)
         },
-        async btnAddClue () {
-
+        async btnPlayerSetClue (player, clueName) {
+          const $ref = window.jQuery(this.$refs.cluePicker)
+          const newVal = await new Promise(resolve => {
+            this.$set(this, 'cluePicker', {
+              cb: resolve,
+              name: `「${player.name}」看到了幾張「${clueName}」？`,
+              cur: player?.clues?.[clueName],
+            })
+            $ref.one('hide.bs.modal', () => resolve()).modal('show')
+          })
+          $ref.modal('hide')
+          this.$set(this.cluePicker, 'cb', null)
+          if (_.isNil(newVal)) return
+          this.$set(player.clues, clueName, newVal === 'clear' ? null : _.toInteger(newVal))
         },
         async confirm (text, confirmButtonText, cancelButtonText) {
           const args = {
