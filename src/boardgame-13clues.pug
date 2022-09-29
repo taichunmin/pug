@@ -297,7 +297,7 @@ block script
           })
           $ref.modal('hide')
           this.$set(this.cardPicker, 'cb', null)
-          if (!_.isNil(newVal)) return
+          if (_.isNil(newVal)) return
           newVal = _.take([...newVal, ...Array(2).fill(null)], 2)
           this.h.players[0].cards.splice(3, 2, ...newVal)
         },
