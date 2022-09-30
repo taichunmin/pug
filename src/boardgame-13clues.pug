@@ -379,7 +379,7 @@ block script
         cardsToClues (cards) {
           const clues = {}
           for (const card of cards) {
-            if (!card) continue
+            if (_.isNil(card)) continue
             for (const c of CARD_NAMES[card]) clues[c] = (clues[c] ?? 0) + 1
           }
           return clues
