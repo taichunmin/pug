@@ -87,13 +87,13 @@ block content
           tr(v-if="h.pos + 3 < 1024")
             th(scope="row") getUnixStr#[br]+00:00
             td(v-for="eml of emls", v-if="eml") {{ eml.buf.getUnixStr(h.pos, 0, h.littleEndian) }}
-    #modal-exportimport.modal.fade(data-backdrop="static", data-keyboard="false", tabindex="-1", ref="modalExportImport")
+    #modal-exportimport.modal.fade(data-backdrop="static", data-keyboard="false", tabindex="-1", ref="modalExportimport")
       .modal-dialog.modal-dialog-centered.modal-xl.align-items-stretch
         .modal-content
           .modal-body.d-flex.flex-column
             .d-flex.flex-fill.mx-n1
               .form-group.flex-fill.d-flex.flex-column.mx-1.my-0(v-for="i of _.times(2)")
-                label(@click="btnCopy(exportimport.emls[i], $refs['modalExportImport'])") {{ '左右'[i] }}方 (點此可複製)
+                label(@click="btnCopy(exportimport.emls[i], $refs['modalExportimport'])") {{ '左右'[i] }}方 (點此可複製)
                 textarea.form-control.form-control-sm.flex-fill(v-model="exportimport.emls[i]")
             small.text-muted.form-text 請複製或貼上 EML 並點一下「匯入」按鈕。
           .modal-footer
@@ -182,10 +182,10 @@ block script
           const ctx = this.exportimport
           const pending = new Promise(resolve => { this.$set(ctx, 'resolve', resolve) })
           this.$set(ctx, 'emls', [...this.h.emls])
-          this.jqModal('modalExportImport', 'show')
+          this.jqModal('modalExportimport', 'show')
           const isImport = await pending
           this.$set(ctx, 'resolve', null)
-          this.jqModal('modalExportImport', 'hide')
+          this.jqModal('modalExportimport', 'hide')
           if (isImport) this.$set(this.h, 'emls', [...ctx.emls])
         },
         async btnCopy (text, container = null) {
