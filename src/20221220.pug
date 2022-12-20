@@ -1,0 +1,31 @@
+extends /layout/dark
+
+block beforehtml
+  - const title = '永慶免洗餐具'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: '華康正顏楷體W9', sans-serif
+
+block content
+  #app.container(v-cloak)
+    //- .text-center(style="font-size: 960px")
+    //-   div(v-for="c of '永慶免洗餐具永建成企業有限公司'") {{ c }}
+    .text-center.text-nowrap(style="font-size: 720px")
+      div(style="transform:rotate(90deg)") 訂購
+      div(style="transform:rotate(90deg)") 專線
+    .text-center.text-nowrap(style="font-size: 720px")
+      div(style="transform:rotate(90deg)") (03)
+      div(style="transform:rotate(90deg)") 482-
+      div(style="transform:rotate(90deg)") 6658
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {},
+    })
