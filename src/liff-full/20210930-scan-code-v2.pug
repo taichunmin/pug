@@ -1,8 +1,13 @@
 extends /layout/liffv2
 
 block beforehtml
-  -
-    title = 'liff.scanCodeV2()'
+  - title = 'liff.scanCodeV2()'
+
+block style
+  style
+    :sass
+      .letter-spacing-n1px
+        letter-spacing: -1px
 
 block content
   #app.container.my-4.text-monospace(v-cloak)
@@ -14,9 +19,10 @@ block content
         button.btn.flex-fill.mx-1.my-1(type="button", @click="btnScanCodeV2", :class="btns[tests[1]]") #[i.fa.mr-1(:class="icons[tests[1]]")] V2
     .form-group.mb-3
       label liff
-      .input-group.input-group-sm.mb-1(v-for="val, key in sdk")
+      .input-group.input-group-sm.letter-spacing-n1px.mb-1(v-for="val, key in sdk")
         .input-group-prepend: .input-group-text {{ key }}
-        input.form-control.text-right(readonly, :value="val")
+        input.form-control.text-right(v-if="val.length < 32", readonly, :value="val")
+        textarea.form-control.form-control-sm(v-else, readonly, rows="6", :value="val")
     .form-group.mb-3
       label navigator.userAgent
       textarea.form-control.form-control-sm(readonly, rows="6", :value="_.get(window, 'navigator.userAgent')")
@@ -34,6 +40,7 @@ block script
       el: '#app',
       data: {
         sdk: {
+          getContext: '',
           getLineVersion: '',
           getOS: '',
           getVersion: '',
@@ -47,6 +54,7 @@ block script
         this.showLoading('請稍候', '網頁載入中')
         await window.loginPromise
         _.each([
+          ['getContext'],
           ['getLineVersion'],
           ['getOS'],
           ['getVersion'],
