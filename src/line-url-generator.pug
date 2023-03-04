@@ -1,0 +1,572 @@
+extends /layout/default
+
+block beforehtml
+  - title = 'LINE 網址產生器'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .shield
+        display: -ms-inline-flexbox
+        display: inline-flex
+        font-size: 75%
+        letter-spacing: -1px
+        line-height: 1
+        position: relative
+        vertical-align: middle
+        white-space: nowrap
+        .shield-name, .shield-value
+          padding: .25em .4em
+        .shield-name
+          align-items: center
+          border-bottom-left-radius: .25rem
+          border-top-left-radius: .25rem
+          display: -ms-inline-flexbox
+          display: inline-flex
+        .shield-value
+          border-bottom-right-radius: .25rem
+          border-top-right-radius: .25rem
+          border: 1px solid #ccc
+          border-left: 0
+      .bg-007bff
+        background-color: #007bff
+      .bg-28a745
+        background-color: #28a745
+      #app
+        input, select, textarea
+          letter-spacing: -1px
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .form-group
+      label 請選取 LINE 網址類型
+      button.btn.btn-outline-dark.btn-block.d-flex.flex-column.text-left.py-3(type="button", @click="btnPickLineUrlType")
+        h4.mb-0 {{ lineUrlMeta.title }}
+        .d-flex.flex-wrap.ml-n1.mt-1.mb-0
+          .shield.ml-1.mt-1(v-for="tag of _.map(lineUrlMeta.tags, tag => tag.split(':'))")
+            .shield-name.text-white(:class="{手機:'bg-28a745', 電腦:'bg-007bff'}[tag[0]]") {{ tag[0] }}
+            .shield-value.text-dark.bg-white {{ tag[1] }}
+        small.mt-1.mb-0 {{ lineUrlMeta.desc }}
+    .form-group
+      label 說明文件
+      a.btn.mt-1.btn-block.btn-info(v-for="link, linkNo of lineUrlMeta.links", target="_blank", :href="link") #[i.fa.mr-1.fa-book] 說明文件 {{ linkNo + 1 }}
+    .form-group(v-if="h.lineUrlType === 'cameraRoll'")
+      label(for="h-cameraRollType") 單選或多選
+      select.custom-select.custom-select-sm#h-cameraRollType(v-model="h.cameraRollType")
+        option(value="single") 只能選取一張照片
+        option(value="multi") 選取一張以上的照片
+      small.form-text.text-muted 設定是否可以選取多張照片。
+    template(v-if="h.lineUrlType === 'openUrl'")
+      .form-group
+        label(for="h-openUrlType") 網址開啟方式
+        select.custom-select.custom-select-sm#h-openUrlType(v-model="h.openUrlType")
+          option(value="openExternalBrowser") 外部瀏覽器
+          option(value="openInAppBrowser") 內嵌 Chrome (僅限 Android)
+          option(value="") 內嵌 WebView
+        small.form-text.text-muted 設定網址開啟方式。內嵌 Chrome 的開啟方式只能在 Android 上使用。
+      .form-group.was-validated
+        label(for="h-openUrl") 網址
+        textarea.form-control.form-control-sm#h-openUrl(v-model="h.openUrl", rows="5", inputmode="url", required, pattern="https?://\\S+")
+        small.form-text.text-muted 網址中若有中文，請先將中文字進行編碼 #[code encodeURI]。
+    .form-group(v-if="h.lineUrlType === 'recommendOA'")
+      label(for="h-recommendType") 分享方式
+      select.custom-select.custom-select-sm#h-recommendType(v-model="h.recommendType")
+        option(value="OA1") 官方帳號頁面 1
+        option(value="OA2") 官方帳號頁面 2
+        option(value="OA3") 官方帳號頁面 3
+        option(value="searchFriend") 搜尋好友或官方帳號
+        option(value="shareOA") 傳送官方帳號給所選的對象
+      small.form-text.text-muted 這幾種分享方式在不同裝置的支援度不盡相同，請記得測試後再使用。
+    .form-group.was-validated(v-if="h.lineUrlType === 'recommendOA' && h.recommendType === 'searchFriend'")
+      label(for="h-lineId") 官方帳號 ID 或 LINE ID
+      input.form-control.form-control-sm#h-lineId(v-model="h.lineId", inputmode="url", required, pattern="@?\\w+")
+      small.form-text.text-muted 請填寫官方帳號的 ID（如：#[code @736cebrk]）或 LINE ID。
+    .form-group.was-validated(v-else-if="_.includes(['recommendOA', 'sendMessage', 'voom', 'voomPost'], h.lineUrlType)")
+      label(for="h-lineId") 官方帳號 ID
+      input.form-control.form-control-sm#h-lineId(v-model="h.lineId", inputmode="url", required, pattern="@\\w+")
+      small.form-text.text-muted 請填寫官方帳號的 ID（如：#[code @736cebrk]）。
+    template(v-if="h.lineUrlType === 'sendMessage'")
+      .form-group
+        label(for="h-sendMessageType") 傳送方式
+        select.custom-select.custom-select-sm#h-sendMessageType(v-model="h.sendMessageType")
+          option(value="share") 傳送給所選的對象
+          option(value="oaMessage") 傳送給官方帳號
+        small.form-text.text-muted 讓使用者選擇傳送對象，或直接傳給指定的官方帳號。
+      .form-group.was-validated
+        label(for="h-text") 文字訊息
+        textarea.form-control.form-control-sm#h-text(v-model="h.text", rows="5", required, pattern=".+")
+        small.form-text.text-muted 要傳送的文字訊息，可以使用中文及換行 #[code ENTER]。
+    .form-group(v-if="h.lineUrlType === 'setting'")
+      label(for="h-settingType") 選擇設定頁面
+      select.custom-select.custom-select-sm#h-settingType(v-model="h.settingType")
+        option(value="settings") 設定
+        option(value="profile") 設定 ➜ 個人檔案
+        option(value="profileSetId") 設定 ➜ 個人檔案 ➜ LINE ID
+        option(value="settings/account") 設定 ➜ 我的帳號
+        option(value="connectedApps") 設定 ➜ 我的帳號 ➜ 連動中的應用程式
+        option(value="connectedDevices") 設定 ➜ 我的帳號 ➜ 登入中的裝置
+        option(value="settings/privacy") 設定 ➜ 隱私設定
+        option(value="settings/privacy/provideUsageData/beacon") 設定 ➜ 隱私設定 ➜ 提供使用資料 ➜ LINE Beacon
+        option(value="things/deviceLink") 設定 ➜ LINE Things
+        option(value="settings/sticker") 設定 ➜ 貼圖
+        option(value="stickerShop/mySticker") 設定 ➜ 貼圖 ➜ 我的貼圖
+        option(value="settings/themeSettingsMenu") 設定 ➜ 主題 (iOS)
+        option(value="settings/theme") 設定 ➜ 主題 (Android)
+        option(value="themeSettings") 設定 ➜ 主題 ➜ 主題一覽
+        option(value="notificationServiceDetail") 設定 ➜ 提醒 ➜ 連動中的應用程式
+        option(value="settings/chatSettings") 設定 ➜ 聊天
+        option(value="suggestSettings") 設定 ➜ 聊天 ➜ 顯示建議貼圖
+        option(value="settings/callSettings") 設定 ➜ 通話
+        option(value="settings/addressBookSync") 設定 ➜ 好友
+        option(value="settings/timelineSettings") 設定 ➜ LINE VOOM
+      small.form-text.text-muted 請選擇要開啟的設定頁面。
+    template(v-if="h.lineUrlType === 'sticker'")
+      .form-group
+        label(for="h-stickerType") 貼圖網址類型
+        select.custom-select.custom-select-sm#h-stickerType(v-model="h.stickerType")
+          option(value="sticker/detail") sticker/detail: 貼圖包頁面
+          option(value="category") category: 類別的熱門項目
+          option(value="sticker/author") sticker/author: 創作者頁面
+          option(value="sticker/hot") sticker/hot: 排行頁面
+          option(value="sticker/new") sticker/new: 新增頁面
+          option(value="sticker/event") sticker/event: 活動頁面
+          option(value="sticker/category") sticker/category: 類別頁面
+        small.form-text.text-muted 請選擇要開啟的貼圖商店頁面。
+      .form-group.was-validated(v-if="h.stickerType === 'sticker/detail'")
+        label(for="h-packageId") 貼圖包編號 #[code packageId]
+        input.form-control.form-control-sm#h-packageId(type="tel", v-model="h.packageId", required, pattern="\\d+")
+        small.form-text.text-muted 請填寫在 #[a(target="_blank", href="https://store.line.me/") LINE STORE] 內的貼圖包編號。
+      .form-group.was-validated(v-if="h.stickerType === 'category'")
+        label(for="h-categoryId") 類別編號 #[code categoryId]
+        input.form-control.form-control-sm#h-categoryId(type="tel", v-model="h.categoryId", required, pattern="\\d+")
+        small.form-text.text-muted 請填寫在 #[a(target="_blank", href="https://store.line.me/") LINE STORE] 內的類別編號。
+      .form-group.was-validated(v-if="h.stickerType === 'sticker/author'")
+        label(for="h-authorId") 創作者編號 #[code authorId]
+        input.form-control.form-control-sm#h-authorId(type="tel", v-model="h.authorId", required, pattern="\\d+")
+        small.form-text.text-muted 請填寫在 #[a(target="_blank", href="https://store.line.me/") LINE STORE] 內的創作者編號。
+    .form-group.was-validated(v-if="h.lineUrlType === 'theme'")
+      label(for="h-productId") 主題編號 #[code productId]
+      input.form-control.form-control-sm#h-productId(type="tel", v-model="h.productId", required, pattern="\\d+")
+      small.form-text.text-muted 請填寫在 #[a(target="_blank", href="https://store.line.me/") LINE STORE] 內的主題編號。
+    .form-group(v-if="h.lineUrlType === 'voom'")
+      label(for="h-voomType") 選擇 LINE VOOM 的頁面
+      select.custom-select.custom-select-sm#h-voomType(v-model="h.voomType")
+        option(value="main") 首頁
+        option(value="profile") 帳號資訊
+      small.form-text.text-muted 請選擇要開啟的 LINE VOOM 頁面。
+    template(v-if="h.lineUrlType === 'voomPost'")
+      .form-group
+        label(for="h-voomPostType") 貼文網址類型
+        select.custom-select.custom-select-sm#h-voomPostType(v-model="h.voomPostType")
+          option(value="app") LINE APP 專用
+          option(value="web") 網頁
+        small.form-text.text-muted 請選擇網頁版或是 LINE APP 專用網址。
+      .form-group.was-validated
+        label(for="h-postId") 貼文編號 #[code postId]
+        input.form-control.form-control-sm#h-postId(type="tel", v-model="h.postId", required, pattern="\\d+")
+        small.form-text.text-muted 請填寫在 LINE VOOM 貼文詳情內的貼文編號。
+    .form-group
+      label 預覽網址
+      textarea.form-control.form-control-sm(readonly, rows="5", @click="btnCopy(lineUrl)") {{ lineUrl }}
+      small.form-text.text-muted 可使用下方按鈕來協助測試網址在 LINE 手機版上不同的聊天室、LINE 手機版之外、以及 LINE 電腦版上的支援度。
+      .row.mx-n1.mt-2
+        .col.px-1: a.btn.btn-block.btn-primary(target="_blank", :href="lineUrl") #[i.fa.mr-1.fa-external-link] 打開
+        .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnCopy(lineUrl)") #[i.fa.mr-1.fa-clipboard] 複製
+        .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnShare(lineUrl)") #[i.fa.mr-1.fa-share-alt] 分享
+      a.btn.mt-2.btn-block.btn-primary(target="_blank", :href="sendLineUrlToLine") #[i.fa.mr-1.fa-paper-plane] 透過 LINE 傳送網址 (限手機)
+      button.btn.mt-2.btn-block.btn-danger(@click="btnReset") #[i.fa.mr-2.fa-repeat] 重設資料
+    .modal.fade(data-keyboard="false", tabindex="-1", ref="lineUrlPicker")
+      .modal-dialog.modal-dialog-centered.modal-xl
+        .modal-content
+          .modal-header.d-flex.align-items-center
+            .modal-title.flex-fill
+              .input-group
+                .input-group-prepend: span.input-group-text 搜尋
+                input.form-control#h-keyword(placeholder="請輸入關鍵字", v-model="lineUrlPicker.keyword")
+                .input-group-append: button.btn.btn-outline-danger(type="button", @click="lineUrlPicker.keyword = ''") 清空
+            button.close(type="button", data-dismiss="modal"): span &times;
+          .modal-body.p-0
+            ul.list-group.list-group-flush
+              button.list-group-item.list-group-item-action.d-flex.flex-column.text-left(
+                :class="[lineUrlPicker.cur === c.type ? 'list-group-item-secondary' : '']",
+                :key="c.type",
+                @click="lineUrlPicker?.cb?.(c.type)",
+                type="button",
+                v-for="c of filteredLineUrlMetas",
+              )
+                h4.mb-0 {{ c.title }}
+                .d-flex.flex-wrap.ml-n1.mt-1.mb-0
+                  .shield.ml-1.mt-1(v-for="tag of _.map(c.tags, tag => tag.split(':'))")
+                    .shield-name.text-white(:class="{手機:'bg-28a745', 電腦:'bg-007bff'}[tag[0]]") {{ tag[0] }}
+                    .shield-value.text-dark.bg-white {{ tag[1] }}
+                small.mt-1.mb-0 {{ c.desc }}
+
+block script
+  script.
+    const LINE_URL_SCHEME_DOC = 'https://developers.line.biz/en/docs/line-login/using-line-url-scheme/'
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          authorId: '',
+          cameraRollType: 'single',
+          categoryId: '',
+          lineId: '@736cebrk',
+          lineUrlType: 'addFriends',
+          openUrl: '',
+          openUrlType: 'openExternalBrowser',
+          packageId: '',
+          postId: '',
+          productId: '',
+          recommendType: 'OA1',
+          sendMessageType: 'share',
+          settingType: 'settings',
+          stickerType: 'sticker/detail',
+          text: '',
+          voomPostType: 'app',
+          voomType: 'main',
+        },
+        lineUrlPicker: { keyword: '', cur: null, cb: null },
+        lineUrlMetas: [
+          {
+            type: 'addFriends',
+            title: '加入好友頁面',
+            desc: '打開 LINE 手機版的加入好友頁面。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-common-line-app-screens`],
+          },
+          {
+            type: 'location',
+            title: '傳送位置資訊',
+            desc: '打開 LINE 手機版的位置資訊，讓使用者搜尋或選擇位置資訊，並傳送給官方帳號。',
+            tags: ['手機:官帳'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-common-line-app-screens`],
+          },
+          {
+            type: 'camera',
+            title: '相機拍照',
+            desc: '打開 LINE 手機版的相機，讓使用者馬上拍照，並傳送到聊天室中。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-the-camera-and-camera-roll`],
+          },
+          {
+            type: 'cameraRoll',
+            title: '相簿選擇照片',
+            desc: '打開 LINE 手機版的相簿，讓使用者選擇一張或多張照片，並傳送到聊天室中。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-the-camera-and-camera-roll`],
+          },
+          {
+            type: 'chat',
+            title: '聊天頁面',
+            desc: '打開 LINE 手機版的聊天頁面。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-common-line-app-screens`],
+          },
+          {
+            type: 'officialAccounts',
+            title: '官方帳號推薦頁',
+            desc: '打開 LINE 手機版的 LINE 官方帳號推薦頁。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-common-line-app-screens`],
+          },
+          {
+            type: 'openUrl',
+            title: '指定方式開網址',
+            desc: '讓網址可以在 LINE 手機版中以指定方式開啟。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-url-in-external-browser`],
+          },
+          {
+            type: 'QRCodeReader',
+            title: '掃描 QRCode',
+            desc: '打開 LINE 手機版掃描 QRCode 的頁面。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: ['https://jirawatee.medium.com/bb0fdcf80821'],
+          },
+          {
+            type: 'recommendOA',
+            title: '分享官方帳號',
+            desc: '官方帳號的加入網址，或是請使用者傳送給所選的對象。這幾種網址在不同裝置的支援度不盡相同，請記得測試後再使用。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部', '電腦:官帳', '電腦:私聊', '電腦:群組', '電腦:社群', '電腦:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#sharing-line-official-account`],
+          },
+          {
+            type: 'sendMessage',
+            title: '傳送文字訊息',
+            desc: '讓使用者傳送一段預先定義的文字給所選的對象，或是傳送給指定的官方帳號。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#sending-text-messages`],
+          },
+          {
+            type: 'setting',
+            title: '設定頁面',
+            desc: '打開使用者的個人檔案設定頁。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [
+              `${LINE_URL_SCHEME_DOC}#opening-profile-information`,
+              `${LINE_URL_SCHEME_DOC}#opening-line-app-settings-screens`,
+            ],
+          },
+          {
+            type: 'sticker',
+            title: '貼圖小舖的特定頁面',
+            desc: '貼圖小舖的特定頁面連結。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-the-sticker-shop`],
+          },
+          {
+            type: 'stickerShop',
+            title: '貼圖小舖首頁',
+            desc: '貼圖小舖首頁。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-the-sticker-shop`],
+          },
+          {
+            type: 'theme',
+            title: '主題小舖',
+            desc: '主題小舖的相關連結。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-the-theme-shop`],
+          },
+          {
+            type: 'timeline',
+            title: 'LINE VOOM',
+            desc: '打開 LINE 手機版的 LINE VOOM 頁面。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-common-line-app-screens`],
+          },
+          {
+            type: 'voom',
+            title: 'LINE VOOM 指定帳號',
+            desc: '開啟指定帳號的 LINE VOOM 頁面。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-line-voom-and-profile`],
+          },
+          {
+            type: 'voomPost',
+            title: 'LINE VOOM 貼文',
+            desc: '開啟官方帳號的 LINE VOOM 貼文頁。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部', '電腦:官帳', '電腦:私聊', '電腦:群組', '電腦:社群', '電腦:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-line-voom-and-profile`],
+          },
+          {
+            type: 'wallet',
+            title: '錢包頁面',
+            desc: '打開 LINE 手機版的錢包頁面。',
+            tags: ['手機:官帳', '手機:私聊', '手機:群組', '手機:社群', '手機:外部'],
+            links: [`${LINE_URL_SCHEME_DOC}#opening-common-line-app-screens`],
+          },
+        ],
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        // location.hash
+        this.$watch('h.lineUrlType', newVal => { location.hash = newVal })
+        const onHashChange = () => {
+          const hash = location.hash.slice(1)
+          if (_.some(this.lineUrlMetas, ['type', hash])) this.h.lineUrlType = hash
+        }
+        window.addEventListener('hashchange', onHashChange, false)
+        onHashChange()
+      },
+      computed: {
+        lineUrlMeta () {
+          return _.find(this.lineUrlMetas, ['type', this.h.lineUrlType])
+        },
+        filteredLineUrlMetas () {
+          const keyword = this.lineUrlPicker.keyword ?? ''
+          if (!keyword) return this.lineUrlMetas
+          return _.filter(this.lineUrlMetas, meta => JSON5.stringify(meta).indexOf(keyword) >= 0)
+        },
+        sendLineUrlToLine () {
+          return `https://line.me/R/share?text=${encodeURIComponent(this.lineUrl)}`
+        },
+        lineUrl () {
+          const {
+            authorId,
+            cameraRollType,
+            categoryId,
+            lineId,
+            lineUrlType,
+            openUrl,
+            openUrlType,
+            packageId,
+            postId,
+            productId,
+            recommendType,
+            sendMessageType,
+            settingType,
+            stickerType,
+            text,
+            voomPostType,
+            voomType,
+          } = this.h
+          const accountId = lineId[0] === '@' ? lineId.slice(1) : '736cebrk'
+          const encoded = encodeURIComponent(text)
+          switch (lineUrlType) {
+            case 'cameraRoll':
+              return `https://line.me/R/nv/cameraRoll/${cameraRollType}`
+            case 'openUrl':
+              try {
+                const url = new URL(openUrl)
+                url.searchParams.delete('openExternalBrowser')
+                url.searchParams.delete('openInAppBrowser')
+                switch (openUrlType) {
+                  case 'openExternalBrowser':
+                    url.searchParams.set('openExternalBrowser', 1)
+                    break
+                  case 'openInAppBrowser':
+                    url.searchParams.set('openInAppBrowser', 0)
+                    break
+                }
+                return url.href
+              } catch (err) {
+                return ''
+              }
+            case 'recommendOA':
+              switch (recommendType) {
+                case 'OA1':
+                  return `https://line.me/R/ti/p/${lineId}`
+                case 'OA2':
+                  return `https://liff.line.me/1645278921-kWRPP32q/?accountId=${accountId}`
+                case 'OA3':
+                  return `https://page.line.me/?accountId=${accountId}`
+                case 'searchFriend':
+                  return `https://line.me/R/ti/p/~${lineId}`
+                case 'shareOA':
+                  return `https://line.me/R/nv/recommendOA/${lineId}`
+              }
+            case 'sendMessage':
+              switch (sendMessageType) {
+                case 'share':
+                  return `https://line.me/R/share?text=${encoded}`
+                case 'oaMessage':
+                  return `https://line.me/R/oaMessage/${lineId}/?${encoded}`
+              }
+            case 'setting':
+              return `https://line.me/R/nv/${settingType}`
+            case 'sticker':
+              switch (stickerType) {
+                case 'sticker/detail':
+                  return `https://line.me/R/shop/sticker/detail/${packageId}`
+                case 'category':
+                  return `https://line.me/R/shop/category/${categoryId}`
+                case 'sticker/author':
+                  return `https://line.me/R/shop/sticker/author/${authorId}`
+                default:
+                  return `https://line.me/R/shop/${stickerType}`
+              }
+            case 'theme':
+              return `https://line.me/R/shop/theme/detail?id=${productId}`
+            case 'voom':
+              return `https://line.me/R/home/public/${voomType}?id=${accountId}`
+            case 'voomPost':
+              switch (voomPostType) {
+                case 'app':
+                  return `https://line.me/R/home/public/post?id=${accountId}&postId=${postId}`
+                case 'web':
+                  return `https://linevoom.line.me/post/${postId}`
+              }
+            default:
+              return `https://line.me/R/nv/${lineUrlType}`
+          }
+        },
+      },
+      methods: {
+        async btnPickLineUrlType () {
+          const $ref = window.jQuery(this.$refs.lineUrlPicker)
+          const newVal = await new Promise(resolve => {
+            _.extend(this.lineUrlPicker, {
+              cb: resolve,
+              cur: this.h.lineUrlType,
+            })
+            $ref.one('hide.bs.modal', () => resolve()).modal('show')
+          })
+          $ref.modal('hide')
+          if (newVal) this.h.lineUrlType = newVal
+          this.$set(this.lineUrlPicker, 'cb', null)
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        async btnShare (url) {
+          try {
+            if (!navigator.share) throw new Error('不支援分享功能')
+            await navigator.share({ url })
+            await Swal.fire({ icon: 'success', title: '分享成功' })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '分享失敗', text: err.message })
+          }
+        },
+        async btnReset (confirm = true) {
+          if (confirm) {
+            confirm = await Swal.fire({
+              cancelButtonColor: '#3085d6',
+              cancelButtonText: '保持原樣',
+              confirmButtonColor: '#d33',
+              confirmButtonText: '重設資料',
+              focusCancel: true,
+              icon: 'warning',
+              showCancelButton: true,
+              text: '是否重設本頁面的資料？',
+            })
+            if (!confirm.value) return
+          }
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+        async btnReset () {
+          if (!await this.confirm('是否重設資料？（此動作無法還原）', '確定', '取消')) return
+          this.showLoading('重設資料中...', '重設後將自動重新整理網頁。')
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+        async confirm (text, confirmButtonText, cancelButtonText) {
+          const args = {
+            cancelButtonColor: '#3085d6',
+            cancelButtonText,
+            confirmButtonColor: '#d33',
+            confirmButtonText,
+            focusCancel: true,
+            icon: 'warning',
+            showCancelButton: true,
+            text,
+          }
+          return (await Swal.fire(args))?.isConfirmed
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
