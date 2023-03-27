@@ -1232,7 +1232,6 @@ jstransformer-sass@^1.0.0:
 
 jstransformer-scss@^0.1.3, jstransformer-scss@taichunmin/jstransformer-scss:
   version "1.0.1-beta.1"
-  uid e0563c2813d7f8294a27f74f2d10c6c096fc9c0c
   resolved "https://codeload.github.com/taichunmin/jstransformer-scss/tar.gz/e0563c2813d7f8294a27f74f2d10c6c096fc9c0c"
   dependencies:
     extend-shallow "^3.0.2"

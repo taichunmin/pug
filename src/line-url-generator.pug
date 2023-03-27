@@ -450,6 +450,7 @@ block script
                 case 'shareOA':
                   return `https://line.me/R/nv/recommendOA/${lineId}`
               }
+              break
             case 'sendMessage':
               switch (sendMessageType) {
                 case 'share':
@@ -457,6 +458,7 @@ block script
                 case 'oaMessage':
                   return `https://line.me/R/oaMessage/${lineId}/?${encoded}`
               }
+              break
             case 'setting':
               return `https://line.me/R/nv/${settingType}`
             case 'sticker':
@@ -481,6 +483,7 @@ block script
                 case 'web':
                   return `https://linevoom.line.me/post/${postId}`
               }
+              break
             default:
               return `https://line.me/R/nv/${lineUrlType}`
           }
@@ -520,24 +523,6 @@ block script
             console.error(err)
             await Swal.fire({ icon: 'error', title: '分享失敗', text: err.message })
           }
-        },
-        async btnReset (confirm = true) {
-          if (confirm) {
-            confirm = await Swal.fire({
-              cancelButtonColor: '#3085d6',
-              cancelButtonText: '保持原樣',
-              confirmButtonColor: '#d33',
-              confirmButtonText: '重設資料',
-              focusCancel: true,
-              icon: 'warning',
-              showCancelButton: true,
-              text: '是否重設本頁面的資料？',
-            })
-            if (!confirm.value) return
-          }
-          localStorage.removeItem(location.pathname)
-          location.reload()
-          return await new Promise(resolve => {})
         },
         async btnReset () {
           if (!await this.confirm('是否重設資料？（此動作無法還原）', '確定', '取消')) return

@@ -1,0 +1,403 @@
+extends /layout/default
+
+block beforehtml
+  - title = 'AWS IoT Shadow Demo'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .input-group-prepend .input-group-text
+        letter-spacing: -1px
+        min-width: 90px
+      .letter-spacing-n15, .letter-spacing-n15 .btn
+        letter-spacing: -1.5px
+      .font-size-dot8
+        font-size: 80%
+
+block content
+  #app.container-fluid.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .card
+      h6.card-header #[i.fa.fa-fw.fa-cog] MQTT 設定及操作
+      .card-body
+        .form-group
+          label AWS MQTT 設定
+          .input-group.input-group-sm
+            .input-group-prepend: span.input-group-text.justify-content-center host
+            input.form-control(type="url", v-model="h.host")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-center keyId
+            input.form-control(type="password", v-model="h.keyId")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-center keySecret
+            input.form-control(type="password", v-model="h.keySecret")
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-center shadow#[br]prefix
+            textarea.form-control(inputmode="url", v-model="h.shadowPrefix")
+          .row.mx-n1.mt-2
+            .col.px-1: button.btn.btn-block(type="button", @click="btnMqttConnect", :class="['btn-success', 'btn-danger'][isConnected]") #[i.fa.fa-fw.fa-power-off] 連線/斷線
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnShadowGet") #[i.fa.fa-fw.fa-cloud-download] 取得狀態
+        .form-group.mt-2
+          label Server 操作
+          .row.mx-n1.mt-1.letter-spacing-n15
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnDesireIgn(0)") #[i.fa.fa-fw.fa-toggle-off] desire off
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnDesireIgn(1)") #[i.fa.fa-fw.fa-toggle-on] desire on
+        .form-group.mt-2.mb-0
+          label Core3 操作
+          .row.mx-n1.mt-1.letter-spacing-n15
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnReportedIgn(0)") #[i.fa.fa-fw.fa-toggle-off] report off
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnReportedIgn(1)") #[i.fa.fa-fw.fa-toggle-on] report on
+          .row.mx-n1.mt-1.letter-spacing-n15
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnBothIgn(0)") #[i.fa.fa-fw.fa-toggle-off] desire null + reported off
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnBothIgn(1)") #[i.fa.fa-fw.fa-toggle-on] desire null + reported on
+          .row.mx-n1.mt-1.letter-spacing-n15
+            .col.px-1: button.btn.btn-block.btn-primary(type="button", @click="btnReportEmpty") #[i.fa.fa-fw.fa-refresh] report empty
+            .col.px-1
+    .row.mt-3.mx-n2
+      .col-4.px-2: ul.list-group
+        template(v-for="[suffix, moniter] of _.toPairs(moniters)", :key="suffix")
+          template(v-for="newMsgCnt of [_.sumBy(moniter.msgs ?? [], msg => +(msg.timestamp > moniter.seen))]")
+            li.list-group-item.d-flex.justify-content-between.align-items-center.active(v-if="page === suffix", @click="btnPage(suffix)")
+              .letter-spacing-n15 {{ suffix }}
+              span.badge.badge-light.badge-pill(v-if="newMsgCnt") {{ newMsgCnt }}
+            li.list-group-item.d-flex.justify-content-between.align-items-center(v-else, @click="btnPage(suffix)")
+              .letter-spacing-n15 {{ suffix }}
+              span.badge.badge-primary.badge-pill(v-if="newMsgCnt") {{ newMsgCnt }}
+      .col-8.px-2.font-size-dot8.language-yaml
+        pre.rounded.my-0(v-show="code") #[code(v-html="prism(code)")]
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/mqtt@4/dist/mqtt.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js/crypto-js.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js")
+  script.
+    /* global jsyaml, mqtt, Prism */
+    class SigV4 {
+      // https://www.gettechtalent.com/blog/tutorial-real-time-frontend-updates-with-react-serverless-and-websockets-on-aws-iot.html
+      // https://web-identity-federation-playground.s3.amazonaws.com/js/sigv4.js
+      // https://github.com/department-stockholm/aws-signature-v4/blob/master/index.js
+
+      static createIotPresignedUrl (host, keyId, keySecret) {
+        const region = /([^.]+)\.[^.]+\.[^.]+$/.exec(host)?.[1]
+        if (!region) throw new Error(`invalid host = ${host}`)
+        return SigV4.createPresignedURL('GET', host, '/mqtt', 'iotdevicegateway', '', {
+          key: keyId,
+          secret: keySecret,
+          protocol: 'wss',
+          region,
+        })
+      }
+
+      static createPresignedURL (method, host, path, service, payload, options = {}) {
+        options = {
+          doubleEscape: true,
+          expires: 86400,
+          protocol: 'https',
+          query: {},
+          region: 'us-east-1',
+          signSessionToken: false,
+          timestamp: Date.now(),
+          ...options,
+
+          headers: {
+            Host: host,
+            ...options.headers,
+          },
+        }
+
+        const query = _.isString(options.query) ? Qs.parse(options.query) : options.query
+        query['X-Amz-Algorithm'] = 'AWS4-HMAC-SHA256'
+        query['X-Amz-Credential'] = `${options.key}/${SigV4.createCredentialScope(options.timestamp, options.region, service)}`
+        query['X-Amz-Date'] = SigV4.toTime(options.timestamp)
+        query['X-Amz-Expires'] = options.expires
+        query['X-Amz-SignedHeaders'] = SigV4.createSignedHeaders(options.headers)
+
+        if (options.sessionToken && options.signSessionToken) {
+          query['X-Amz-Security-Token'] = options.sessionToken
+        }
+
+        const canonicalRequest = SigV4.createCanonicalRequest(method, path, query, options.headers, payload, options.doubleEscape)
+        const stringToSign = SigV4.createStringToSign(options.timestamp, options.region, service, canonicalRequest)
+        query['X-Amz-Signature'] = SigV4.createSignature(options.secret, options.timestamp, options.region, service, stringToSign)
+
+        if (options.sessionToken && !options.signSessionToken) {
+          query['X-Amz-Security-Token'] = options.sessionToken
+        } else {
+          delete query['X-Amz-Security-Token']
+        }
+
+        const url = `${options.protocol}://${host}${path}?${Qs.stringify(query)}`
+        console.log(`url = ${url}`)
+        return url
+      }
+
+      static createCredentialScope (time, region, service) {
+        return [SigV4.toDate(time), region, service, 'aws4_request'].join('/')
+      }
+
+      static createSignedHeaders (headers) {
+        return _.map(_.keys(headers).sort(), name => _.trim(_.toLower(name))).join(';')
+      }
+
+      static createCanonicalRequest (method, uri, query, headers, payload, doubleEscape) {
+        if (doubleEscape) uri = _.map(uri.split(/\//g), encodeURIComponent).join('/')
+        return [
+          _.toUpper(method),
+          SigV4.createCanonicalURI(uri),
+          SigV4.createCanonicalQueryString(query),
+          SigV4.createCanonicalHeaders(headers),
+          SigV4.createSignedHeaders(headers),
+          SigV4.createCanonicalPayload(payload),
+        ].join('\n')
+      }
+
+      static createCanonicalURI (uri) {
+        return new URL(uri, 'https://localhost').pathname
+      }
+
+      static createCanonicalQueryString (query) {
+        if (_.isString(query)) query = Qs.parse(query)
+        return _.chain(query)
+          .mapValues(val => _.isArray(val) ? val.sort() : val)
+          .toPairs()
+          .sortBy([0])
+          .fromPairs()
+          .thru(query => Qs.stringify(query, { indices: false }))
+          .value()
+      }
+
+      static createCanonicalHeaders (headers) {
+        return _.chain(headers)
+          .toPairs()
+          .sortBy([0])
+          .map(([key, val]) => {
+            key = _.trim(_.toLower(key))
+            val = _.map(_.isArray(val) ? val : [val], v => _.trim(v).replace(/\s+/g, ' ')).join(',')
+            return `${key}:${val}\n`
+          })
+          .join('')
+          .value()
+      }
+
+      static createCanonicalPayload (payload) {
+        if (payload === 'UNSIGNED-PAYLOAD') return payload
+        return SigV4.sha256(payload ?? '', CryptoJS.enc.Hex)
+      }
+
+      static createStringToSign (time, region, service, request) {
+        return [
+          'AWS4-HMAC-SHA256',
+          SigV4.toTime(time),
+          SigV4.createCredentialScope(time, region, service),
+          SigV4.sha256(request, CryptoJS.enc.Hex),
+        ].join('\n')
+      }
+
+      static createSignature (secret, time, region, service, stringToSign) {
+        const hashDate = CryptoJS.HmacSHA256(SigV4.toDate(time), `AWS4${secret}`)
+        const hashRegion = CryptoJS.HmacSHA256(region, hashDate)
+        const hashService = CryptoJS.HmacSHA256(service, hashRegion)
+        const hashSigning = CryptoJS.HmacSHA256('aws4_request', hashService)
+
+        return CryptoJS.HmacSHA256(stringToSign, hashSigning).toString(CryptoJS.enc.Hex)
+      }
+
+      static sha256 (message, encoder) {
+        return CryptoJS.SHA256(message).toString(encoder)
+      }
+
+      static hs256 (secret, message, encoder) {
+        return CryptoJS.HmacSHA256(message, secret).toString(encoder)
+      }
+
+      static toTime (time) {
+        return new Date(time).toISOString().replace(/[:-]|\.\d{3}/g, '')
+      }
+
+      static toDate (time) {
+        return SigV4.toTime(time).substring(0, 8)
+      }
+    }
+
+    const mqttConnect = async ({ host, keyId, keySecret }) => {
+      try {
+        const url = SigV4.createIotPresignedUrl(host, keyId, keySecret)
+        return await new Promise((resolve, reject) => {
+          const conn = mqtt.connect(url, { connectTimeout: 30000 })
+          conn.on('connect', () => resolve(conn))
+          conn.on('disconnect', () => { console.log('client disconnect') })
+          conn.on('end', () => { console.log('client end') })
+          conn.on('error', reject)
+          conn.on('reconnect', () => { console.log('client reconnect') })
+          conn.once('close', () => reject(new Error('mqtt closed')))
+        })
+      } catch (err) {
+        console.error(err)
+        throw err
+      }
+    }
+
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        page: '',
+        mqtt: null,
+        moniters: {},
+        shadowSuffixs: [
+          '/get/accepted',
+          '/get/rejected',
+          '/update/accepted',
+          '/update/rejected',
+          '/update/delta',
+          '/update/documents',
+          '/delete/accepted',
+          '/delete/rejected',
+        ],
+        h: {
+          host: '',
+          shadowPrefix: '',
+          keyId: '',
+          keySecret: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        isConnected () {
+          return +!!this.mqtt
+        },
+        code () {
+          if (!_.has(this.moniters, this.page)) return null
+          const yaml = jsyaml.dump(this.moniters[this.page]?.msgs ?? [], null, 2)
+          let i = 0
+          return yaml.split(/\n(?=-)/g).map(v => (v[0] === '-' ? `# index = ${i++}\n${v}` : v)).join('\n\n')
+        },
+        prism () {
+          if (!this.code) return ''
+          return Prism.highlight(this.code, Prism.languages.yaml, 'yaml')
+        },
+      },
+      methods: {
+        async btnMqttConnect () {
+          try {
+            if (this.mqtt) {
+              this.showLoading('請稍後', '正在中斷 mqtt 連線…')
+              return await new Promise(resolve => { this.mqtt.end(resolve) })
+            }
+            this.showLoading('請稍後', '正在建立 mqtt 連線…')
+            this.mqtt = await mqttConnect(this.h)
+            this.mqtt.once('close', () => { this.mqtt = null })
+            this.mqtt.once('end', () => { this.mqtt = null })
+            this.mqtt.on('message', this.mqttOnMessage)
+
+            const shadowTopics = _.map(this.shadowSuffixs, t => `${this.h.shadowPrefix}${t}`)
+            await this.mqttSubscribe(shadowTopics, { qos: 0 })
+            for (const suffix of this.shadowSuffixs) {
+              this.$set(this.moniters, suffix, { seen: 0, msgs: [] })
+            }
+            this.page = _.first(this.shadowSuffixs)
+          } catch (err) {
+            console.error(err)
+          } finally {
+            Swal.close()
+          }
+        },
+        async btnShadowGet () {
+          try {
+            await this.mqttPublish(`${this.h.shadowPrefix}/get`, '', { qos: 1 })
+          } catch (err) {
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnShadowUpdate (state) {
+          try {
+            await this.mqttPublish(`${this.h.shadowPrefix}/update`, { state }, { qos: 1 })
+          } catch (err) {
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnDesireIgn (ign) {
+          await this.btnShadowUpdate({
+            desired: { ign },
+          })
+        },
+        async btnReportedIgn (ign) {
+          await this.btnShadowUpdate({
+            reported: { ign },
+          })
+        },
+        async btnBothIgn (ign) {
+          await this.btnShadowUpdate({
+            desired: { ign: null },
+            reported: { ign },
+          })
+        },
+        async btnReportEmpty () {
+          await this.btnShadowUpdate({
+            reported: {},
+          })
+        },
+        async btnPage (page) {
+          if (!_.has(this.moniters, page)) return
+          if (_.has(this.moniters, [this.page, 'seen'])) this.moniters[this.page].seen = _.floor(Date.now() / 1000)
+          this.page = page
+          this.moniters[page].seen = _.floor(Date.now() / 1000)
+        },
+        async mqttOnMessage (topic, payload) {
+          payload = JSON.parse(payload.toString())
+          console.log({ fn: 'mqttOnMessage', topic, payload })
+
+          if (_.startsWith(topic, this.h.shadowPrefix)) {
+            const suffix = topic.slice(this.h.shadowPrefix.length)
+            const msgs = [payload, ...(this.moniters[suffix]?.msgs ?? [])]
+            this.$set(this.moniters[suffix], 'msgs', msgs)
+          }
+        },
+        async mqttSubscribe (topic, options) {
+          if (!this.mqtt) throw new Error('請先連線 MQTT')
+          return await new Promise((resolve, reject) => {
+            this.mqtt.subscribe(topic, options, (err, granted) => err ? reject(err) : resolve(granted))
+          })
+        },
+        async mqttUnsubscribe (topic) {
+          if (!this.mqtt) throw new Error('請先連線 MQTT')
+          return await new Promise((resolve, reject) => {
+            this.mqtt.unsubscribe(topic, err => err ? reject(err) : resolve())
+          })
+        },
+        async mqttPublish (topic, message, options) {
+          if (!this.mqtt) throw new Error('請先連線 MQTT')
+          if (!_.isString(topic)) throw new Error('topic is required')
+          if (!_.isString(message)) message = JSON.stringify(message)
+          return await new Promise((resolve, reject) => {
+            this.mqtt.publish(topic, message, options, err => err ? reject(err) : resolve())
+          })
+        },
+        prism (code, lang = 'yaml') {
+          if (!code) return ''
+          return Prism.highlight(this.code, Prism.languages[lang], lang)
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
+
