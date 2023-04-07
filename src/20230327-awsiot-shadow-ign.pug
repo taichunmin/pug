@@ -280,9 +280,13 @@ block script
         },
         code () {
           if (!_.has(this.moniters, this.page)) return null
-          const yaml = jsyaml.dump(this.moniters[this.page]?.msgs ?? [], null, 2)
-          let i = 0
-          return yaml.split(/\n(?=-)/g).map(v => (v[0] === '-' ? `# index = ${i++}\n${v}` : v)).join('\n\n')
+          const msgs = this.moniters[this.page]?.msgs ?? []
+          if (!msgs.length) return '# No data'
+          return _.map(msgs, msg => {
+            let yaml = jsyaml.dump([msg], null, 2)
+            if (msg.timestamp) yaml = `# 收到時間: ${dayjs.unix(msg.timestamp).format('YYYY-MM-DD HH:mm:ss ZZ')}\n${yaml}`
+            return yaml
+          }).join('\n\n')
         },
         prism () {
           if (!this.code) return ''
