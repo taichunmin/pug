@@ -1,0 +1,77 @@
+extends /layout/default
+
+block beforehtml
+  - title = '哆啦A夢牧場物語 挖礦記錄'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      svg
+        pointer-events: fill
+
+block content
+  #app.container-fluid.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    //- width: 55 * 14 = 770, height: 95 * 14 = 1330
+    svg(viewBox="0 0 770 1330" xmlns="http://www.w3.org/2000/svg" version="1.1")
+      template(v-for="i of _.range(7)")
+        template(v-for="j of _.range(7)")
+          path(
+            :d="`M ${385 + (j - i) * 55} ${5 + (i + j) * 95} l 50 86.6 l -50 86.6 l -50 -86.6 z`"
+            :stroke="['#000', '#F00']?.[h.mining?.[i * 7 + j]]"
+            @click="btnMining(i * 7 + j)"
+            fill="transparent"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="4"
+          )
+    button.mt-3.btn.btn-block.btn-outline-danger(type="button", @click="btnNewMining()") #[span.fa.fa-fw.fa-trash-o] 清空資料
+
+block script
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          mining: null,
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        if (!this.h.mining) await this.btnNewMining(true)
+      },
+      methods: {
+        async btnNewMining(slient = false) {
+          if (!slient && !await this.confirm('確定要開始新的挖礦記錄嗎？', '確定', '取消')) return
+          this.$set(this.h, 'mining', _.times(49, () => 0))
+        },
+        async confirm (text, confirmButtonText, cancelButtonText) {
+          const args = {
+            cancelButtonColor: '#3085d6',
+            cancelButtonText,
+            confirmButtonColor: '#d33',
+            confirmButtonText,
+            focusCancel: true,
+            icon: 'warning',
+            showCancelButton: true,
+            text,
+          }
+          return (await Swal.fire(args))?.isConfirmed
+        },
+        btnMining (pos) {
+          this.$set(this.h.mining, pos, 1 - (this.h?.mining?.[pos] ?? 0))
+        },
+      },
+    })
