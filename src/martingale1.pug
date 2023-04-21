@@ -1,0 +1,227 @@
+extends /layout/default
+
+block beforehtml
+  - title = '馬丁格爾計算機1'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .font-size-dot8
+        font-size: .8rem
+      .input-group-prepend .input-group-text
+        letter-spacing: -2px
+        min-width: 80px
+      .input-group-append .input-group-text
+        letter-spacing: -2px
+        min-width: 2.5rem
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center.d-flex.justify-content-center.align-items-center
+      .mr-2= title
+      button.btn.btn-sm.btn-outline-danger(type="button", @click="btnReset") 清空
+    .form-group
+      label 參數設定
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 幣價基準
+        select.form-control.text-right(v-model.number="h.dp1")
+          option(v-for="i of 9", :value="i-1") 10^{{ 1-i }}
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 數量基準
+        select.form-control.text-right(v-model.number="h.dp2")
+          option(v-for="i of 9", :value="i-1") 10^{{ 1-i }}
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 手續費
+        input.form-control.text-right(type='number', v-model='h.feeRatio', min='0', @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center %
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 加倉倍數
+        input.form-control.text-right(type='number', v-model='h.volumeScale', min='1', @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center 倍
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 加倉次數
+        input.form-control.text-right(type='number', v-model.number='h.safetyOrders', min='1', max="15", step="1", @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center 次
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 加倉跌幅
+        input.form-control.text-right(type='number', v-model='h.deviation', min='0', max="100", @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center %
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 止盈比例
+        input.form-control.text-right(type='number', v-model='h.takeProfit', min='0', max="100", @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center %
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 投資額
+        input.form-control.text-right(type='number', v-model='h.investment', min='0', @focus="$event.target.select()")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 最新幣價
+        input.form-control.text-right(type='number', v-model='h.curPrice', min='0', @focus="$event.target.select()")
+    .form-group
+      label 買幣記錄
+      table.mt-2.table.table-sm.table-bordered.font-size-dot8
+        thead: tr.text-center
+          th #
+          th(style="width: 50%") 幣價
+          th(style="width: 50%") 數量
+        tbody: tr(v-for="bought of h.boughts")
+          th.text-center.align-middle {{ h.boughts.indexOf(bought) + 1 }}
+          td: input.form-control.form-control-sm.text-right(type='number', v-model.number='bought.price', min='0', @focus="$event.target.select()")
+          td: input.form-control.form-control-sm.text-right(type='number', v-model.number='bought.coin', min='0', @focus="$event.target.select()")
+    .form-group
+      label 計算結果
+      table.mt-2.table.table-sm.table-bordered.font-size-dot8
+        thead: tr.text-center
+          th 幣價
+          th 數量
+          th 投資額
+        tbody: tr.text-right(v-for="buy of toBuys")
+          td(@click="btnCopy(buy.price)") {{ buy.price }}
+          td(@click="btnCopy(buy.coin)") {{ buy.coin }}
+          td(@click="btnCopy(buy.investment)") {{ buy.investment }}
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 止盈價
+        input.form-control.text-right(readonly, :value="toSell")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 累計投資
+        input.form-control.text-right(readonly, :value="usedInvestment")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 持有數量
+        input.form-control.text-right(readonly, :value="holdingCoin")
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/bignumber.js@9/bignumber.min.js")
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          boughts: [],
+          curPrice: '2000',
+          deviation: '2',
+          dp1: 2, // 幣價基準
+          dp2: 3, // 數量基準
+          feeRatio: '0.05',
+          investment: '10000',
+          safetyOrders: 8,
+          takeProfit: '2',
+          volumeScale: '1.5',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        const generateBoughts = () => {
+          const {safetyOrders, boughts} = this.h
+          if (safetyOrders + 1 === boughts.length) return
+          this.$set(this.h, 'boughts', _.times(safetyOrders + 1, i => ({
+            price: _.get(boughts, `${i}.price`, 0),
+            coin: _.get(boughts, `${i}.coin`, 0),
+          })))
+        }
+        generateBoughts()
+        this.$watch('h.safetyOrders', generateBoughts)
+      },
+      computed: {
+        validBoughts () {
+          return _.filter(this.h.boughts, b => _.every(['price', 'coin'], k => BigNumber(b[k]).gt(0)))
+        },
+        usedInvestment () {
+          const boughts = this.validBoughts
+          if (!boughts.length) return BigNumber(0)
+          const feeRatio = BigNumber(this.h.feeRatio).shiftedBy(-2).plus(1)
+          return BigNumber.sum(..._.map(boughts, b => feeRatio.times(b.coin).times(b.price)))
+        },
+        holdingCoin () {
+          return BigNumber.sum(0, ..._.map(this.validBoughts, 'coin'))
+        },
+        toBuys () {
+          const boughts = this.validBoughts
+          const balance = BigNumber(this.h.investment).minus(this.usedInvestment)
+          if (balance.lte(0)) return []
+
+          const buys = []
+          const volumeScale = BigNumber(this.h.volumeScale)
+          const weights = _.times(this.h.safetyOrders + 1, i => BigNumber(volumeScale).pow(Math.max(0, i - 1))).slice(boughts.length)
+          const sumWeight = BigNumber.sum(...weights)
+          const deviation = BigNumber(`-${this.h.deviation}`).shiftedBy(-2).plus(1)
+          let price = BigNumber.min(..._.map(boughts, 'price')).times(deviation)
+          const curPrice = this.h.curPrice
+          if (price.isNaN() || price.gt(curPrice)) price = BigNumber(curPrice)
+          const feeRatio = BigNumber(this.h.feeRatio).shiftedBy(-2).plus(1)
+          //- console.log(JSON.stringify({ balance, volumeScale, weights, sumWeight, deviation, price }))
+          for (const weight of weights) {
+            const buy = { price, investment: weight.div(sumWeight).times(balance) }
+            buy.coin = buy.investment.div(feeRatio).div(buy.price)
+            buys.push({
+              price: buy.price.toFixed(this.h.dp1, BigNumber.ROUND_FLOOR),
+              coin: buy.coin.toFixed(this.h.dp2, BigNumber.ROUND_FLOOR),
+              investment: buy.investment.toFixed(9, BigNumber.ROUND_HALF_CEIL),
+            })
+            price = price.times(deviation)
+          }
+          return buys
+        },
+        toSell () {
+          const boughts = this.validBoughts
+          if (!boughts.length) return '尚未設定買幣記錄'
+          return BigNumber(this.h.takeProfit).shiftedBy(-2).plus(1)
+            .div(BigNumber(`-${this.h.feeRatio}`).shiftedBy(-2).plus(1))
+            .times(this.usedInvestment)
+            .div(this.holdingCoin)
+            .toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
+        },
+      },
+      methods: {
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        async btnReset () {
+          if (!await this.confirm('是否重設資料？（此動作無法還原）', '確定', '取消')) return
+          this.showLoading('重設資料中...', '重設後將自動重新整理網頁。')
+          localStorage.removeItem(location.pathname)
+          location.reload()
+          return await new Promise(resolve => {})
+        },
+        async confirm (text, confirmButtonText, cancelButtonText) {
+          const args = {
+            cancelButtonColor: '#3085d6',
+            cancelButtonText,
+            confirmButtonColor: '#d33',
+            confirmButtonText,
+            focusCancel: true,
+            icon: 'warning',
+            showCancelButton: true,
+            text,
+          }
+          return (await Swal.fire(args))?.isConfirmed
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
