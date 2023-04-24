@@ -283,14 +283,10 @@ block script
           const msgs = this.moniters[this.page]?.msgs ?? []
           if (!msgs.length) return '# No data'
           return _.map(msgs, msg => {
-            let yaml = jsyaml.dump([msg], null, 2)
+            let yaml = jsyaml.dump([msg])
             if (msg.timestamp) yaml = `# 收到時間: ${dayjs.unix(msg.timestamp).format('YYYY-MM-DD HH:mm:ss ZZ')}\n${yaml}`
             return yaml
-          }).join('\n\n')
-        },
-        prism () {
-          if (!this.code) return ''
-          return Prism.highlight(this.code, Prism.languages.yaml, 'yaml')
+          }).join('\n')
         },
       },
       methods: {

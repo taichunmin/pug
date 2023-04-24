@@ -1,0 +1,273 @@
+extends /layout/default
+
+block beforehtml
+  - title = 'Core3 Factory CSV Compare'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .font-size-dot8
+        font-size: 80%
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .form-group
+      label(for='h-gistPrefix') Gist Raw Prefix
+      textarea#h-gistPrefix.form-control.form-control-sm(rows="5", v-model='h.gistPrefix')
+      small.form-text.text-muted 請將文件中的資料下載為 CSV 並上傳到 Gist，並貼上 Raw URL Prefix。
+    .form-group
+      label(for='h-factoryCsv') CSV for Factory
+      textarea#h-factoryCsv.form-control.form-control-sm(rows="5" v-model='h.factoryCsv')
+    .row.mx-n1.mt-2
+      .col.px-1: button.btn.btn-success.btn-block(@click="btnCompare") 比對
+      .col.px-1
+        a.btn.btn-primary.btn-block(v-if="specDownload", target="_blank", download="spec.csv", :href="specDownload") 下載規格 CSV
+        button.btn.btn-primary.btn-block(v-else, @click="Swal.fire({ icon: 'error', title: '請先執行比對' })") 下載規格 CSV
+    .row.mx-n1.mt-2
+      .col.px-1: a.btn.btn-secondary.btn-block(target="_blank" href="https://docs.google.com/spreadsheets/d/1LPHPOb-qqQisGiYMP-qieCAxY5DdU1RG9aPwcjELIlI/edit#gid=630531673") 參數規格文件
+      .col.px-1: a.btn.btn-secondary.btn-block(target="_blank" href="https://docs.google.com/spreadsheets/d/1QjmZQQWDcFFnvMyiy0yyjnrNVDX5iUzqRxpfxq1YTcI/edit#gid=7417784") 工廠參數表
+    .row.mt-3.mx-n2
+      .col-4.px-2: ul.list-group
+        template(v-for="errs, errType of errors", :key="errType")
+          template(v-for="newMsgCnt of [errs.length]")
+            li.list-group-item.d-flex.justify-content-between.align-items-center.active(v-if="page === errType", @click="btnPage(errType)")
+              .letter-spacing-n15 {{ errType }}
+              span.badge.badge-light.badge-pill(v-if="newMsgCnt") {{ newMsgCnt }}
+            li.list-group-item.d-flex.justify-content-between.align-items-center(v-else, @click="btnPage(errType)")
+              .letter-spacing-n15 {{ errType }}
+              span.badge.badge-primary.badge-pill(v-if="newMsgCnt") {{ newMsgCnt }}
+      .col-8.px-2.font-size-dot8.language-yaml
+        pre.rounded.my-0(v-show="code") #[code(v-html="prism(code)")]
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js")
+  script.
+    const { joi: Joi } = window
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        page: 'factory',
+        specDownload: null,
+        errors: {
+          spec: [],
+          factory: [],
+        },
+        h: {
+          factoryCsv: '',
+          gistPrefix: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        code () {
+          if (!_.has(this.errors, this.page)) return null
+          const errs = this.errors[this.page] ?? []
+          if (!errs.length) return null
+          return _.map(errs, err => jsyaml.dump([err])).join('\n')
+        },
+      },
+      methods: {
+        async btnCompare () {
+          try {
+            this.showLoading('請稍候', '正在進行比對')
+            let [spec, factory] = await Promise.all([
+              (async () => {
+                return _.flatten(await Promise.all([this.getSpecOqc(), this.getSpecSku(), this.getSpecUser()]))
+              })(),
+              this.getFactory(),
+            ])
+            this.$set(this, 'errors', {
+              spec: [],
+              factory: [],
+            })
+            const errors = this.errors
+
+            // 驗證 spec
+            const specSchema1 = Joi.object({
+              category: Joi.string().valid('OQC', 'SKU', 'USER').required(),
+              offset: Joi.when('category', { not: 'USER', then: Joi.number().integer().empty('').min(0).required() }),
+              length: Joi.number().integer().empty('').min(1).required(),
+              type: Joi.string().trim().uppercase().valid('ASCII', 'HEX').required(),
+              key: Joi.string().trim().uppercase().min(1).required(),
+              description: Joi.string().trim().allow('').required(),
+            })
+            let specPrev = {}
+            spec = _.orderBy(_.filter(await Promise.all(_.map(spec, async row => {
+              try {
+                const tmp = await specSchema1.validateAsync(row)
+                // 檢查 offset 與 length 是否有重疊
+                if (specPrev.category !== tmp.category) specPrev = {}
+                if ((specPrev.offset ?? 0) + (specPrev.length ?? 0) > tmp.offset) throw new Error('offset 與 length 重疊')
+                return tmp
+              } catch (err) {
+                if (!row.key.length) return null
+                errors.spec.push({ message: err.message, ...row })
+              }
+            }))), ['category', 'offset', 'key'], ['asc', 'asc', 'asc'])
+
+            // 產生 spec 的下載檔案
+            this.specDownload = URL.createObjectURL(new Blob([Papa.unparse(spec, { header: true })], { type: 'text/csv' }))
+
+            // 驗證 factory
+            const factorySchema1 = Joi.object({
+              category: Joi.string().valid('OQC', 'SKU', 'USER').required(),
+              offset: Joi.when('category', { not: 'USER', then: Joi.number().integer().empty('').min(0).required() }),
+              length: Joi.number().integer().empty('').min(1).required(),
+              type: Joi.string().trim().uppercase().valid('ASCII', 'HEX').required(),
+              key: Joi.string().trim().uppercase().min(1).required(),
+              value: Joi.string().trim().allow('').required(),
+              description: Joi.string().trim().allow('').required(),
+            })
+            let factoryPrev = {}
+            factory = _.orderBy(_.filter(await Promise.all(_.map(factory, async row => {
+              try {
+                const tmp = await factorySchema1.validateAsync(row)
+                // 檢查 offset 與 length 是否有重疊
+                if (factoryPrev.category !== tmp.category) factoryPrev = {}
+                if ((factoryPrev.offset ?? 0) + (factoryPrev.length ?? 0) > tmp.offset) throw new Error('offset 與 length 重疊')
+                return tmp
+              } catch (err) {
+                errors.factory.push({ message: err.message, ...row })
+              }
+            }))), ['category', 'offset', 'key'], ['asc', 'asc', 'asc'])
+
+            const specByKey = new Map()
+            for (const row of spec) specByKey.set(`${row.category}: ${row.key}`, row)
+            const factoryByKey = new Map()
+            for (const row of factory) factoryByKey.set(`${row.category}: ${row.key}`, row)
+            const unionKeys = _.uniq([...specByKey.keys(), ...factoryByKey.keys()]).sort()
+            console.log({ specByKey, factoryByKey, unionKeys })
+            for (const key of unionKeys) {
+              const tmp = { spec: specByKey.get(key), factory: factoryByKey.get(key) }
+              try {
+                // 判斷是否有多餘或缺少的參數
+                if (_.isNil(tmp.factory)) throw new Error(`缺少的參數 ${key}`)
+                if (_.isNil(tmp.spec)) throw new Error(`多餘的參數 ${key}`)
+
+                // 比對參數設定是否相同
+                if (!_.every(['offset', 'length', 'type'], k => tmp.spec[k] === tmp.factory[k])) throw new Error('參數設定不同 (offset, length, type)')
+                if (tmp.spec.description !== tmp.factory.description) throw new Error('參數 description 不同')
+              } catch (err) {
+                errors.factory.push({ message: err.message, ...tmp })
+              }
+
+              try {
+                // 判斷 Value 是否正確
+                const valueSchema = Joi.object({
+                  value: Joi.when('key', {
+                    is: 'OQC_SN',
+                    then: Joi.string().trim().allow('').required(),
+                    otherwise: Joi.when('type', {
+                      switch: [
+                        { is: 'ASCII', then: Joi.string().trim().max(Joi.ref('length')).pattern(/^[\w-]+$/).required() },
+                        { is: 'HEX', then: Joi.string().trim().max(Joi.ref('length', { adjust: d => 2 * d })).pattern(/^[a-fA-F0-9]+$/).required() },
+                      ],
+                    }),
+                  }),
+                })
+                await valueSchema.validateAsync(tmp.factory, { allowUnknown: true })
+              } catch (err) {
+                errors.factory.push({ message: err.message, ...tmp.factory })
+              }
+            }
+
+            Swal.close()
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async getSpecOqc () {
+          const rows = await this.getCsv(`${_.trimEnd(this.h.gistPrefix, '/')}/oqc.csv`)
+          return _.map(rows, row => ({
+            category: 'OQC',
+            offset: row.Start,
+            length: row.Length,
+            type: row['Data type'],
+            key: row.NAME,
+            description: _.trim(row.Contents),
+          }))
+        },
+        async getSpecSku () {
+          const rows = await this.getCsv(`${_.trimEnd(this.h.gistPrefix, '/')}/sku.csv`)
+          return _.map(rows, row => ({
+            category: 'SKU',
+            offset: row.Start,
+            length: row.Length,
+            type: row['Data Type'],
+            key: row.Name,
+            description: _.filter([
+              _.trim(row.Note).length ? _.trim(row.Note) : null,
+              _.trim(row.Unit).length ? `Unit: ${_.trim(row.Unit)}` : null,
+              _.trim(row.Value).length ? _.trim(row.Value) : null,
+            ]).join('\n\n').replace(/ +\n/g, '\n'),
+          }))
+        },
+        async getSpecUser () {
+          const rows = await this.getCsv(`${_.trimEnd(this.h.gistPrefix, '/')}/user.csv`)
+          return _.map(rows, row => ({
+            category: 'USER',
+            offset: '',
+            length: row['Length(bytes)'],
+            type: row['Data Type'],
+            key: row.Name,
+            description: _.trim(row.Value),
+          }))
+        },
+        async getFactory () {
+          return await this.getCsv(this.h.factoryCsv)
+        },
+        async getCsv (url, cachetime = 3e4) {
+          const csv = _.trim(_.get(await axios.get(url, {
+            params: { cachebust: _.floor(Date.now() / cachetime) },
+          }), 'data'))
+          return _.get(Papa.parse(csv, {
+            encoding: 'utf8',
+            header: true,
+          }), 'data', [])
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+        async btnPage (page) {
+          if (!_.has(this.errors, page)) return
+          this.page = page
+        },
+        prism (code, lang = 'yaml') {
+          if (!code) return ''
+          return Prism.highlight(this.code, Prism.languages[lang], lang)
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

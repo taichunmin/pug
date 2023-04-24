@@ -95,6 +95,7 @@ block content
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/bignumber.js@9/bignumber.min.js")
   script.
+    const bnPercentToScale = percent => BigNumber(percent).shiftedBy(-2).plus(1)
     window.vm = new Vue({
       el: '#app',
       data: {
@@ -139,8 +140,8 @@ block script
         usedInvestment () {
           const boughts = this.validBoughts
           if (!boughts.length) return BigNumber(0)
-          const feeRatio = BigNumber(this.h.feeRatio).shiftedBy(-2).plus(1)
-          return BigNumber.sum(..._.map(boughts, b => feeRatio.times(b.coin).times(b.price)))
+          const feeRatio = bnPercentToScale(this.h.feeRatio)
+          return BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).times(feeRatio)
         },
         holdingCoin () {
           return BigNumber.sum(0, ..._.map(this.validBoughts, 'coin'))
@@ -154,11 +155,11 @@ block script
           const volumeScale = BigNumber(this.h.volumeScale)
           const weights = _.times(this.h.safetyOrders + 1, i => BigNumber(volumeScale).pow(Math.max(0, i - 1))).slice(boughts.length)
           const sumWeight = BigNumber.sum(...weights)
-          const deviation = BigNumber(`-${this.h.deviation}`).shiftedBy(-2).plus(1)
+          const deviation = bnPercentToScale(`-${this.h.deviation}`)
           let price = BigNumber.min(..._.map(boughts, 'price')).times(deviation)
           const curPrice = this.h.curPrice
           if (price.isNaN() || price.gt(curPrice)) price = BigNumber(curPrice)
-          const feeRatio = BigNumber(this.h.feeRatio).shiftedBy(-2).plus(1)
+          const feeRatio = bnPercentToScale(this.h.feeRatio)
           //- console.log(JSON.stringify({ balance, volumeScale, weights, sumWeight, deviation, price }))
           for (const weight of weights) {
             const buy = { price, investment: weight.div(sumWeight).times(balance) }
@@ -175,8 +176,8 @@ block script
         toSell () {
           const boughts = this.validBoughts
           if (!boughts.length) return '尚未設定買幣記錄'
-          return BigNumber(this.h.takeProfit).shiftedBy(-2).plus(1)
-            .div(BigNumber(`-${this.h.feeRatio}`).shiftedBy(-2).plus(1))
+          return bnPercentToScale(this.h.takeProfit)
+            .div(bnPercentToScale(`-${this.h.feeRatio}`))
             .times(this.usedInvestment)
             .div(this.holdingCoin)
             .toFixed(this.h.dp1, BigNumber.ROUND_CEIL)

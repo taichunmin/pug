@@ -1,0 +1,184 @@
+extends /layout/default
+
+block beforehtml
+  - title = 'Base Endian Converter'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .font-size-dot8
+        font-size: 80%
+      .input-group-prepend .input-group-text
+        letter-spacing: -1px
+        min-width: 8rem
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .row.mx-n1.mt-2
+      .col-sm-12.col-lg-6.px-1
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center Base
+          select.form-control(v-model='h.base')
+            option(value="bin") 2 進位 (bin)
+            option(value="oct") 8 進位 (oct)
+            option(value="dec") 10 進位 (dec)
+            option(value="hex") 16 進位 (hex)
+            option(value="base64") 64 進位 (base64)
+            option(value="utf8") 純文字 (utf8)
+      .col-sm-12.col-lg-6.px-1
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center Endian
+          select.form-control(v-model='h.endian')
+            option(value="big") Big Endian (BE)
+            option(value="little") Little Endian (LE)
+    .input-group.input-group-sm.mt-2
+      .input-group-prepend: span.input-group-text.justify-content-center Value
+      textarea.form-control(v-model="h.value", rows="5")
+    .form-group.mt-3
+      label Result
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'binLE']")
+        .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
+        textarea.form-control(:value="me[baseEndian]" rows="3" readonly @click="btnCopy(me[baseEndian])")
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['octBE', 'octLE', 'decBE', 'decLE', 'hexBE', 'hexLE', 'base64BE', 'base64LE', 'base64urlBE', 'base64urlLE', 'utf8BE', 'utf8LE']")
+        .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
+        input.form-control(:value="me[baseEndian]" readonly @click="btnCopy(me[baseEndian])")
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/pn532.js@0.1.15/dist/Packet.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script.
+    const { joi: Joi } = window
+    const padByByteSize = (str, byteSize) => {
+      if (byteSize < 2 || byteSize > 8) return str
+      const tmp = str.length + byteSize - 1
+      return `0000000${str}`.slice(tmp % byteSize - tmp)
+    }
+    const parseBaseFn = {
+      bin (value) {
+        if (!/^[01\s]+$/.test(value)) throw new Error('invalid value')
+        return new Packet(_.map(padByByteSize(value.replace(/\s/g, ''), 8).match(/.{8}/g), b => _.parseInt(b, 2)))
+      },
+      oct (value) {
+        if (!/^[0-7]+$/.test(value)) throw new Error('invalid value')
+        const byteLen = _.ceil(value.length * 3 / 8)
+        return new Packet(_.flatMap(padByByteSize(value, 8).match(/.{8}/g), b => {
+          const tmp = _.parseInt(b, 8)
+          return [tmp >>> 16, (tmp >>> 8) & 0xFF, tmp & 0xFF]
+        })).subarray(-byteLen)
+      },
+      dec (value) {
+        if (!/^[0-9]+$/.test(value)) throw new Error('invalid value')
+        return Packet.fromHex(padByByteSize(BigInt(value).toString(16), 2))
+      },
+      hex (value) {
+        const { Base64, Hex } = window.CryptoJS.enc
+        if (!/^[0-9a-fA-F]+$/.test(value)) throw new Error('invalid value')
+        return Packet.fromHex(padByByteSize(value, 2))
+      },
+      base64 (value) {
+        const { Base64, Hex } = window.CryptoJS.enc
+        if (!/^[0-9a-zA-Z+/_-]+$/.test(value)) throw new Error('invalid value')
+        return Packet.fromHex(Hex.stringify(Base64.parse(value.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c)))))
+      },
+      utf8 (value) {
+        return Packet.fromUtf8(value)
+      },
+    }
+    const stringifyBaseFn = {
+      bin (pack) {
+        if (Packet.isLen(pack, 0) || pack.length > 64) return ''
+        return _.map(pack, b => `0000000${b.toString(2)}`.slice(-8)).join(' ')
+      },
+      oct (pack) {
+        if (Packet.isLen(pack, 0) || pack.length > 64) return ''
+        return BigInt(`0x${pack.hex}`).toString(8)
+      },
+      dec (pack) {
+        if (Packet.isLen(pack, 0)) return ''
+        return BigInt(`0x${pack.hex}`).toString()
+      },
+      hex (pack) {
+        if (Packet.isLen(pack, 0)) return ''
+        return pack.hex
+      },
+      base64 (pack) {
+        if (Packet.isLen(pack, 0)) return ''
+        return pack.base64url.replace(/[+/]/g, c => _.get({ '+': '-', '/': '_' }, c))
+      },
+      base64url (pack) {
+        if (Packet.isLen(pack, 0)) return ''
+        return pack.base64url
+      },
+      utf8 (pack) {
+        return pack.utf8
+      },
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        h: {
+          base: 'dec',
+          endian: 'big',
+          value: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        me () { return this },
+        rval () { return new Packet(this.val).reverse() },
+        binBE () { return stringifyBaseFn.bin(this.val) },
+        binLE () { return stringifyBaseFn.bin(this.rval) },
+        octBE () { return stringifyBaseFn.oct(this.val) },
+        octLE () { return stringifyBaseFn.oct(this.rval) },
+        decBE () { return stringifyBaseFn.dec(this.val) },
+        decLE () { return stringifyBaseFn.dec(this.rval) },
+        hexBE () { return stringifyBaseFn.hex(this.val) },
+        hexLE () { return stringifyBaseFn.hex(this.rval) },
+        base64BE () { return stringifyBaseFn.base64(this.val) },
+        base64LE () { return stringifyBaseFn.base64(this.rval) },
+        base64urlBE () { return stringifyBaseFn.base64url(this.val) },
+        base64urlLE () { return stringifyBaseFn.base64url(this.rval) },
+        utf8BE () { return stringifyBaseFn.utf8(this.val) },
+        utf8LE () { return stringifyBaseFn.utf8(this.rval) },
+        val () {
+          try {
+            const { base, endian, value } = this.h
+            if (value === '') throw new Error('empty')
+            if (!parseBaseFn[base]) throw new Error('invalid base')
+            let tmp = parseBaseFn[base](value)
+            if (endian !== 'big') tmp = tmp.reverse()
+            return tmp
+          } catch (err) {
+            //- console.log(err)
+            return new Packet()
+          }
+        },
+      },
+      methods: {
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+      },
+    })
