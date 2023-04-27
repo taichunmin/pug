@@ -29,7 +29,7 @@ block content
         a.btn.btn-primary.btn-block(v-if="specDownload", target="_blank", download="spec.csv", :href="specDownload") 下載規格 CSV
         button.btn.btn-primary.btn-block(v-else, @click="Swal.fire({ icon: 'error', title: '請先執行比對' })") 下載規格 CSV
     .row.mx-n1.mt-2
-      .col.px-1: a.btn.btn-secondary.btn-block(target="_blank" href="https://docs.google.com/spreadsheets/d/1LPHPOb-qqQisGiYMP-qieCAxY5DdU1RG9aPwcjELIlI/edit#gid=630531673") 參數規格文件
+      .col.px-1: a.btn.btn-secondary.btn-block(target="_blank" href="https://docs.google.com/spreadsheets/d/1mn-hudzJ2BzByS7LO78BHEaf3nPUMin12atBtYb_SHw/edit#gid=630531673") 參數規格文件
       .col.px-1: a.btn.btn-secondary.btn-block(target="_blank" href="https://docs.google.com/spreadsheets/d/1QjmZQQWDcFFnvMyiy0yyjnrNVDX5iUzqRxpfxq1YTcI/edit#gid=7417784") 工廠參數表
     .row.mt-3.mx-n2
       .col-4.px-2: ul.list-group
@@ -224,7 +224,7 @@ block script
             category: 'USER',
             offset: '',
             length: row['Length(bytes)'],
-            type: row['Data Type'],
+            type: row['Data Type'] || 'HEX',
             key: row.Name,
             description: _.trim(row.Value),
           }))

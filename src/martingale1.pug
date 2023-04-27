@@ -14,7 +14,7 @@ block style
         font-size: .8rem
       .input-group-prepend .input-group-text
         letter-spacing: -2px
-        min-width: 80px
+        min-width: 5.5rem
       .input-group-append .input-group-text
         letter-spacing: -2px
         min-width: 2.5rem
@@ -23,21 +23,25 @@ block content
   #app.container.my-4.text-monospace(v-cloak)
     h3.my-3.text-center.d-flex.justify-content-center.align-items-center
       .mr-2= title
-      button.btn.btn-sm.btn-outline-danger(type="button", @click="btnReset") 清空
+      button.btn.btn-sm.btn-outline-danger(type="button", @click="btnReset") 重設
     .form-group
       label 參數設定
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 幣價基準
-        select.form-control.text-right(v-model.number="h.dp1")
-          option(v-for="i of 9", :value="i-1") 10^{{ 1-i }}
-      .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 數量基準
-        select.form-control.text-right(v-model.number="h.dp2")
-          option(v-for="i of 9", :value="i-1") 10^{{ 1-i }}
-      .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 手續費
-        input.form-control.text-right(type='number', v-model='h.feeRatio', min='0', @focus="$event.target.select()")
-        .input-group-append: span.input-group-text.justify-content-center %
+        .input-group-prepend: span.input-group-text.justify-content-center 多空方向
+        select.form-control.text-right(v-model.number="h.desire")
+          option(value="long") 做多 (long)
+          option(value="short") 做空 (short)
+      .row.mx-n1
+        .col-sm-12.col-lg-6.px-1
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-center 幣價基準
+            select.form-control.text-right(v-model.number="h.dp1")
+              option(v-for="i of 9", :value="i-1") 10^{{ 1-i }}
+        .col-sm-12.col-lg-6.px-1
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend: span.input-group-text.justify-content-center 數量基準
+            select.form-control.text-right(v-model.number="h.dp2")
+              option(v-for="i of 9", :value="i-1") 10^{{ 1-i }}
       .input-group.input-group-sm.mt-2
         .input-group-prepend: span.input-group-text.justify-content-center 加倉倍數
         input.form-control.text-right(type='number', v-model='h.volumeScale', min='1', @focus="$event.target.select()")
@@ -47,21 +51,31 @@ block content
         input.form-control.text-right(type='number', v-model.number='h.safetyOrders', min='1', max="15", step="1", @focus="$event.target.select()")
         .input-group-append: span.input-group-text.justify-content-center 次
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 加倉跌幅
+        .input-group-prepend: span.input-group-text.justify-content-center 手續費
+        input.form-control.text-right(type='number', v-model='h.feeRatio', min='0', @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center %
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 加倉百分比
         input.form-control.text-right(type='number', v-model='h.deviation', min='0', max="100", @focus="$event.target.select()")
         .input-group-append: span.input-group-text.justify-content-center %
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 止盈比例
+        .input-group-prepend: span.input-group-text.justify-content-center 止盈百分比
         input.form-control.text-right(type='number', v-model='h.takeProfit', min='0', max="100", @focus="$event.target.select()")
+        .input-group-append: span.input-group-text.justify-content-center %
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 止損百分比
+        input.form-control.text-right(type='number', v-model='h.stopLoss', min='0', max="100", @focus="$event.target.select()")
         .input-group-append: span.input-group-text.justify-content-center %
       .input-group.input-group-sm.mt-2
         .input-group-prepend: span.input-group-text.justify-content-center 投資額
         input.form-control.text-right(type='number', v-model='h.investment', min='0', @focus="$event.target.select()")
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 最新幣價
+        .input-group-prepend: span.input-group-text.justify-content-center 目前幣價
         input.form-control.text-right(type='number', v-model='h.curPrice', min='0', @focus="$event.target.select()")
     .form-group
-      label 買幣記錄
+      label.d-flex.align-items-center
+        .mr-2 買幣記錄
+        button.btn.btn-sm.btn-outline-danger(type="button", @click="btnNewBought") 清空
       table.mt-2.table.table-sm.table-bordered.font-size-dot8
         thead: tr.text-center
           th #
@@ -69,25 +83,28 @@ block content
           th(style="width: 50%") 數量
         tbody: tr(v-for="bought of h.boughts")
           th.text-center.align-middle {{ h.boughts.indexOf(bought) + 1 }}
-          td: input.form-control.form-control-sm.text-right(type='number', v-model.number='bought.price', min='0', @focus="$event.target.select()")
-          td: input.form-control.form-control-sm.text-right(type='number', v-model.number='bought.coin', min='0', @focus="$event.target.select()")
+          td: input.form-control.form-control-sm.text-right(type='number', v-model='bought.price', min='0', @focus="$event.target.select()")
+          td: input.form-control.form-control-sm.text-right(type='number', v-model='bought.coin', min='0', @focus="$event.target.select()")
     .form-group
-      label 計算結果
+      label 計算結果 (做{{ '空多'[+(h.desire === 'long')] }})
       table.mt-2.table.table-sm.table-bordered.font-size-dot8
         thead: tr.text-center
           th 幣價
           th 數量
-          th 投資額
-        tbody: tr.text-right(v-for="buy of toBuys")
-          td(@click="btnCopy(buy.price)") {{ buy.price }}
-          td(@click="btnCopy(buy.coin)") {{ buy.coin }}
-          td(@click="btnCopy(buy.investment)") {{ buy.investment }}
+          th 投資成本
+        tbody: tr.text-right(v-for="txn of (h.desire === 'long' ? toBuysLong : toSellsShort)")
+          td(@click="btnCopy(txn.price)") {{ txn.price }}
+          td(@click="btnCopy(txn.coin)") {{ txn.coin }}
+          td(@click="btnCopy(txn.cost)") {{ txn.cost }}
       .input-group.input-group-sm.mt-2
         .input-group-prepend: span.input-group-text.justify-content-center 止盈價
-        input.form-control.text-right(readonly, :value="toSell")
+        input.form-control.text-right(readonly, @click="btnCopy(takeProfit)", :value="takeProfit")
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 累計投資
-        input.form-control.text-right(readonly, :value="usedInvestment")
+        .input-group-prepend: span.input-group-text.justify-content-center 止損價
+        input.form-control.text-right(readonly, @click="btnCopy(stopLoss)", :value="stopLoss")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 投資成本
+        input.form-control.text-right(readonly, :value="cost")
       .input-group.input-group-sm.mt-2
         .input-group-prepend: span.input-group-text.justify-content-center 持有數量
         input.form-control.text-right(readonly, :value="holdingCoin")
@@ -102,12 +119,14 @@ block script
         h: {
           boughts: [],
           curPrice: '2000',
+          desire: 'long',
           deviation: '2',
           dp1: 2, // 幣價基準
           dp2: 3, // 數量基準
           feeRatio: '0.05',
           investment: '10000',
           safetyOrders: 8,
+          stopLoss: '10',
           takeProfit: '2',
           volumeScale: '1.5',
         },
@@ -137,7 +156,7 @@ block script
         validBoughts () {
           return _.filter(this.h.boughts, b => _.every(['price', 'coin'], k => BigNumber(b[k]).gt(0)))
         },
-        usedInvestment () {
+        cost () {
           const boughts = this.validBoughts
           if (!boughts.length) return BigNumber(0)
           const feeRatio = bnPercentToScale(this.h.feeRatio)
@@ -146,41 +165,97 @@ block script
         holdingCoin () {
           return BigNumber.sum(0, ..._.map(this.validBoughts, 'coin'))
         },
-        toBuys () {
-          const boughts = this.validBoughts
-          const balance = BigNumber(this.h.investment).minus(this.usedInvestment)
+        toBuysLong () {
+          const balance = BigNumber(this.h.investment).minus(this.cost)
           if (balance.lte(0)) return []
 
           const buys = []
+          const boughts = this.validBoughts
           const volumeScale = BigNumber(this.h.volumeScale)
           const weights = _.times(this.h.safetyOrders + 1, i => BigNumber(volumeScale).pow(Math.max(0, i - 1))).slice(boughts.length)
-          const sumWeight = BigNumber.sum(...weights)
+          const sumWeight = BigNumber.sum(0, ...weights)
           const deviation = bnPercentToScale(`-${this.h.deviation}`)
-          let price = BigNumber.min(..._.map(boughts, 'price')).times(deviation)
-          const curPrice = this.h.curPrice
-          if (price.isNaN() || price.gt(curPrice)) price = BigNumber(curPrice)
+          const priceToFixed = price => BigNumber(price).toFixed(this.h.dp1, BigNumber.ROUND_FLOOR)
+          let nextPrice = priceToFixed(boughts.length > 0 ? BigNumber.min(..._.map(boughts, 'price')).times(deviation) : BigNumber(this.h.curPrice))
           const feeRatio = bnPercentToScale(this.h.feeRatio)
-          //- console.log(JSON.stringify({ balance, volumeScale, weights, sumWeight, deviation, price }))
           for (const weight of weights) {
-            const buy = { price, investment: weight.div(sumWeight).times(balance) }
-            buy.coin = buy.investment.div(feeRatio).div(buy.price)
-            buys.push({
-              price: buy.price.toFixed(this.h.dp1, BigNumber.ROUND_FLOOR),
-              coin: buy.coin.toFixed(this.h.dp2, BigNumber.ROUND_FLOOR),
-              investment: buy.investment.toFixed(9, BigNumber.ROUND_HALF_CEIL),
-            })
-            price = price.times(deviation)
+            const tmp = weight.div(sumWeight).times(balance)
+            const buy = { price: nextPrice }
+            buy.coin = tmp.div(feeRatio).div(buy.price).toFixed(this.h.dp2, BigNumber.ROUND_FLOOR)
+            buy.cost = feeRatio.times(buy.coin).times(buy.price).toFixed(9, BigNumber.ROUND_HALF_CEIL)
+            buys.push(buy)
+            nextPrice = priceToFixed(deviation.times(nextPrice))
           }
           return buys
         },
-        toSell () {
+        toSellsShort () {
+          const balance = BigNumber(this.h.investment).minus(this.cost)
+          if (balance.lte(0)) return []
+
+          const sells = []
+          const boughts = this.validBoughts
+          const volumeScale = BigNumber(this.h.volumeScale)
+          const weights = _.times(this.h.safetyOrders + 1, i => BigNumber(volumeScale).pow(Math.max(0, i - 1))).slice(boughts.length)
+          const sumWeight = BigNumber.sum(0, ...weights)
+          const deviation = bnPercentToScale(this.h.deviation)
+          const priceToFixed = price => BigNumber(price).toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
+          let nextPrice = priceToFixed(boughts.length > 0 ? BigNumber.max(..._.map(boughts, 'price')).times(deviation) : BigNumber(this.h.curPrice))
+          const feeRatio = bnPercentToScale(this.h.feeRatio)
+          for (const weight of weights) {
+            const tmp = weight.div(sumWeight).times(balance)
+            const sell = { price: nextPrice }
+            sell.coin = tmp.div(feeRatio).div(sell.price).toFixed(this.h.dp2, BigNumber.ROUND_FLOOR)
+            sell.cost = feeRatio.times(sell.coin).times(sell.price).toFixed(9, BigNumber.ROUND_HALF_CEIL)
+            sells.push(sell)
+            nextPrice = priceToFixed(deviation.times(nextPrice))
+          }
+          return sells
+        },
+        takeProfit () {
+          return this.h.desire === 'long' ? this.takeProfitLong : this.takeProfitShort
+        },
+        takeProfitLong () {
           const boughts = this.validBoughts
           if (!boughts.length) return '尚未設定買幣記錄'
           return bnPercentToScale(this.h.takeProfit)
-            .div(bnPercentToScale(`-${this.h.feeRatio}`))
-            .times(this.usedInvestment)
+            .times(this.cost)
             .div(this.holdingCoin)
+            .div(bnPercentToScale(`-${this.h.feeRatio}`))
             .toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
+        },
+        takeProfitShort () {
+          const boughts = this.validBoughts
+          if (!boughts.length) return '尚未設定買幣記錄'
+          return bnPercentToScale(`-${this.h.takeProfit}`)
+            .times(this.cost)
+            .div(this.holdingCoin)
+            .times(bnPercentToScale(this.h.feeRatio))
+            .toFixed(this.h.dp1, BigNumber.ROUND_FLOOR)
+        },
+        stopLoss () {
+          return this.h.desire === 'long' ? this.stopLossLong : this.stopLossShort
+        },
+        stopLossLong () {
+          const boughts = [...this.validBoughts, ...this.toBuysLong]
+          const feeRatio = bnPercentToScale(this.h.feeRatio)
+          const cost = BigNumber.sum(0, ..._.map(boughts, b => BigNumber(b.coin).times(b.price))).times(feeRatio)
+          const holdingCoin = BigNumber.sum(0, ..._.map(boughts, 'coin'))
+          return bnPercentToScale(`-${this.h.stopLoss}`)
+            .times(cost)
+            .div(holdingCoin)
+            .div(bnPercentToScale(`-${this.h.feeRatio}`))
+            .toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
+        },
+        stopLossShort () {
+          const boughts = [...this.validBoughts, ...this.toSellsShort]
+          const feeRatio = bnPercentToScale(this.h.feeRatio)
+          const cost = BigNumber.sum(0, ..._.map(boughts, b => BigNumber(b.coin).times(b.price))).times(feeRatio)
+          const holdingCoin = BigNumber.sum(0, ..._.map(boughts, 'coin'))
+          return bnPercentToScale(this.h.stopLoss)
+            .times(cost)
+            .div(holdingCoin)
+            .div(bnPercentToScale(this.h.feeRatio))
+            .toFixed(this.h.dp1, BigNumber.ROUND_FLOOR)
         },
       },
       methods: {
@@ -214,6 +289,13 @@ block script
             text,
           }
           return (await Swal.fire(args))?.isConfirmed
+        },
+        async btnNewBought () {
+          if (!await this.confirm('是否清空買幣記錄？（此動作無法還原）', '確定', '取消')) return
+          this.$set(this.h, 'boughts', _.times(this.h.safetyOrders + 1, () => ({
+            price: '0',
+            coin: '0',
+          })))
         },
         showLoading (title, text) {
           Swal.fire({

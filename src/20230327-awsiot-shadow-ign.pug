@@ -225,9 +225,14 @@ block script
 
     const mqttConnect = async ({ host, keyId, keySecret }) => {
       try {
-        const url = SigV4.createIotPresignedUrl(host, keyId, keySecret)
+        const url = `wss://${host}/mqtt`
         return await new Promise((resolve, reject) => {
-          const conn = mqtt.connect(url, { connectTimeout: 30000 })
+          const conn = mqtt.connect(url, {
+            connectTimeout: 30000,
+            transformWsUrl () {
+              return SigV4.createIotPresignedUrl(host, keyId, keySecret)
+            },
+          })
           conn.on('connect', () => resolve(conn))
           conn.on('disconnect', () => { console.log('client disconnect') })
           conn.on('end', () => { console.log('client end') })
@@ -294,12 +299,12 @@ block script
           try {
             if (this.mqtt) {
               this.showLoading('請稍後', '正在中斷 mqtt 連線…')
-              return await new Promise(resolve => { this.mqtt.end(resolve) })
+              const mqtt = this.mqtt
+              this.mqtt = null
+              return await new Promise(resolve => { mqtt.end(resolve) })
             }
             this.showLoading('請稍後', '正在建立 mqtt 連線…')
             this.mqtt = await mqttConnect(this.h)
-            this.mqtt.once('close', () => { this.mqtt = null })
-            this.mqtt.once('end', () => { this.mqtt = null })
             this.mqtt.on('message', this.mqttOnMessage)
 
             const shadowTopics = _.map(this.shadowSuffixs, t => `${this.h.shadowPrefix}${t}`)
