@@ -75,7 +75,7 @@ block content
     .form-group
       label.d-flex.align-items-center
         .mr-2 買幣記錄
-        button.btn.btn-sm.btn-outline-danger(type="button", @click="btnNewBought") 清空
+        a.btn.btn-sm.btn-outline-danger(href="javascript:void", @click="btnNewBought") 清空
       table.mt-2.table.table-sm.table-bordered.font-size-dot8
         thead: tr.text-center
           th #
@@ -156,14 +156,14 @@ block script
         validBoughts () {
           return _.filter(this.h.boughts, b => _.every(['price', 'coin'], k => BigNumber(b[k]).gt(0)))
         },
+        holdingCoin () {
+          return BigNumber.sum(0, ..._.map(this.validBoughts, 'coin'))
+        },
         cost () {
           const boughts = this.validBoughts
           if (!boughts.length) return BigNumber(0)
-          const feeRatio = bnPercentToScale(this.h.feeRatio)
-          return BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).times(feeRatio)
-        },
-        holdingCoin () {
-          return BigNumber.sum(0, ..._.map(this.validBoughts, 'coin'))
+          return BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price)))
+            .times(bnPercentToScale(this.h.feeRatio))
         },
         toBuysLong () {
           const balance = BigNumber(this.h.investment).minus(this.cost)
@@ -212,50 +212,22 @@ block script
           return sells
         },
         takeProfit () {
-          return this.h.desire === 'long' ? this.takeProfitLong : this.takeProfitShort
-        },
-        takeProfitLong () {
           const boughts = this.validBoughts
           if (!boughts.length) return '尚未設定買幣記錄'
-          return bnPercentToScale(this.h.takeProfit)
-            .times(this.cost)
-            .div(this.holdingCoin)
-            .div(bnPercentToScale(`-${this.h.feeRatio}`))
-            .toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
-        },
-        takeProfitShort () {
-          const boughts = this.validBoughts
-          if (!boughts.length) return '尚未設定買幣記錄'
-          return bnPercentToScale(`-${this.h.takeProfit}`)
-            .times(this.cost)
-            .div(this.holdingCoin)
-            .times(bnPercentToScale(this.h.feeRatio))
-            .toFixed(this.h.dp1, BigNumber.ROUND_FLOOR)
+          const isLong = this.h.desire === 'long'
+          const avgPrice = BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).div(this.holdingCoin)
+          return bnPercentToScale(isLong ? this.h.takeProfit : `-${this.h.takeProfit}`)
+            .times(avgPrice)
+            .toFixed(this.h.dp1, BigNumber[isLong ? 'ROUND_CEIL' : 'ROUND_FLOOR'])
         },
         stopLoss () {
-          return this.h.desire === 'long' ? this.stopLossLong : this.stopLossShort
-        },
-        stopLossLong () {
-          const boughts = [...this.validBoughts, ...this.toBuysLong]
-          const feeRatio = bnPercentToScale(this.h.feeRatio)
-          const cost = BigNumber.sum(0, ..._.map(boughts, b => BigNumber(b.coin).times(b.price))).times(feeRatio)
-          const holdingCoin = BigNumber.sum(0, ..._.map(boughts, 'coin'))
-          return bnPercentToScale(`-${this.h.stopLoss}`)
-            .times(cost)
-            .div(holdingCoin)
-            .div(bnPercentToScale(`-${this.h.feeRatio}`))
-            .toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
-        },
-        stopLossShort () {
-          const boughts = [...this.validBoughts, ...this.toSellsShort]
-          const feeRatio = bnPercentToScale(this.h.feeRatio)
-          const cost = BigNumber.sum(0, ..._.map(boughts, b => BigNumber(b.coin).times(b.price))).times(feeRatio)
-          const holdingCoin = BigNumber.sum(0, ..._.map(boughts, 'coin'))
-          return bnPercentToScale(this.h.stopLoss)
-            .times(cost)
-            .div(holdingCoin)
-            .div(bnPercentToScale(this.h.feeRatio))
-            .toFixed(this.h.dp1, BigNumber.ROUND_FLOOR)
+          const isLong = this.h.desire === 'long'
+          const boughts = [...this.validBoughts, ...(isLong ? this.toBuysLong : this.toSellsShort)]
+          const holdingCoin = BigNumber.sum(..._.map(boughts, 'coin'))
+          const avgPrice = BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).div(holdingCoin)
+          return bnPercentToScale(isLong ? `-${this.h.stopLoss}` : this.h.stopLoss)
+            .times(avgPrice)
+            .toFixed(this.h.dp1, BigNumber[isLong ? 'ROUND_CEIL' : 'ROUND_FLOOR'])
         },
       },
       methods: {
