@@ -108,7 +108,7 @@ block script
       },
       base64 (pack) {
         if (Packet.isLen(pack, 0)) return ''
-        return pack.base64url.replace(/[+/]/g, c => _.get({ '+': '-', '/': '_' }, c))
+        return pack.base64url.replace(/[_-]/g, c => _.get({ '-': '+', '_': '/' }, c))
       },
       base64url (pack) {
         if (Packet.isLen(pack, 0)) return ''
