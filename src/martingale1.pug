@@ -1,4 +1,4 @@
-extends /layout/default
+extends /layout/bootstrapV4
 
 block beforehtml
   - title = '馬丁格爾計算機1'
@@ -75,7 +75,7 @@ block content
     .form-group
       label.d-flex.align-items-center
         .mr-2 買幣記錄
-        a.btn.btn-sm.btn-outline-danger(href="javascript:void", @click="btnNewBought") 清空
+        a.btn.btn-sm.btn-outline-danger(href="javascript:void(0)", @click="btnNewBought") 清空
       table.mt-2.table.table-sm.table-bordered.font-size-dot8
         thead: tr.text-center
           th #
@@ -103,15 +103,19 @@ block content
         .input-group-prepend: span.input-group-text.justify-content-center 止損價
         input.form-control.text-right(readonly, @click="btnCopy(stopLoss)", :value="stopLoss")
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 投資成本
-        input.form-control.text-right(readonly, :value="cost")
+        .input-group-prepend: span.input-group-text.justify-content-center 持倉均價
+        input.form-control.text-right(readonly, :value="avgPrice")
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 持有數量
+        .input-group-prepend: span.input-group-text.justify-content-center 持倉量
         input.form-control.text-right(readonly, :value="holdingCoin")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 持倉成本
+        input.form-control.text-right(readonly, :value="cost")
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/bignumber.js@9/bignumber.min.js")
   script.
+    /* global BigNumber */
     const bnPercentToScale = percent => BigNumber(percent).shiftedBy(-2).plus(1)
     window.vm = new Vue({
       el: '#app',
@@ -142,7 +146,7 @@ block script
         }, { deep: true })
 
         const generateBoughts = () => {
-          const {safetyOrders, boughts} = this.h
+          const { safetyOrders, boughts } = this.h
           if (safetyOrders + 1 === boughts.length) return
           this.$set(this.h, 'boughts', _.times(safetyOrders + 1, i => ({
             price: _.get(boughts, `${i}.price`, 0),
@@ -166,50 +170,58 @@ block script
             .times(bnPercentToScale(this.h.feeRatio))
         },
         toBuysLong () {
-          const balance = BigNumber(this.h.investment).minus(this.cost)
+          let balance = BigNumber(this.h.investment).minus(this.cost)
           if (balance.lte(0)) return []
 
           const buys = []
           const boughts = this.validBoughts
           const volumeScale = BigNumber(this.h.volumeScale)
           const weights = _.times(this.h.safetyOrders + 1, i => BigNumber(volumeScale).pow(Math.max(0, i - 1))).slice(boughts.length)
-          const sumWeight = BigNumber.sum(0, ...weights)
           const deviation = bnPercentToScale(`-${this.h.deviation}`)
           const priceToFixed = price => BigNumber(price).toFixed(this.h.dp1, BigNumber.ROUND_FLOOR)
           let nextPrice = priceToFixed(boughts.length > 0 ? BigNumber.min(..._.map(boughts, 'price')).times(deviation) : BigNumber(this.h.curPrice))
           const feeRatio = bnPercentToScale(this.h.feeRatio)
-          for (const weight of weights) {
-            const tmp = weight.div(sumWeight).times(balance)
+          for (let i = 0; i < weights.length; i++) {
+            const sumWeight = BigNumber.sum(0, ...weights.slice(i))
+            const tmp = weights[i].div(sumWeight).times(balance)
             const buy = { price: nextPrice }
             buy.coin = tmp.div(feeRatio).div(buy.price).toFixed(this.h.dp2, BigNumber.ROUND_FLOOR)
             buy.cost = feeRatio.times(buy.coin).times(buy.price).toFixed(9, BigNumber.ROUND_HALF_CEIL)
             buys.push(buy)
+            balance = balance.minus(buy.cost)
             nextPrice = priceToFixed(deviation.times(nextPrice))
           }
           return buys
         },
         toSellsShort () {
-          const balance = BigNumber(this.h.investment).minus(this.cost)
+          let balance = BigNumber(this.h.investment).minus(this.cost)
           if (balance.lte(0)) return []
 
           const sells = []
           const boughts = this.validBoughts
           const volumeScale = BigNumber(this.h.volumeScale)
           const weights = _.times(this.h.safetyOrders + 1, i => BigNumber(volumeScale).pow(Math.max(0, i - 1))).slice(boughts.length)
-          const sumWeight = BigNumber.sum(0, ...weights)
           const deviation = bnPercentToScale(this.h.deviation)
           const priceToFixed = price => BigNumber(price).toFixed(this.h.dp1, BigNumber.ROUND_CEIL)
           let nextPrice = priceToFixed(boughts.length > 0 ? BigNumber.max(..._.map(boughts, 'price')).times(deviation) : BigNumber(this.h.curPrice))
           const feeRatio = bnPercentToScale(this.h.feeRatio)
-          for (const weight of weights) {
-            const tmp = weight.div(sumWeight).times(balance)
+          for (let i = 0; i < weights.length; i++) {
+            const sumWeight = BigNumber.sum(0, ...weights.slice(i))
+            const tmp = weights[i].div(sumWeight).times(balance)
             const sell = { price: nextPrice }
             sell.coin = tmp.div(feeRatio).div(sell.price).toFixed(this.h.dp2, BigNumber.ROUND_FLOOR)
             sell.cost = feeRatio.times(sell.coin).times(sell.price).toFixed(9, BigNumber.ROUND_HALF_CEIL)
             sells.push(sell)
+            balance = balance.minus(buy.cost)
             nextPrice = priceToFixed(deviation.times(nextPrice))
           }
           return sells
+        },
+        avgPrice () {
+          const boughts = this.validBoughts
+          if (!boughts.length) return '尚未設定買幣記錄'
+          return BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).div(this.holdingCoin)
+            .toFixed(this.h.dp1, BigNumber.ROUND_HALF_CEIL)
         },
         takeProfit () {
           const boughts = this.validBoughts

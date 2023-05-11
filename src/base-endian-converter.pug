@@ -1,4 +1,4 @@
-extends /layout/default
+extends /layout/bootstrapV4
 
 block beforehtml
   - title = 'Base Endian Converter'
@@ -49,10 +49,10 @@ block content
         input.form-control(:value="me[baseEndian]" readonly @click="btnCopy(me[baseEndian])")
 
 block script
-  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/pn532.js@0.1.15/dist/Packet.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/pn532.js@0/dist/Packet.min.js")
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
   script.
-    const { joi: Joi } = window
+    /* global Packet */
     const padByByteSize = (str, byteSize) => {
       if (byteSize < 2 || byteSize > 8) return str
       const tmp = str.length + byteSize - 1
@@ -76,7 +76,6 @@ block script
         return Packet.fromHex(padByByteSize(BigInt(value).toString(16), 2))
       },
       hex (value) {
-        const { Base64, Hex } = window.CryptoJS.enc
         if (!/^[0-9a-fA-F]+$/.test(value)) throw new Error('invalid value')
         return Packet.fromHex(padByByteSize(value, 2))
       },
@@ -108,7 +107,7 @@ block script
       },
       base64 (pack) {
         if (Packet.isLen(pack, 0)) return ''
-        return pack.base64url.replace(/[_-]/g, c => _.get({ '-': '+', '_': '/' }, c))
+        return pack.base64url.replace(/[_-]/g, c => _.get({ '-': '+', _: '/' }, c))
       },
       base64url (pack) {
         if (Packet.isLen(pack, 0)) return ''

@@ -1,0 +1,133 @@
+extends /layout/bootstrapV4
+
+block beforehtml
+  - title = 'Core3 OOB 簽章驗證工具'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .font-size-dot8
+        font-size: 80%
+      .input-group-prepend .input-group-text
+        letter-spacing: -1px
+        min-width: 5rem
+
+block content
+  #app.container-fluid.my-4.text-monospace(v-cloak)
+    h3.my-3.text-center= title
+    .row.mx-n1
+      .col-12.col-md-6.px-1.d-flex.flex-column
+        .input-group.input-group-sm.mt-2.flex-fill
+          .input-group-prepend: span.input-group-text.justify-content-center 金鑰#[br](JSON)
+          textarea.form-control.font-size-dot8(v-model="h.key" rows="23" spellcheck="false")
+      .col-12.col-md-6.px-1
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center 公鑰#[br](HEX)
+          textarea.form-control.font-size-dot8(:value="pubkey" rows="4" readonly)
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center 資料#[br](HEX)
+          textarea.form-control.font-size-dot8(v-model="h.payload" rows="15" spellcheck="false")
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center 簽章#[br](HEX)
+          textarea.form-control.font-size-dot8(v-model="h.signature" rows="4" spellcheck="false")
+    .row.mx-n1.mt-2
+      .col-12.col-md-6.px-1.mt-2: button.btn.btn-primary.btn-block(@click="btnSignPayload") 計算簽章 (sign)
+      .col-12.col-md-6.px-1.mt-2: button.btn.btn-primary.btn-block(@click="btnVerifyPayload") 驗證簽章 (verify)
+    button.btn.btn-info.btn-block.mt-2(@click="btnNewKey") 產生金鑰
+    small.form-text.text-muted 可以用 #[a(target="_blank" href="./base-endian-converter.html") Base Endian Converter] 來把 #[code base64url] 格式的資料轉換成 #[code HEX] 格式。
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/pn532.js@0/dist/Packet.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/@taichunmin/node-jose-browserify@2/node-jose.min.js")
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/jsrsasign@10/lib/jsrsasign-all-min.min.js")
+  script.
+    /* global jose, Packet */
+    const parseBase64 = value => {
+      const { Base64, Hex } = window.CryptoJS.enc
+      if (!/^[0-9a-zA-Z+/_-]+$/.test(value)) throw new Error('invalid value')
+      return jose.util.asBuffer(Packet.fromHex(Hex.stringify(Base64.parse(value.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c))))))
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        pubkey: '',
+        h: {
+          key: '',
+          payload: '',
+          signature: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        await this.computePubkey().catch(console.log)
+        this.$watch('h.key', () => { this.computePubkey() })
+      },
+      methods: {
+        async asKey () {
+          return await jose.JWK.asKey(this.h.key)
+        },
+        async computePubkey () {
+          try {
+            const key = (await this.asKey()).toJSON(true)
+            const pubkey = new Packet(65)
+            pubkey[0] = 0x04
+            pubkey.set(parseBase64(key.x), 1)
+            pubkey.set(parseBase64(key.y), 33)
+            this.pubkey = pubkey.hex
+          } catch (err) {
+            console.error(err)
+            this.pubkey = ''
+          }
+        },
+        async btnNewKey () {
+          try {
+            const key = await jose.JWK.createKey('EC', 'P-256', { use: 'sig' })
+            this.h.key = JSON.stringify(key.toJSON(true), null, 2)
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnSignPayload () {
+          const key = await this.asKey()
+          const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
+          const signature = (await key.sign('ES256', payload))?.mac
+          this.h.signature = _.toUpper(signature.toString('hex'))
+        },
+        async btnVerifyPayload () {
+          try {
+            const key = await this.asKey()
+            const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
+            const signature = jose.util.asBuffer(Packet.fromHex(this.h.signature))
+            const isValid = (await key.verify('ES256', payload, signature))?.valid ?? false
+            if (!isValid) throw Error('簽章驗證失敗')
+            await Swal.fire({ icon: 'success', title: '簽章驗證成功' })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

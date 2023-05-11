@@ -1,4 +1,4 @@
-extends /layout/default
+extends /layout/bootstrapV4
 
 block beforehtml
   - title = '哆啦A夢牧場物語 挖礦記錄'
@@ -53,7 +53,7 @@ block script
         if (!this.h.mining) await this.btnNewMining(true)
       },
       methods: {
-        async btnNewMining(slient = false) {
+        async btnNewMining (slient = false) {
           if (!slient && !await this.confirm('確定要開始新的挖礦記錄嗎？', '確定', '取消')) return
           this.$set(this.h, 'mining', _.times(49, () => 0))
         },

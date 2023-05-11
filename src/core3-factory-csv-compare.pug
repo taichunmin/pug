@@ -1,4 +1,4 @@
-extends /layout/default
+extends /layout/bootstrapV4
 
 block beforehtml
   - title = 'Core3 Factory CSV Compare'
@@ -48,6 +48,7 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js")
   script.
+    /* global jsyaml, Prism */
     const { joi: Joi } = window
     window.vm = new Vue({
       el: '#app',
