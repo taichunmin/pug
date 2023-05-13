@@ -15,6 +15,8 @@ block style
       .input-group-prepend .input-group-text
         letter-spacing: -1px
         min-width: 5rem
+      .badge
+        letter-spacing: 0
 
 block content
   #app.container-fluid.my-4.text-monospace(v-cloak)
@@ -23,17 +25,26 @@ block content
       .col-12.col-md-6.px-1.d-flex.flex-column
         .input-group.input-group-sm.mt-2.flex-fill
           .input-group-prepend: span.input-group-text.justify-content-center 金鑰#[br](JSON)
-          textarea.form-control.font-size-dot8(v-model="h.key" rows="23" spellcheck="false")
+          textarea.form-control.font-size-dot8(v-model="h.key" rows="23")
       .col-12.col-md-6.px-1
         .input-group.input-group-sm.mt-2
-          .input-group-prepend: span.input-group-text.justify-content-center 公鑰#[br](HEX)
-          textarea.form-control.font-size-dot8(:value="pubkey" rows="4" readonly)
+          .input-group-prepend: span.input-group-text.d-flex.flex-column.justify-content-center.align-items-center
+            span 公鑰
+            span (HEX)
+            span.badge.badge-pill.badge-primary {{ hexLen(pubkey) }}
+          textarea.form-control.font-size-dot8(:value="pubkey" rows="5" readonly)
         .input-group.input-group-sm.mt-2
-          .input-group-prepend: span.input-group-text.justify-content-center 資料#[br](HEX)
-          textarea.form-control.font-size-dot8(v-model="h.payload" rows="15" spellcheck="false")
+          .input-group-prepend: span.input-group-text.d-flex.flex-column.justify-content-center.align-items-center
+            span 資料
+            span (HEX)
+            span.badge.badge-pill.badge-primary {{ hexLen(h.payload) }}
+          textarea.form-control.font-size-dot8(v-model="h.payload" rows="15")
         .input-group.input-group-sm.mt-2
-          .input-group-prepend: span.input-group-text.justify-content-center 簽章#[br](HEX)
-          textarea.form-control.font-size-dot8(v-model="h.signature" rows="4" spellcheck="false")
+          .input-group-prepend: span.input-group-text.d-flex.flex-column.justify-content-center.align-items-center
+            span 簽章
+            span (HEX)
+            span.badge.badge-pill.badge-primary {{ hexLen(h.signature) }}
+          textarea.form-control.font-size-dot8(v-model="h.signature" rows="5")
     .row.mx-n1.mt-2
       .col-12.col-md-6.px-1.mt-2: button.btn.btn-primary.btn-block(@click="btnSignPayload") 計算簽章 (sign)
       .col-12.col-md-6.px-1.mt-2: button.btn.btn-primary.btn-block(@click="btnVerifyPayload") 驗證簽章 (verify)
@@ -46,7 +57,6 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/@taichunmin/node-jose-browserify@2/node-jose.min.js")
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/jsrsasign@10/lib/jsrsasign-all-min.min.js")
   script.
-    /* global jose, Packet */
     const parseBase64 = value => {
       const { Base64, Hex } = window.CryptoJS.enc
       if (!/^[0-9a-zA-Z+/_-]+$/.test(value)) throw new Error('invalid value')
@@ -77,7 +87,7 @@ block script
       },
       methods: {
         async asKey () {
-          return await jose.JWK.asKey(this.h.key)
+          return await jose.JWK.asKey(JSON5.parse(this.h.key))
         },
         async computePubkey () {
           try {
@@ -102,10 +112,15 @@ block script
           }
         },
         async btnSignPayload () {
-          const key = await this.asKey()
-          const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
-          const signature = (await key.sign('ES256', payload))?.mac
-          this.h.signature = _.toUpper(signature.toString('hex'))
+          try {
+            const key = await this.asKey()
+            const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
+            const signature = (await key.sign('ES256', payload))?.mac
+            this.h.signature = _.toUpper(signature.toString('hex'))
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
         },
         async btnVerifyPayload () {
           try {
@@ -113,11 +128,19 @@ block script
             const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
             const signature = jose.util.asBuffer(Packet.fromHex(this.h.signature))
             const isValid = (await key.verify('ES256', payload, signature))?.valid ?? false
-            if (!isValid) throw Error('簽章驗證失敗')
+            if (!isValid) throw createError('簽章驗證失敗')
             await Swal.fire({ icon: 'success', title: '簽章驗證成功' })
           } catch (err) {
             console.error(err)
             await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        hexLen (hex) {
+          try {
+            const pack = Packet.fromHex(hex)
+            return pack.length
+          } catch (err) {
+            return null
           }
         },
         showLoading (title, text) {
