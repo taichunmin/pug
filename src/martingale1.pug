@@ -212,7 +212,7 @@ block script
             sell.coin = tmp.div(feeRatio).div(sell.price).toFixed(this.h.dp2, BigNumber.ROUND_FLOOR)
             sell.cost = feeRatio.times(sell.coin).times(sell.price).toFixed(9, BigNumber.ROUND_HALF_CEIL)
             sells.push(sell)
-            balance = balance.minus(buy.cost)
+            balance = balance.minus(sell.cost)
             nextPrice = priceToFixed(deviation.times(nextPrice))
           }
           return sells

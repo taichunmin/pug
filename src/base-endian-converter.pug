@@ -15,6 +15,8 @@ block style
       .input-group-prepend .input-group-text
         letter-spacing: -1px
         min-width: 8rem
+      .badge
+        letter-spacing: 0
 
 block content
   #app.container.my-4.text-monospace(v-cloak)
@@ -37,7 +39,9 @@ block content
             option(value="big") Big Endian (BE)
             option(value="little") Little Endian (LE)
     .input-group.input-group-sm.mt-2
-      .input-group-prepend: span.input-group-text.justify-content-center Value
+      .input-group-prepend: span.input-group-text.justify-content-center.flex-column.justify-content-center.align-items-center
+        | Value
+        span.d-block.badge.badge-pill.badge-primary {{ val.length }}
       textarea.form-control(v-model="h.value", rows="5")
     .form-group.mt-3
       label Result
@@ -81,8 +85,8 @@ block script
       },
       base64 (value) {
         const { Base64, Hex } = window.CryptoJS.enc
-        if (!/^[0-9a-zA-Z+/_-]+$/.test(value)) throw new Error('invalid value')
-        return Packet.fromHex(Hex.stringify(Base64.parse(value.replace(/[-_]/g, c => _.get({ '-': '+', _: '/' }, c)))))
+        if (!/^[0-9a-zA-Z=+/_-]+$/.test(value)) throw new Error('invalid value')
+        return Packet.fromHex(Hex.stringify(Base64.parse(value.replace(/[=_-]/g, c => _.get({ _: '/', '-': '+', '=': '' }, c)))))
       },
       utf8 (value) {
         return Packet.fromUtf8(value)
@@ -107,7 +111,8 @@ block script
       },
       base64 (pack) {
         if (Packet.isLen(pack, 0)) return ''
-        return pack.base64url.replace(/[_-]/g, c => _.get({ '-': '+', _: '/' }, c))
+        const tmp1 = pack.base64url.replace(/[_-]/g, c => _.get({ '-': '+', _: '/' }, c))
+        return `${tmp1}===`.slice(0, (-3 - tmp1.length) % 4)
       },
       base64url (pack) {
         if (Packet.isLen(pack, 0)) return ''

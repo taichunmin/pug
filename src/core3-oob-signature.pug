@@ -57,6 +57,7 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/@taichunmin/node-jose-browserify@2/node-jose.min.js")
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/jsrsasign@10/lib/jsrsasign-all-min.min.js")
   script.
+    /* global jose, Packet */
     const parseBase64 = value => {
       const { Base64, Hex } = window.CryptoJS.enc
       if (!/^[0-9a-zA-Z+/_-]+$/.test(value)) throw new Error('invalid value')
@@ -114,6 +115,7 @@ block script
         async btnSignPayload () {
           try {
             const key = await this.asKey()
+            if (_.isNil(key.toJSON(true)?.d)) throw new Error('缺少私鑰無法產生簽章')
             const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
             const signature = (await key.sign('ES256', payload))?.mac
             this.h.signature = _.toUpper(signature.toString('hex'))
@@ -128,7 +130,7 @@ block script
             const payload = jose.util.asBuffer(Packet.fromHex(this.h.payload))
             const signature = jose.util.asBuffer(Packet.fromHex(this.h.signature))
             const isValid = (await key.verify('ES256', payload, signature))?.valid ?? false
-            if (!isValid) throw createError('簽章驗證失敗')
+            if (!isValid) throw new Error('簽章驗證失敗')
             await Swal.fire({ icon: 'success', title: '簽章驗證成功' })
           } catch (err) {
             console.error(err)
