@@ -57,7 +57,7 @@ block script
         if (!_.isString(amiibo.id) || amiibo.id.length !== 16) throw new TypeError('invalid amiibo id')
         const dump = new AmiiboNtag215()
         dump.pack.setUint16(2, 0x0FE0, false)
-        dump.pack.set(Packet.fromHex(amiibo.id), 476)
+        dump.pack.set(Packet.fromHex(amiibo.id), 84)
         dump.randomUid()
         return dump
       }
@@ -158,7 +158,7 @@ block script
         keys.secret2 = key2.secret
         keys.aesKey = key2.aesKey
         keys.aesIv = key2.aesIv
-        return keys
+        this.keys = keys
       }
 
       encryptOrDecrypt () {
@@ -166,6 +166,7 @@ block script
           [20, 52], // setting [start + 4, end] 32 bytes
           [160, 520], // app data [start, end] 360 bytes
         ]
+        if (!this.keys) this.generateKeys()
         const { aesKey, aesIv } = this.keys
         //- console.log(`aesKey = ${aesKey.base64url}, aesIv = ${aesIv.base64url}`)
         const payload = Packet.merge(..._.map(payloadCfgs, cfg => this.pack.subarray(...cfg)))
@@ -183,7 +184,7 @@ block script
       isValid () {
         const { hs256 } = AmiiboNtag215
         const bak = new Packet(this.pack)
-        this.keys = this.generateKeys()
+        if (!this.keys) this.generateKeys()
         this.encryptOrDecrypt()
         //- console.log(`keys.secret1 = ${this.keys.secret1.base64url}, keys.secret2 = ${this.keys.secret2.base64url}`)
         const sign1 = hs256(this.payload1, this.keys.secret1)
@@ -198,7 +199,7 @@ block script
       fixSignature (skipDecrypt = false) {
         const { hs256 } = AmiiboNtag215
         const bak = new Packet(this.pack)
-        this.keys = this.generateKeys()
+        if (!this.keys) this.generateKeys()
         if (!skipDecrypt) this.encryptOrDecrypt()
         this.sign1.set(hs256(this.payload1, this.keys.secret1))
         this.sign2.set(hs256(this.payload2, this.keys.secret2))
@@ -209,7 +210,7 @@ block script
         if (!Packet.isLen(uid7b, 7)) throw new TypeError('uid7b should be Packet')
         if (uid7b[0] !== 0x04) throw new TypeError('uid7b[0] should be NXP (0x04)')
 
-        this.keys = this.generateKeys() // old keys
+        if (!this.keys) this.generateKeys()
         this.encryptOrDecrypt() // decrypt
 
         this.uid.set(uid7b.subarray(0, 3), 0)
@@ -217,7 +218,8 @@ block script
         this.uid.set(uid7b.subarray(3, 7), 4)
         this.pack[9] = uid7b.subarray(3, 7).xor // bcc1 = uid3 ^ uid4 ^ uid5 ^ uid6
 
-        this.fixSignature(true) // generateKeys
+        this.generateKeys() // re-generateKeys
+        this.fixSignature(true)
         this.encryptOrDecrypt() // encrypt
       }
 
