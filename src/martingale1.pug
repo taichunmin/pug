@@ -67,8 +67,11 @@ block content
         input.form-control.text-right(type='number', v-model='h.stopLoss', min='0', max="100", @focus="$event.target.select()")
         .input-group-append: span.input-group-text.justify-content-center %
       .input-group.input-group-sm.mt-2
-        .input-group-prepend: span.input-group-text.justify-content-center 投資額
+        .input-group-prepend: span.input-group-text.justify-content-center 預計投資額
         input.form-control.text-right(type='number', v-model='h.investment', min='0', @focus="$event.target.select()")
+      .input-group.input-group-sm.mt-2
+        .input-group-prepend: span.input-group-text.justify-content-center 成本調整
+        input.form-control.text-right(type='number', v-model='h.costOffset', @focus="$event.target.select()")
       .input-group.input-group-sm.mt-2
         .input-group-prepend: span.input-group-text.justify-content-center 目前幣價
         input.form-control.text-right(type='number', v-model='h.curPrice', min='0', @focus="$event.target.select()")
@@ -110,7 +113,7 @@ block content
         input.form-control.text-right(readonly, :value="holdingCoin")
       .input-group.input-group-sm.mt-2
         .input-group-prepend: span.input-group-text.justify-content-center 持倉成本
-        input.form-control.text-right(readonly, :value="cost")
+        input.form-control.text-right(readonly, :value="cost.toFixed(9, BigNumber.ROUND_HALF_CEIL)")
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/bignumber.js@9/bignumber.min.js")
@@ -122,6 +125,7 @@ block script
       data: {
         h: {
           boughts: [],
+          costOffset: '0',
           curPrice: '2000',
           desire: 'long',
           deviation: '2',
@@ -168,6 +172,7 @@ block script
           if (!boughts.length) return BigNumber(0)
           return BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price)))
             .times(bnPercentToScale(this.h.feeRatio))
+            .plus(this.h.costOffset) // 成本調整
         },
         toBuysLong () {
           let balance = BigNumber(this.h.investment).minus(this.cost)
@@ -220,14 +225,14 @@ block script
         avgPrice () {
           const boughts = this.validBoughts
           if (!boughts.length) return '尚未設定買幣記錄'
-          return BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).div(this.holdingCoin)
+          return this.cost.div(bnPercentToScale(this.h.feeRatio)).div(this.holdingCoin)
             .toFixed(this.h.dp1, BigNumber.ROUND_HALF_CEIL)
         },
         takeProfit () {
           const boughts = this.validBoughts
           if (!boughts.length) return '尚未設定買幣記錄'
           const isLong = this.h.desire === 'long'
-          const avgPrice = BigNumber.sum(..._.map(boughts, b => BigNumber(b.coin).times(b.price))).div(this.holdingCoin)
+          const avgPrice = this.cost.div(bnPercentToScale(this.h.feeRatio)).div(this.holdingCoin)
           return bnPercentToScale(isLong ? this.h.takeProfit : `-${this.h.takeProfit}`)
             .times(avgPrice)
             .toFixed(this.h.dp1, BigNumber[isLong ? 'ROUND_CEIL' : 'ROUND_FLOOR'])
