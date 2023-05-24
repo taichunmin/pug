@@ -19,7 +19,7 @@ block content
     .form-group
       label(for='h-gistPrefix') Gist Raw Prefix
       textarea#h-gistPrefix.form-control.form-control-sm(rows="5", v-model='h.gistPrefix')
-      small.form-text.text-muted 請將文件中的資料下載為 CSV 並上傳到 Gist，並貼上 Raw URL Prefix。
+      small.form-text.text-muted 請將文件中的資料下載為 CSV 並上傳到 Gist，並貼上 Raw URL Prefix。共需要 #[code oqc.csv]、#[code sku.csv]、#[code user.csv] 三個 CSV 檔案。
     .form-group
       label(for='h-factoryCsv') CSV for Factory
       textarea#h-factoryCsv.form-control.form-control-sm(rows="5" v-model='h.factoryCsv')
@@ -48,7 +48,6 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/joi@17/dist/joi-browser.min.js")
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js")
   script.
-    /* global jsyaml, Prism */
     const { joi: Joi } = window
     window.vm = new Vue({
       el: '#app',
@@ -84,6 +83,7 @@ block script
       },
       methods: {
         async btnCompare () {
+          let prevRange // for range check
           try {
             this.showLoading('請稍候', '正在進行比對')
             let [spec, factory] = await Promise.all([
@@ -107,19 +107,22 @@ block script
               key: Joi.string().trim().uppercase().min(1).required(),
               description: Joi.string().trim().allow('').required(),
             })
-            let specPrev = {}
-            spec = _.orderBy(_.filter(await Promise.all(_.map(spec, async row => {
+            prevRange = {}
+            spec = _.orderBy(spec, ['category', 'offset', 'key'], ['asc', 'asc', 'asc'])
+            for (let i = 0; i < spec.length; i++) {
+              const row = spec[i]
               try {
-                const tmp = await specSchema1.validateAsync(row)
+                spec[i] = await specSchema1.validateAsync(row)
                 // 檢查 offset 與 length 是否有重疊
-                if (specPrev.category !== tmp.category) specPrev = {}
-                if ((specPrev.offset ?? 0) + (specPrev.length ?? 0) > tmp.offset) throw new Error('offset 與 length 重疊')
-                return tmp
+                if (prevRange.category !== row.category) prevRange = {}
+                if (row.offset < (prevRange.offset ?? -1) + (prevRange.length ?? 0)) throw new Error(`offset 與前一筆 ${prevRange.key ?? ''} 重疊`)
+                prevRange = _.pick(row, ['key', 'length', 'offset'])
               } catch (err) {
-                if (!row.key.length) return null
-                errors.spec.push({ message: err.message, ...row })
+                if (row.key.length) errors.spec.push({ message: err.message, ...row })
+                spec[i] = null
               }
-            }))), ['category', 'offset', 'key'], ['asc', 'asc', 'asc'])
+            }
+            spec = _.filter(spec) // 清除驗證失敗的資料
 
             // 產生 spec 的下載檔案
             this.specDownload = URL.createObjectURL(new Blob([Papa.unparse(spec, { header: true })], { type: 'text/csv' }))
@@ -134,18 +137,22 @@ block script
               value: Joi.string().trim().allow('').required(),
               description: Joi.string().trim().allow('').required(),
             })
-            let factoryPrev = {}
-            factory = _.orderBy(_.filter(await Promise.all(_.map(factory, async row => {
+            prevRange = {}
+            factory = _.orderBy(factory, ['category', 'offset', 'key'], ['asc', 'asc', 'asc'])
+            for (let i = 0; i < factory.length; i++) {
+              const row = factory[i]
               try {
-                const tmp = await factorySchema1.validateAsync(row)
+                factory[i] = await factorySchema1.validateAsync(row)
                 // 檢查 offset 與 length 是否有重疊
-                if (factoryPrev.category !== tmp.category) factoryPrev = {}
-                if ((factoryPrev.offset ?? 0) + (factoryPrev.length ?? 0) > tmp.offset) throw new Error('offset 與 length 重疊')
-                return tmp
+                if (prevRange.category !== row.category) prevRange = {}
+                if (row.offset < (prevRange.offset ?? -1) + (prevRange.length ?? 0)) throw new Error(`offset 與前一筆 ${prevRange.key ?? ''} 重疊`)
+                prevRange = _.pick(row, ['key', 'length', 'offset'])
               } catch (err) {
-                errors.factory.push({ message: err.message, ...row })
+                if (row.key.length) errors.factory.push({ message: err.message, ...row })
+                factory[i] = null
               }
-            }))), ['category', 'offset', 'key'], ['asc', 'asc', 'asc'])
+            }
+            factory = _.filter(factory) // 清除驗證失敗的資料
 
             const specByKey = new Map()
             for (const row of spec) specByKey.set(`${row.category}: ${row.key}`, row)
