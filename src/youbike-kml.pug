@@ -70,7 +70,13 @@ block script
         },
         async getStationsByType () {
           let stations = await this.getCsv('https://gcs-youbike2-linebot.microprogram.tw/latest-data/youbike-station.csv')
-          stations = _.filter(stations, s => _.includes([1, 2], _.toSafeInteger(s.is_open)))
+          stations = _.filter(stations, s => {
+            if (!_.includes([1, 2], _.toSafeInteger(s.is_open))) return false
+            const full = _.toSafeInteger(s.full)
+            const empty = _.toSafeInteger(s.empty)
+            if (full < 0 || empty < 0 || full + empty < 1) return false
+            return true
+          })
           return _.groupBy(stations, 'type')
         },
         async getCsv (url, cachetime = 3e4) {
