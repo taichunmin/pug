@@ -30,7 +30,7 @@ async function main () {
 
   const livereloadServer = livereload.createServer({
     delay: 1000,
-    port: 30000,
+    port: 3000,
     server: https.createServer(await readMkcert(), async (req, res) => {
       serveStatic(publicDir, {
         index: ['index.html', 'index.htm'],

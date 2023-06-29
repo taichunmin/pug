@@ -28,7 +28,9 @@ block content
       textarea.form-control.form-control-sm(readonly, rows="6", :value="_.get(window, 'navigator.userAgent')")
 
 block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
   script.
+    window.vConsole = new VConsole()
     window.loginPromise = (async () => {
       await liff.init({ liffId: '#{liffidFull}' })
       if (!liff.isLoggedIn()) {
