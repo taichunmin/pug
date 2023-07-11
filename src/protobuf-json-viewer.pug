@@ -1,0 +1,349 @@
+extends /layout/bootstrapV4
+
+block beforehtml
+  - title = 'Protobuf JSON Viewer'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"
+      .sidebar
+        background-color: hsla(218, 33%, 94%, 1)
+        font-size: 14px
+        min-width: 300px
+        overflow-y: scroll
+        width: 300px
+        scrollbar-width: none
+        -ms-overflow-style: none
+        &::-webkit-scrollbar
+          width: 0
+          height: 0
+        a, a:active, a:hover, a:focus, a:visited
+          color: inherit
+          text-decoration: none
+      .letter-spacing-n1, .letter-spacing-n1 .btn
+        letter-spacing: -1px
+      .file-document
+        max-height: 100vh
+        max-width: calc(100vw - 300px)
+        overflow-y: scroll
+        scrollbar-width: none
+        -ms-overflow-style: none
+        &::-webkit-scrollbar
+          width: 0
+          height: 0
+      .file-markdownit
+        font-size: .9rem
+        table
+          width: 100%
+          margin-bottom: 1rem
+          border: 1px solid #dee2e6
+          th, td
+            border: 1px solid #dee2e6
+            padding: 0.2rem
+          thead th
+            vertical-align: bottom
+            border-bottom: 2px solid #dee2e6
+          tbody + tbody
+            border-top: 2px solid #dee2e6
+      .file-field-table
+        font-size: .8rem
+      .mermaid
+        font-family: 'trebuchet ms', verdana, arial
+        max-width: 100%
+
+block content
+  #app.container-fluid(v-cloak)
+    .row
+      .sidebar.vh-100.shadow-sm.px-3.py-3
+        .pb-4.border-bottom
+          .input-group.input-group-sm
+            .input-group-prepend: span.input-group-text Spec#[br]URL
+            textarea.form-control(type="text" v-model="h.spec" rows="5")
+          button.mt-1.btn.btn-sm.btn-block.btn-success(type="button", @click="btnFetchSpec") View Spec JSON
+        .input-group.input-group-sm.mt-4
+          .input-group-prepend: span.input-group-text Files
+          select.custom-select(v-model="h.file")
+            option(value="" disabled="true") Select a file...
+            option(v-for="file of spec?.files", :key="file.name", :value="file.name") {{ file.name }}
+        template(v-if="cpuFile")
+          nav.spec-toc: ul.pl-0.list-unstyled
+            li.mt-3 #[a(:href="urlhash(cpuFile.name)") Introduction]
+            li.mt-4(v-if="cpuFile.messages.length > 0")
+              template(v-for="tmpCollapse of [getCollapse([cpuFile.name, 'messages'])]")
+                .d-flex.align-items-center.text-xs.font-weight-lighter.text-muted.user-select-none(@click="setCollapse([cpuFile.name, 'messages'], 1 - tmpCollapse)")
+                  span MESSAGES
+                  i.fa.ml-1(:class="tmpCollapse ? 'fa-chevron-up' : 'fa-chevron-left'")
+                ul.mt-2.list-unstyled(v-show="tmpCollapse")
+                  li(v-for="message of cpuFile.messages" :key="message.fullName")
+                    a(:href="urlhash(cpuFile.name, 'messages', message.fullName)") {{ message.longName }}
+            li.mt-4(v-if="cpuFile.services.length > 0") SERVICES
+            li.mt-4(v-if="cpuFile.extensions.length > 0") EXTENSIONS
+            li.mt-4(v-if="cpuFile.enums.length > 0")
+              template(v-for="tmpCollapse of [getCollapse([cpuFile.name, 'enums'])]")
+                .d-flex.align-items-center.text-xs.font-weight-lighter.text-muted.user-select-none(@click="setCollapse([cpuFile.name, 'enums'], 1 - tmpCollapse)")
+                  span ENUMS
+                  i.fa.ml-1(:class="tmpCollapse ? 'fa-chevron-up' : 'fa-chevron-left'")
+                ul.mt-2.list-unstyled(v-show="tmpCollapse")
+                  li(v-for="enum1 of cpuFile.enums" :key="enum1.fullName")
+                    a(:href="urlhash(cpuFile.name, 'enums', enum1.fullName)") {{ enum1.longName }}
+      .flex-fill.file-document.p-3(v-if="cpuFile")
+        section.file-heading
+          h1.pb-2.border-bottom(:id="urlhash(cpuFile.name)?.slice(1)")
+            a(:href="urlhash(cpuFile.name)") #
+            span.ml-2 {{ cpuFile.name }}
+          .file-markdownit(v-html="md.render(cpuFile.description ?? '')")
+        section.file-messages.mt-5(v-if="cpuFile.messages.length > 0")
+          h2.pb-2.border-bottom(:id="urlhash(cpuFile.name, 'messages')?.slice(1)")
+            a(:href="urlhash(cpuFile.name, 'messages')") ##
+            span.ml-2 Messages
+          section.file-message.mt-5(v-for="message of cpuFile.messages")
+            h3.pb-2(:id="urlhash(cpuFile.name, 'messages', message.fullName)?.slice(1)")
+              a(:href="urlhash(cpuFile.name, 'messages', message.fullName)") ###
+              span.ml-2 {{ message.longName }}
+            .file-markdownit(v-html="md.render(message.description ?? '')")
+            table.file-field-table.table.table-sm.table-striped.table-bordered.table-hover
+              thead.thead-dark: tr
+                th(style="width: 15%") Field
+                th(style="width: 20%") Type
+                th(style="width: 10%") Label
+                th Description
+              tbody
+                tr(v-for="field of message.fields")
+                  td.text-monospace.letter-spacing-n1 {{ field.name }}
+                  td.text-monospace.letter-spacing-n1
+                    template(v-if="!urlhashMap.has(field.fullType)") {{ field.longType }}
+                    a(v-else :href="urlhashMap.get(field.fullType)") {{ field.longType }}
+                  td.text-monospace.letter-spacing-n1 {{ field.label }}
+                  td: .file-markdownit(v-html="md.renderInline(field.description ?? '')")
+        section.file-enums.mt-5(v-if="cpuFile.enums.length > 0")
+          h2.pb-2.border-bottom(:id="urlhash(cpuFile.name, 'enums')?.slice(1)")
+            a(:href="urlhash(cpuFile.name, 'enums')") ##
+            span.ml-2 Enums
+          section.file-enum.mt-5(v-for="enum1 of cpuFile.enums")
+            h3.pb-2(:id="urlhash(cpuFile.name, 'enums', enum1.fullName)?.slice(1)")
+              a(:href="urlhash(cpuFile.name, 'enums', enum1.fullName)") ###
+              span.ml-2 {{ enum1.longName }}
+            .file-markdownit(v-html="md.render(enum1.description ?? '')")
+            table.file-field-table.table.table-sm.table-striped.table-bordered.table-hover
+              thead.thead-dark: tr
+                th(style="width: 20%") Name
+                th(style="width: 10%") Number
+                th Description
+              tbody
+                tr(v-for="value of enum1.values")
+                  td.text-monospace.letter-spacing-n1 {{ value.name }}
+                  td.text-monospace.letter-spacing-n1 {{ value.number }}
+                  td: .file-markdownit(v-html="md.renderInline(value.description ?? '')")
+
+block script
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-abbr@1/dist/markdown-it-abbr.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@3/dist/markdown-it-footnote.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-deflist@2/dist/markdown-it-deflist.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-mark@3/dist/markdown-it-mark.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-ins@3/dist/markdown-it-ins.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-sub@1/dist/markdown-it-sub.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-sup@1/dist/markdown-it-sup.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-imsize@2/dist/markdown-it-imsize.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/markdown-it-container@3/dist/markdown-it-container.min.js")
+  script(src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js")
+  script.
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        collapseData: {},
+        spec: null,
+        urlhashMap: null,
+        h: {
+          file: '',
+          spec: '',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+
+        await this.init()
+      },
+      computed: {
+        cpuFile () {
+          return _.find(this?.spec?.files, ['name', this.h.file])
+        },
+      },
+      methods: {
+        async init () {
+          try {
+            mermaid.initialize({ startOnLoad: false }) // mermaid
+
+            const prismAutoloader = Prism.plugins.autoloader
+            const preloadLangs = ['js']
+            prismAutoloader.loadLanguages(preloadLangs)
+            while (true) { // wait for preload
+              let isAllLoaded = true
+              for (const lang of preloadLangs) {
+                if (!Prism.languages[lang]) isAllLoaded = false
+              }
+              if (isAllLoaded) break
+              await new Promise(resolve => { setTimeout(resolve, 100) })
+            }
+
+            // markdown-it
+            // https://github.com/hackmdio/codimd/blob/master/public/js/extra.js#L1171
+            window.md = window.markdownit('default', {
+              html: true,
+              langPrefix: '',
+              linkify: true,
+              typographer: true,
+              highlight (code, lang) {
+                if (!lang || /no(-?)highlight|plain|text|mermaid/.test(lang)) return
+                //- console.log({ code, lang, highlight: Prism.highlight(code, Prism.languages[lang] || Prism.languages.plain, lang) })
+                const result = Prism.highlight(code, Prism.languages[lang] || Prism.languages.plain, lang)
+                return `<pre class="rounded language-${lang}"><code>${result}</code></pre>`
+              },
+            })
+            if (window.markdownitAbbr) md.use(window.markdownitAbbr)
+            if (window.markdownitFootnote) md.use(window.markdownitFootnote)
+            if (window.markdownitDeflist) md.use(window.markdownitDeflist)
+            if (window.markdownitMark) md.use(window.markdownitMark)
+            if (window.markdownitIns) md.use(window.markdownitIns)
+            if (window.markdownitSub) md.use(window.markdownitSub)
+            if (window.markdownitSup) md.use(window.markdownitSup)
+            if (window['markdown-it-imsize.js']) md.use(window['markdown-it-imsize.js'])
+            if (window.markdownitContainer) {
+              const render = (tokens, idx, options, env, self) => {
+                tokens[idx].attrJoin('role', 'alert')
+                tokens[idx].attrJoin('class', 'alert')
+                tokens[idx].attrJoin('class', `alert-${tokens[idx].info.trim()}`)
+                return self.renderToken(...arguments)
+              }
+              md.use(markdownitContainer, 'success', { render })
+              md.use(markdownitContainer, 'info', { render })
+              md.use(markdownitContainer, 'warning', { render })
+              md.use(markdownitContainer, 'danger', { render })
+            }
+
+            // hashchange
+            window.addEventListener('hashchange', event => { this.onhashchange(event) })
+            await this.onhashchange({ newURL: location.href })
+
+            this.h.spec = new URL(location).searchParams.get('spec') ?? this.h.spec
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '頁面載入失敗', text: err.message })
+          }
+        },
+        async onhashchange (event) {
+          try {
+            const urls = { new: new URL(event.newURL) }
+            try {
+              urls.old = new URL(event.oldURL)
+            } catch (err) {}
+            //- console.log({ old: urls.old?.href, new: urls.new?.href })
+            const getQuery = (url, key) => url?.searchParams.get(key)
+            urls.spec = getQuery(urls.new, 'spec')
+            if (_.isEmpty(urls.spec)) return
+            const isSpecChanged = getQuery(urls.old, 'spec') !== urls.spec
+
+            if (isSpecChanged) { // 如果 spec 有更改就需要重抓文件
+              try {
+                this.showLoading('請稍候', '載入文件中...')
+
+                let spec = null
+                try { // direct fetch
+                  spec = (await axios.get(urls.spec))?.data
+                } catch (err) { console.error(err) }
+                try {
+                  if (_.isNil(spec)) {
+                    const proxy = new URL('https://cors-anywhere-ybtjbo45iq-uc.a.run.app')
+                    proxy.searchParams.set('u', urls.spec)
+                    spec = (await axios.get(proxy.href))?.data
+                  }
+                } catch (err) { console.error(err) }
+                if (_.isNil(spec)) throw new Error('無法取得 Spec JSON')
+
+                // build urlhashMap (before spec setter)
+                this.urlhashMap = new Map()
+                for (const file of spec.files) {
+                  for (const message of file.messages) {
+                    const urlhash = this.urlhash(file.name, 'messages', message.fullName)
+                    this.urlhashMap.set(urlhash, urlhash)
+                    this.urlhashMap.set(message.fullName, urlhash)
+                  }
+                  for (const enum1 of file.enums) {
+                    const urlhash = this.urlhash(file.name, 'enums', enum1.fullName)
+                    this.urlhashMap.set(urlhash, urlhash)
+                    this.urlhashMap.set(enum1.fullName, urlhash)
+                  }
+                }
+                this.$set(this, 'spec', spec)
+
+                // 確保有選到合法的 File (after spec setter)
+                const isFileValid = _.find(spec.files, ['name', this.h.file])
+                if (!isFileValid) this.h.file = spec.files?.[0].name
+
+                await new Promise(resolve => { this.$nextTick(resolve) }) // 等待 UI 更新
+                Swal.close()
+              } catch (err) {
+                if (err.message) throw err // ignore error if no message
+              }
+            }
+
+            if (!isSpecChanged && urls.old.hash === urls.new.hash) return
+            const parts = (/^#(\/([^/]+)(?:\/([^/]+)(?:\/[^/]+)?)?)$/.exec(urls.new.hash) ?? [])
+            //- console.log(parts)
+            if (parts[2]) { // file
+              this.h.file = decodeURIComponent(parts[2])
+              await new Promise(resolve => { this.$nextTick(resolve) }) // 等待 UI 更新
+              if (parts[3]) this.setCollapse([parts[2], parts[3]], 1) // sidebar
+            }
+            if (parts[1]) document.getElementById(parts[1])?.scrollIntoView(true) // id
+            await mermaid.run({ querySelector: '.mermaid' }) // mermaid
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnFetchSpec () {
+          try {
+            const newUrl = new URL(location)
+            newUrl.searchParams.set('spec', this.h.spec)
+            history.pushState(null, null, newUrl)
+            await this.onhashchange({ newURL: newUrl.href })
+          } catch (err) {
+            console.error(err)
+            await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        urlhash(...args) {
+          return `#/${_.map(args, encodeURIComponent).join('/')}`
+        },
+        getCollapse (path) {
+          if (_.isArray(path)) path = this.urlhash(path)
+          return this.collapseData?.[path] ?? 0
+        },
+        setCollapse (path, newVal) {
+          if (_.isArray(path)) path = this.urlhash(path)
+          this.$set(this.collapseData, path, newVal)
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })
