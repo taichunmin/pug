@@ -65,10 +65,12 @@ block script
     const parseBaseFn = {
       bin (value) {
         if (!/^[01\s]+$/.test(value)) throw new Error('invalid value')
+        value = value.replace(/\s/g, '')
         return new Packet(_.map(padByByteSize(value.replace(/\s/g, ''), 8).match(/.{8}/g), b => _.parseInt(b, 2)))
       },
       oct (value) {
-        if (!/^[0-7]+$/.test(value)) throw new Error('invalid value')
+        if (!/^[0-7\s]+$/.test(value)) throw new Error('invalid value')
+        value = value.replace(/\s/g, '')
         const byteLen = _.ceil(value.length * 3 / 8)
         return new Packet(_.flatMap(padByByteSize(value, 8).match(/.{8}/g), b => {
           const tmp = _.parseInt(b, 8)
@@ -76,16 +78,19 @@ block script
         })).subarray(-byteLen)
       },
       dec (value) {
-        if (!/^[0-9]+$/.test(value)) throw new Error('invalid value')
+        if (!/^[0-9\s]+$/.test(value)) throw new Error('invalid value')
+        value = value.replace(/\s/g, '')
         return Packet.fromHex(padByByteSize(BigInt(value).toString(16), 2))
       },
       hex (value) {
-        if (!/^[0-9a-fA-F]+$/.test(value)) throw new Error('invalid value')
+        if (!/^[0-9a-fA-F\s]+$/.test(value)) throw new Error('invalid value')
+        value = value.replace(/\s/g, '')
         return Packet.fromHex(padByByteSize(value, 2))
       },
       base64 (value) {
         const { Base64, Hex } = window.CryptoJS.enc
-        if (!/^[0-9a-zA-Z=+/_-]+$/.test(value)) throw new Error('invalid value')
+        if (!/^[0-9a-zA-Z=+/_\s-]+$/.test(value)) throw new Error('invalid value')
+        value = value.replace(/\s/g, '')
         return Packet.fromHex(Hex.stringify(Base64.parse(value.replace(/[=_-]/g, c => _.get({ _: '/', '-': '+', '=': '' }, c)))))
       },
       utf8 (value) {
