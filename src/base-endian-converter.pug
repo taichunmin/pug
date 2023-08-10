@@ -44,13 +44,15 @@ block content
         span.d-block.badge.badge-pill.badge-primary {{ val.length }}
       textarea.form-control(v-model="h.value", rows="5")
     .form-group.mt-3
-      label Result
-      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'binLE']")
+      label Big Endian
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'octBE', 'decBE', 'hexBE', 'base64BE', 'base64urlBE', 'utf8BE']")
         .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
         textarea.form-control(:value="me[baseEndian]" rows="3" readonly @click="btnCopy(me[baseEndian])")
-      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['octBE', 'octLE', 'decBE', 'decLE', 'hexBE', 'hexLE', 'base64BE', 'base64LE', 'base64urlBE', 'base64urlLE', 'utf8BE', 'utf8LE']")
+    .form-group.mt-3
+      label Little Endian
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binLE', 'octLE', 'decLE', 'hexLE', 'base64LE', 'base64urlLE', 'utf8LE']")
         .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
-        input.form-control(:value="me[baseEndian]" readonly @click="btnCopy(me[baseEndian])")
+        textarea.form-control(:value="me[baseEndian]" rows="3" readonly @click="btnCopy(me[baseEndian])")
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/pn532.js@0/dist/Packet.min.js")

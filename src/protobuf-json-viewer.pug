@@ -24,8 +24,8 @@ block style
         a, a:active, a:hover, a:focus, a:visited
           color: inherit
           text-decoration: none
-      .letter-spacing-n1, .letter-spacing-n1 .btn
-        letter-spacing: -1px
+      .letter-spacing-nd5
+        letter-spacing: -.5px
       .file-document
         max-height: 100vh
         max-width: calc(100vw - 300px)
@@ -49,6 +49,8 @@ block style
             border-bottom: 2px solid #dee2e6
           tbody + tbody
             border-top: 2px solid #dee2e6
+        >:last-child
+          margin-bottom: 0
       .file-field-table
         font-size: .8rem
       .mermaid
@@ -72,13 +74,13 @@ block content
         template(v-if="cpuFile")
           nav.spec-toc: ul.pl-0.list-unstyled
             li.mt-3 #[a(:href="urlhash(cpuFile.name)") Introduction]
-            li.mt-4(v-if="cpuFile.messages.length > 0")
+            li.mt-4(v-if="cpuMessages.length > 0")
               template(v-for="tmpCollapse of [getCollapse([cpuFile.name, 'messages'])]")
                 .d-flex.align-items-center.text-xs.font-weight-lighter.text-muted.user-select-none(@click="setCollapse([cpuFile.name, 'messages'], 1 - tmpCollapse)")
                   span MESSAGES
                   i.fa.ml-1(:class="tmpCollapse ? 'fa-chevron-up' : 'fa-chevron-left'")
                 ul.mt-2.list-unstyled(v-show="tmpCollapse")
-                  li(v-for="message of cpuFile.messages" :key="message.fullName")
+                  li(v-for="message of cpuMessages" :key="message.fullName")
                     a(:href="urlhash(cpuFile.name, 'messages', message.fullName)") {{ message.longName }}
             li.mt-4(v-if="cpuFile.services.length > 0") SERVICES
             li.mt-4(v-if="cpuFile.extensions.length > 0") EXTENSIONS
@@ -96,29 +98,29 @@ block content
             a(:href="urlhash(cpuFile.name)") #
             span.ml-2 {{ cpuFile.name }}
           .file-markdownit(v-html="md.render(cpuFile.description ?? '')")
-        section.file-messages.mt-5(v-if="cpuFile.messages.length > 0")
+        section.file-messages.mt-5(v-if="cpuMessages.length > 0")
           h2.pb-2.border-bottom(:id="urlhash(cpuFile.name, 'messages')?.slice(1)")
             a(:href="urlhash(cpuFile.name, 'messages')") ##
             span.ml-2 Messages
-          section.file-message.mt-5(v-for="message of cpuFile.messages")
+          section.file-message.mt-5(v-for="message of cpuMessages")
             h3.pb-2(:id="urlhash(cpuFile.name, 'messages', message.fullName)?.slice(1)")
               a(:href="urlhash(cpuFile.name, 'messages', message.fullName)") ###
               span.ml-2 {{ message.longName }}
-            .file-markdownit(v-html="md.render(message.description ?? '')")
+            .file-markdownit.mb-3(v-html="md.render(message.description ?? '')")
             table.file-field-table.table.table-sm.table-striped.table-bordered.table-hover
               thead.thead-dark: tr
                 th(style="width: 15%") Field
                 th(style="width: 20%") Type
-                th(style="width: 10%") Label
+                th(style="width: 1%") Label
                 th Description
               tbody
                 tr(v-for="field of message.fields")
-                  td.text-monospace.letter-spacing-n1 {{ field.name }}
-                  td.text-monospace.letter-spacing-n1
+                  td.text-monospace.letter-spacing-nd5 {{ field.name }}
+                  td.text-monospace.letter-spacing-nd5
                     template(v-if="!urlhashMap.has(field.fullType)") {{ field.longType }}
                     a(v-else :href="urlhashMap.get(field.fullType)") {{ field.longType }}
-                  td.text-monospace.letter-spacing-n1 {{ field.label }}
-                  td: .file-markdownit(v-html="md.renderInline(field.description ?? '')")
+                  td.text-monospace.letter-spacing-nd5 {{ field.label }}
+                  td: .file-markdownit(v-html="mdRenderTd(field.description ?? '')")
         section.file-enums.mt-5(v-if="cpuFile.enums.length > 0")
           h2.pb-2.border-bottom(:id="urlhash(cpuFile.name, 'enums')?.slice(1)")
             a(:href="urlhash(cpuFile.name, 'enums')") ##
@@ -127,7 +129,7 @@ block content
             h3.pb-2(:id="urlhash(cpuFile.name, 'enums', enum1.fullName)?.slice(1)")
               a(:href="urlhash(cpuFile.name, 'enums', enum1.fullName)") ###
               span.ml-2 {{ enum1.longName }}
-            .file-markdownit(v-html="md.render(enum1.description ?? '')")
+            .file-markdownit.mb-3(v-html="md.render(enum1.description ?? '')")
             table.file-field-table.table.table-sm.table-striped.table-bordered.table-hover
               thead.thead-dark: tr
                 th(style="width: 20%") Name
@@ -135,9 +137,9 @@ block content
                 th Description
               tbody
                 tr(v-for="value of enum1.values")
-                  td.text-monospace.letter-spacing-n1 {{ value.name }}
-                  td.text-monospace.letter-spacing-n1 {{ value.number }}
-                  td: .file-markdownit(v-html="md.renderInline(value.description ?? '')")
+                  td.text-monospace.letter-spacing-nd5 {{ value.name }}
+                  td.text-monospace.letter-spacing-nd5 {{ value.number }}
+                  td: .file-markdownit(v-html="mdRenderTd(value.description ?? '')")
 
 block script
   script(src="https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js")
@@ -178,6 +180,9 @@ block script
       computed: {
         cpuFile () {
           return _.find(this?.spec?.files, ['name', this.h.file])
+        },
+        cpuMessages () {
+          return _.filter(this.cpuFile?.messages, message => message.fields.length > 0)
         },
       },
       methods: {
@@ -236,6 +241,17 @@ block script
             window.addEventListener('hashchange', event => { this.onhashchange(event) })
             await this.onhashchange({ newURL: location.href })
 
+            // h.file change
+            this.$watch('h.file', async (newVal, oldVal) => {
+              const url = new URL(location)
+              const parts = (/^#(\/([^/]+)(?:\/([^/]+)(?:\/[^/]+)?)?)$/.exec(url.hash) ?? [])
+              if (newVal === oldVal || parts[2] === newVal) return // same file
+              if (!_.some(this.spec.files, { name: newVal })) return // invalid file
+              url.hash = `#/${newVal}`
+              history.pushState(null, null, url)
+              await this.onhashchange({ newURL: url.href })
+            })
+
             this.h.spec = new URL(location).searchParams.get('spec') ?? this.h.spec
             Swal.close()
           } catch (err) {
@@ -276,6 +292,7 @@ block script
                 this.urlhashMap = new Map()
                 for (const file of spec.files) {
                   for (const message of file.messages) {
+                    if (message.fields.length === 0) continue // skip empty message
                     const urlhash = this.urlhash(file.name, 'messages', message.fullName)
                     this.urlhashMap.set(urlhash, urlhash)
                     this.urlhashMap.set(message.fullName, urlhash)
@@ -324,6 +341,11 @@ block script
             console.error(err)
             await Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
           }
+        },
+        mdRenderTd (src) {
+          src = _.trim(src)
+          const hasNewLine = src.indexOf('\n') >= 0
+          return hasNewLine ? md.render(src) : md.renderInline(src)
         },
         urlhash(...args) {
           return `#/${_.map(args, encodeURIComponent).join('/')}`
