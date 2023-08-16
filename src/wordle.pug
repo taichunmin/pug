@@ -119,12 +119,8 @@ block script
             simi: this.simiArrToInt(solver.simiArr),
           }))
           if (!solvers.length) return []
-          return _.filter(window.allows, possible => {
-            for (const solver of solvers) {
-              if (this.simiArrToInt(this.simiCmp(solver.guess, possible)) !== solver.simi) return false
-            }
-            return true
-          })
+          const possibles = _.filter(window.allows, possible => _.every(solvers, solver => this.simiArrToInt(this.simiCmp(solver.guess, possible)) === solver.simi))
+          return this.sortWordsByLetterCnt(possibles)
         },
         exploreLetter () {
           const solvers = this.validSolvers
@@ -141,7 +137,17 @@ block script
       },
       methods: {
         async fetchAllows () {
-          window.allows = _.shuffle(_.trim(_.get(await axios.get('https://gist.githubusercontent.com/taichunmin/73a52779ecb9b1ac4555cf541f467743/raw/all.txt'), 'data')).split(/\r?\n/))
+          const words = _.trim(_.get(await axios.get('https://gist.githubusercontent.com/taichunmin/73a52779ecb9b1ac4555cf541f467743/raw/all.txt'), 'data')).split(/\r?\n/)
+          window.allows = this.sortWordsByLetterCnt(words)
+        },
+        sortWordsByLetterCnt (words) {
+          console.log(`words.length = ${words.length}`)
+          const letterCnt = new Map()
+          for (const word of words) {
+            for (const letter of word) letterCnt.set(letter, (letterCnt.get(letter) ?? 0) + 1)
+          }
+          console.log(_.orderBy([...letterCnt.entries()], ['1'], ['desc']))
+          return _.orderBy(words, [word => _.sumBy(word, letter => letterCnt.get(letter) ?? 0)], ['desc'])
         },
         verifyGuess (guess) {
           if (guess.length !== 5) return false
