@@ -80,6 +80,7 @@ block script
       // https://www.gettechtalent.com/blog/tutorial-real-time-frontend-updates-with-react-serverless-and-websockets-on-aws-iot.html
       // https://web-identity-federation-playground.s3.amazonaws.com/js/sigv4.js
       // https://github.com/department-stockholm/aws-signature-v4/blob/master/index.js
+      // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
 
       static createIotPresignedUrl (host, keyId, keySecret) {
         const region = /([^.]+)\.[^.]+\.[^.]+$/.exec(host)?.[1]
