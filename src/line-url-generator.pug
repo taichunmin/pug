@@ -417,6 +417,7 @@ block script
           } = this.h
           const accountId = lineId[0] === '@' ? lineId.slice(1) : '736cebrk'
           const encoded = encodeURIComponent(text)
+          const lineIdEncoded = encodeURIComponent(lineId)
           switch (lineUrlType) {
             case 'cameraRoll':
               return `https://line.me/R/nv/cameraRoll/${cameraRollType}`
@@ -440,15 +441,15 @@ block script
             case 'recommendOA':
               switch (recommendType) {
                 case 'OA1':
-                  return `https://line.me/R/ti/p/${lineId}`
+                  return `https://line.me/R/ti/p/${lineIdEncoded}`
                 case 'OA2':
                   return `https://liff.line.me/1645278921-kWRPP32q/?accountId=${accountId}`
                 case 'OA3':
                   return `https://page.line.me/?accountId=${accountId}`
                 case 'searchFriend':
-                  return `https://line.me/R/ti/p/~${lineId}`
+                  return `https://line.me/R/ti/p/~${lineIdEncoded}`
                 case 'shareOA':
-                  return `https://line.me/R/nv/recommendOA/${lineId}`
+                  return `https://line.me/R/nv/recommendOA/${lineIdEncoded}`
               }
               break
             case 'sendMessage':
@@ -456,7 +457,7 @@ block script
                 case 'share':
                   return `https://line.me/R/share?text=${encoded}`
                 case 'oaMessage':
-                  return `https://line.me/R/oaMessage/${lineId}/?${encoded}`
+                  return `https://line.me/R/oaMessage/${lineIdEncoded}/?${encoded}`
               }
               break
             case 'setting':
