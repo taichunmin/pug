@@ -95,7 +95,7 @@ block script
           }), 'data', [])
         },
         async fetchMachines () {
-          const rows = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vSpasIcvTqLyX1gkaz-AAmRSQmDwXtUT6m8Sbn7RbsgykfDr5c32WmBwIc3nFqIAA/pub?gid=22307658&single=true&output=csv')
+          const rows = await this.getCsv('https://docs.google.com/spreadsheets/d/e/2PACX-1vTEHDweH4OBuF_RZKgyZq3b_vXJmqZqdIU5DnF1fgdnxbIzG2PbrCC9fAHequqSFSsOq51buGrk6Pia/pub?gid=22307658&single=true&output=csv')
           const machines = []
           for (const [rowId, row] of _.toPairs(rows)) {
             const fulltext = _.toLower(`${row['廠牌']}${row['型號']}${row['註記']}`)
