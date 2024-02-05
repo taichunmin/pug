@@ -13,7 +13,7 @@ block style
       .justify-content-evenly
         justify-content: space-evenly
       .richmenu
-        font-family: 'jf-jinxuan-3.0-Book', sans-serif
+        font-family: 'jf-jinxuan-3.1-Book', 'jf-jinxuan-3.0-Book', sans-serif
         width: 2500px
         height: 1684px
         background-color: #2a2a2a
@@ -56,16 +56,16 @@ block style
           border: 36px solid #08c356
           background-color: #ffffff
           h1
-            font-family: 'jf-jinxuan-3.0-Medium', sans-serif
+            font-family: 'jf-jinxuan-3.1-Medium', 'jf-jinxuan-3.0-Medium', sans-serif
             font-size: 128px
             text-decoration: underline
             text-underline-offset: 8px
           h2
-            font-family: 'jf-jinxuan-3.0-Book', sans-serif
+            font-family: 'jf-jinxuan-3.1-Book', 'jf-jinxuan-3.0-Book', sans-serif
             font-size: 80px
           .btn
             border-radius: 76px
-            font-family: 'jf-jinxuan-3.0-Book', sans-serif
+            font-family: 'jf-jinxuan-3.1-Book', 'jf-jinxuan-3.0-Book', sans-serif
             font-size: 96px
             &.btn-success
               background-color: #08c356
@@ -84,13 +84,13 @@ block style
           .richmenu-body
             border-color: #3677da !important
       #richmenu-sm
-        font-family: 'jf-jinxuan-3.0-Book', sans-serif
+        font-family: 'jf-jinxuan-3.1-Book', 'jf-jinxuan-3.0-Book', sans-serif
         width: 2500px
         height: 421px
         background-color: #de8344
         .btn
           border-radius: 76px
-          font-family: 'jf-jinxuan-3.0-Book', sans-serif
+          font-family: 'jf-jinxuan-3.1-Book', 'jf-jinxuan-3.0-Book', sans-serif
           font-size: 96px
           background-color: #ffffff
           color: #000000
@@ -159,7 +159,7 @@ block content
           h2 當你點擊按鈕時
           h1 以指定方式#[br]開啟URL
       .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 6")
-        h2 當你在手機上點擊按鈕時
+        h2 當你點擊按鈕時
         h1 切換輸入方式（僅限手機）
         .d-flex.w-100.justify-content-evenly
           button.btn.btn-success.d-flex.justify-content-center.align-items-center(style="width: 1045px; height: 300px")
@@ -177,7 +177,7 @@ block content
             .d-flex.flex-column.justify-content-center(style="line-height: 1")
               | 關閉及開啟圖文選單
               small(style="font-size: 60px") openRichmenu, closeRichmenu
-    .richmenu.my-3.d-flex.flex-column(v-for="i of _.range(4, 6)")
+    .richmenu.my-3.d-flex.flex-column(v-for="i of [4,5,7]")
       .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
         .richmenu-icons(style="visibility: hidden")
           i.fa.fa-question.mx-3
@@ -190,7 +190,7 @@ block content
         .richmenu-nav-prevnext.d-flex: i.fa.fa-chevron-left
         .richmenu-nav-item.d-flex(:class="{active: i === 4}") #[span 4. 選擇日時]
         .richmenu-nav-item.d-flex(:class="{active: i === 5}") #[span 5. 切換選單]
-        .richmenu-nav-item.d-flex(style="visibility: hidden")
+        .richmenu-nav-item.d-flex(:class="{active: i === 7}") #[span 6. 複製文字]
       .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 4")
         h2 當你點擊按鈕時
         h1.text-center 選擇日期時間後連同#[br]隱藏資料傳送給機器人
@@ -225,6 +225,10 @@ block content
         .d-flex.w-100.justify-content-evenly
           button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成藍色選單
           button.btn.btn-success(style="width: 1045px; height: 365px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]換成小型選單
+      .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center(v-if="i === 7")
+        h2 當你點擊按鈕時
+        h1 把文字複製到剪貼簿
+        button.btn.btn-success(style="width: 1250px; height: 450px") #[i.fa.fa-fw.fa-dot-circle-o.mr-4]複製文字
     .richmenu.richmenu-blue.my-3.d-flex.flex-column
       .richmenu-header.px-4.d-flex.justify-content-between.align-items-center
         .richmenu-icons(style="visibility: hidden")
@@ -238,7 +242,7 @@ block content
         .richmenu-nav-prevnext.d-flex: i.fa.fa-chevron-left
         .richmenu-nav-item.d-flex #[span 4. 選擇日時]
         .richmenu-nav-item.d-flex.active #[span 5. 切換選單]
-        .richmenu-nav-item.d-flex(style="visibility: hidden")
+        .richmenu-nav-item.d-flex #[span 6. 複製文字]
       .richmenu-body.d-flex.flex-column.justify-content-evenly.align-items-center
         h2 當你點擊按鈕時
         h1 切換成指定的圖文選單
@@ -268,6 +272,7 @@ block script
           '測試選擇日期和時間的動作',
           '測試切換圖文選單的動作',
           '測試 inputOption 屬性（點分頁返回）',
+          '測試 clipboard 動作',
         ],
       },
     })
