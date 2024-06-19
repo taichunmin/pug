@@ -45,14 +45,14 @@ block content
       textarea.form-control(v-model="h.value", rows="5")
     .form-group.mt-3
       label Big Endian
-      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'octBE', 'decBE', 'hexBE', 'base64BE', 'base64urlBE', 'utf8BE']")
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'octBE', 'decBE', 'hexBE', 'hexviewBE', 'base64BE', 'base64urlBE', 'utf8BE']")
         .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
-        textarea.form-control(:value="me[baseEndian]" rows="3" readonly @click="btnCopy(me[baseEndian])")
+        textarea.form-control(:value="me[baseEndian]" rows="4" readonly @click="btnCopy(me[baseEndian])")
     .form-group.mt-3
       label Little Endian
-      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binLE', 'octLE', 'decLE', 'hexLE', 'base64LE', 'base64urlLE', 'utf8LE']")
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binLE', 'octLE', 'decLE', 'hexLE', 'hexviewLE', 'base64LE', 'base64urlLE', 'utf8LE']")
         .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
-        textarea.form-control(:value="me[baseEndian]" rows="3" readonly @click="btnCopy(me[baseEndian])")
+        textarea.form-control(:value="me[baseEndian]" rows="4" readonly @click="btnCopy(me[baseEndian])")
 
 block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/crypto-js@4/crypto-js.min.js")
@@ -111,6 +111,26 @@ block script
         if (!Buffer.isBuffer(buf) || buf.length < 1) return ''
         return buf.toString('hex')
       },
+      hexview (buf) {
+        if (!Buffer.isBuffer(buf) || buf.length < 1) return ''
+        const buf1 = new Buffer(16)
+        return _.map(buf.chunk(16), (chunk, i) => {
+          const arr = []
+          buf1.writeUInt32BE(i * 16, 0)
+          arr.push(`${buf1.subarray(0, 4).toString('hex')}:`)
+          for (let i = 0; i < 16; i++) {
+            if (i < chunk.length) {
+              arr.push(chunk.subarray(i, i + 1).toString('hex'))
+              buf1[i] = _.inRange(chunk[i], 0x20, 0x80) ? chunk[i] : 0x2e
+            } else {
+              arr.push('··')
+              buf1[i] = 0x20
+            }
+          }
+          arr.push(`|${buf1.toString('utf8')}`)
+          return arr.join(' ')
+        }).join('\n')
+      },
       base64 (buf) {
         if (!Buffer.isBuffer(buf) || buf.length < 1) return ''
         return buf.toString('base64')
@@ -154,6 +174,8 @@ block script
         decLE () { return stringifyBaseFn.dec(this.rval) },
         hexBE () { return stringifyBaseFn.hex(this.val) },
         hexLE () { return stringifyBaseFn.hex(this.rval) },
+        hexviewBE () { return stringifyBaseFn.hexview(this.val) },
+        hexviewLE () { return stringifyBaseFn.hexview(this.rval) },
         base64BE () { return stringifyBaseFn.base64(this.val) },
         base64LE () { return stringifyBaseFn.base64(this.rval) },
         base64urlBE () { return stringifyBaseFn.base64url(this.val) },
