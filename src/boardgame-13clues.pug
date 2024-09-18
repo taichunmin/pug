@@ -29,7 +29,17 @@ block style
 
 block content
   #app.my-3.container.no-select(v-cloak)
-    h2.mb-3.text-center= title
+    h2.mb-3.text-center #{title} ({{ h?.players?.length ?? '?' }} 人遊戲)
+    .card.mt-3
+      .card-header.d-flex.align-items-center.no-select(@click="minify.setting=!minify.setting")
+        i.fa.fa-fw.fa-chevron-right(v-if="minify.setting")
+        i.fa.fa-fw.fa-chevron-down(v-else)
+        .ml-1 設定
+      .card-body(v-if="!minify.setting")
+        h5.card-title 刪除資料並開新遊戲
+        .row.mx-n1
+          .col.px-1(v-for="size of _.range(3, 7)")
+            button.btn.btn-sm.btn-block.btn-outline-primary(@click="btnNewGame(size)") {{ size }} 人
     template(v-if="h.players.length >= 3")
       .card.mt-3
         .card-header.d-flex.align-items-center.no-select(@click="minify.known=!minify.known")
@@ -44,13 +54,13 @@ block content
                 thead: tr.table-secondary
                   th(colspan="2") 屏幕內卡片
                 tbody: tr(@click="btnPickMyself")
-                  td(v-for="card of h?.players?.[0]?.cards?.slice?.(3)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
+                  td(width="50%", v-for="card of h?.players?.[0]?.cards?.slice?.(3)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
           li.list-group-item
             h6 對手
             .table-responsive.rounded
               table.table.table-bordered.table-sm.text-center.mb-0
                 thead: tr.table-secondary
-                  th(scope="col") #
+                  th(scope="col", width="34%") #
                   th(scope="col") 人
                   th(scope="col") 地
                   th(scope="col") 武
@@ -62,10 +72,9 @@ block content
             h6 線民
             .table-responsive.rounded.letter-spacing-n1
               table.table.table-bordered.table-sm.text-center.mb-0
-                thead: tr.table-secondary
-                  th(v-for="i of h.informant.length") {{ ' ABCDEF'[i] }}
-                tbody: tr
-                  td(v-for="card, informantIdx of h.informant", @click="btnPickInformant(informantIdx)", :class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
+                tbody: tr(v-for="card, informantIdx of h.informant", @click="btnPickInformant(informantIdx)")
+                  th.table-secondary(width="34%") 線民 {{ 'ABCDEF'[informantIdx] }}
+                  td(:class="_.includes(duplicated, card) ? 'table-danger' : ''") {{ CARD_NAMES[card] ?? '?' }}
       .card.mt-3
         .card-header.d-flex.align-items-center(@click="minify.casebook=!minify.casebook")
           i.fa.fa-fw.fa-chevron-right(v-if="minify.casebook")
@@ -83,7 +92,7 @@ block content
                 th.table-secondary(scope="row") {{ CARD_NAMES[i][0] }}
                 template(v-for="j of _.range(i, i + 30, 10)")
                   td.px-0.opacity-dot5(v-if="!_.includes(unknown, j)", @click="nothing")
-                    i.fa.fa-fw.mr-1
+                    i.fa.fa-fw.mr-1.fa-times
                     | {{ CARD_NAMES[j] }}
                   td.px-0(v-else, @click="$set(h.casebook, j, (h.casebook[j] + 1) % 4)")
                     i.fa.fa-fw.mr-1(:class="['', 'fa-times text-danger', 'fa-check text-success', 'fa-question text-muted'][h.casebook[j]]")
@@ -94,56 +103,36 @@ block content
           i.fa.fa-fw.fa-chevron-down(v-else)
           .ml-1 線索筆記 #[small.text-muted (請點表格輸入)]
         .letter-spacing-n1(v-if="!minify.clues", style="font-size: 90%")
-          .table-responsive
-            table.table.table-bordered.table-sm.text-center.mb-0
-              thead
-                tr: th(colspan="6") 自己
-                tr.table-secondary
-                  th(v-for="c of '男女內外遠近'") {{ c }}
-              tbody: tr
-                td(v-for="c of '男女內外遠近'") {{ myclues[c] ?? 0 }}
-          .table-responsive
-            table.table.table-bordered.table-sm.text-center.mb-0
-              thead: tr.table-secondary
-                th(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ c }}
-              tbody: tr
-                td(v-for="c of '紫粉紅綠黃藍橘白棕灰'") {{ myclues[c] ?? 0 }}
+          .row.m-0
+            .col-2.p-0.text-center.align-self-center 自己#[br]視角
+            .col-5.p-0: table.table.table-bordered.table-sm.text-center.m-0.h-100
+              tbody: tr(v-for="c of types")
+                th.align-middle.table-secondary(width="33%") {{ c }}
+                td.align-middle {{ myclues[c] ?? 0 }}
+            .col-5.p-0: table.table.table-bordered.table-sm.text-center.m-0.h-100
+              tbody: tr(v-for="c of colors")
+                th.align-middle.table-secondary(width="33%") {{ c }}
+                td.align-middle {{ myclues[c] ?? 0 }}
           template(v-for="player of h.players.slice(1)")
             template(v-for="tempClues of [cluesSub(publicPlayersClues, cardsToClues(_.take(player.cards, 3)))]")
-              .table-responsive
-                table.table.table-bordered.table-sm.text-center.mb-0
-                  thead
-                    tr: th(colspan="6") {{ player.name }}
-                    tr.table-secondary
-                      th(v-for="c of '男女內外遠近'", @click="btnPlayerSetClue(player, c)") {{ c }}
-                  tbody: tr
-                    template(v-for="c of '男女內外遠近'")
-                      td(@click="btnPlayerSetClue(player, c)")
-                        template(v-if="!_.isNil(player?.clues?.[c])")
-                          | {{ player.clues[c] }}
-                          sup.text-success {{ player.clues[c] - (tempClues[c] ?? 0) }}
-                        template(v-else) &nbsp;
-              .table-responsive
-                table.table.table-bordered.table-sm.text-center.mb-0
-                  thead: tr.table-secondary
-                    th(v-for="c of '紫粉紅綠黃藍橘白棕灰'", @click="btnPlayerSetClue(player, c)") {{ c }}
-                  tbody: tr
-                    template(v-for="c of '紫粉紅綠黃藍橘白棕灰'")
-                      td(@click="btnPlayerSetClue(player, c)")
-                        template(v-if="!_.isNil(player?.clues?.[c])")
-                          | {{ player.clues[c] }}
-                          sup.text-success {{ player.clues[c] - (tempClues[c] ?? 0) }}
-                        template(v-else) &nbsp;
-    .card.mt-3
-      .card-header.d-flex.align-items-center.no-select(@click="minify.setting=!minify.setting")
-        i.fa.fa-fw.fa-chevron-right(v-if="minify.setting")
-        i.fa.fa-fw.fa-chevron-down(v-else)
-        .ml-1 設定
-      .card-body(v-if="!minify.setting")
-        h5.card-title 刪除資料並開新遊戲
-        .row.mx-n1
-          .col.px-1(v-for="size of _.range(3, 7)")
-            button.btn.btn-sm.btn-block.btn-outline-primary(@click="btnNewGame(size)") {{ size }} 人
+              .row.m-0.border-top
+                .col-2.p-0.text-center.align-self-center {{ player.name }}#[br]視角
+                .col-5.p-0: table.table.table-bordered.table-sm.text-center.m-0.h-100
+                  tbody: tr(v-for="c of types", @click="btnPlayerSetClue(player, c)")
+                    th.align-middle.table-secondary(width="33%") {{ c }}
+                    td.align-middle
+                      template(v-if="!_.isNil(player?.clues?.[c])")
+                        | {{ player.clues[c] }}
+                        sup.text-success {{ sintToString(player.clues[c] - (tempClues[c] ?? 0)) }}
+                      template(v-else) &nbsp;
+                .col-5.p-0: table.table.table-bordered.table-sm.text-center.m-0.h-100
+                  tbody: tr(v-for="c of colors", @click="btnPlayerSetClue(player, c)")
+                    th.align-middle.table-secondary(width="33%") {{ c }}
+                    td.align-middle
+                      template(v-if="!_.isNil(player?.clues?.[c])")
+                        | {{ player.clues[c] }}
+                        sup.text-success {{ sintToString(player.clues[c] - (tempClues[c] ?? 0)) }}
+                      template(v-else) &nbsp;
     .modal.fade(data-keyboard="false", tabindex="-1", ref="cardPicker")
       .modal-dialog.modal-dialog-centered.modal-xl
         .modal-content
@@ -218,6 +207,13 @@ block script
         await this.init()
       },
       computed: {
+        types () {
+          return '男女內外遠近'
+        },
+        colors () {
+          const end = 4 + this.h.players.length
+          return '紫粉紅綠黃藍橘白棕灰'.slice(0, end)
+        },
         unknown () {
           const colors = 4 + this.h.players.length
           return _.difference(
@@ -363,6 +359,9 @@ block script
             text,
           }
           return (await Swal.fire(args))?.isConfirmed
+        },
+        sintToString (num) {
+          return num >= 0 ? `+${num}` : num
         },
         showLoading (title, text) {
           Swal.fire({
