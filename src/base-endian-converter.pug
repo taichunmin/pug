@@ -45,12 +45,12 @@ block content
       textarea.form-control(v-model="h.value", rows="5")
     .form-group.mt-3
       label Big Endian
-      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'octBE', 'decBE', 'hexBE', 'hexviewBE', 'base64BE', 'base64urlBE', 'utf8BE']")
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binBE', 'octBE', 'decBE', 'hexBE', 'hexviewBE', 'cppBE', 'base64BE', 'base64urlBE', 'utf8BE']")
         .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
         textarea.form-control(:value="me[baseEndian]" rows="4" readonly @click="btnCopy(me[baseEndian])")
     .form-group.mt-3
       label Little Endian
-      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binLE', 'octLE', 'decLE', 'hexLE', 'hexviewLE', 'base64LE', 'base64urlLE', 'utf8LE']")
+      .input-group.input-group-sm.mt-2(v-for="baseEndian of ['binLE', 'octLE', 'decLE', 'hexLE', 'hexviewLE', 'cppLE', 'base64LE', 'base64urlLE', 'utf8LE']")
         .input-group-prepend: span.input-group-text.justify-content-center {{ baseEndian }}
         textarea.form-control(:value="me[baseEndian]" rows="4" readonly @click="btnCopy(me[baseEndian])")
 
@@ -143,6 +143,10 @@ block script
         if (!Buffer.isBuffer(buf) || buf.length < 1) return ''
         return buf.toString('utf8')
       },
+      cpp (buf) {
+        if (!Buffer.isBuffer(buf) || buf.length < 1) return ''
+        return buf.toString('hex').toUpperCase().replaceAll(/.{2}/g, ', 0x$&').substring(2)
+      },
     }
     window.vm = new Vue({
       el: '#app',
@@ -176,6 +180,8 @@ block script
         hexLE () { return stringifyBaseFn.hex(this.rval) },
         hexviewBE () { return stringifyBaseFn.hexview(this.val) },
         hexviewLE () { return stringifyBaseFn.hexview(this.rval) },
+        cppBE () { return stringifyBaseFn.cpp(this.val) },
+        cppLE () { return stringifyBaseFn.cpp(this.rval) },
         base64BE () { return stringifyBaseFn.base64(this.val) },
         base64LE () { return stringifyBaseFn.base64(this.rval) },
         base64urlBE () { return stringifyBaseFn.base64url(this.val) },
