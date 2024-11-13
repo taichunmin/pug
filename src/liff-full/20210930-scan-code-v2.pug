@@ -31,8 +31,9 @@ block script
   script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
   script.
     window.vConsole = new VConsole()
+    const catchErr = err => { throw _.set(new Error(err.message), 'originalError', err) }
     window.loginPromise = (async () => {
-      await liff.init({ liffId: '#{liffidFull}' })
+      await liff.init({ liffId: '#{liffidFull}' }).catch(catchErr)
       if (!liff.isLoggedIn()) {
         liff.login({ redirectUri: location.href })
         await new Promise(resolve => {}) // 永遠不會結束的 Promise
@@ -71,7 +72,7 @@ block script
           try {
             if (!liff.scanCode) throw new Error('liff.scanCode 不存在')
             this.showLoading('請稍候', 'liff.scanCode()')
-            const text = _.get(await liff.scanCode(), 'value')
+            const text = _.get(await liff.scanCode().catch(catchErr), 'value')
             this.$set(this.tests, 0, 1)
             await Swal.fire({ icon: 'success', title: '掃碼成功 V1', text })
           } catch (err) {
@@ -84,7 +85,7 @@ block script
           try {
             if (!liff.scanCodeV2) throw new Error('liff.scanCodeV2 不存在')
             this.showLoading('請稍候', 'liff.scanCodeV2()')
-            const text = _.get(await liff.scanCodeV2(), 'value')
+            const text = _.get(await liff.scanCodeV2().catch(catchErr), 'value')
             this.$set(this.tests, 1, 1)
             await Swal.fire({ icon: 'success', title: '掃碼成功 V2', text })
           } catch (err) {
