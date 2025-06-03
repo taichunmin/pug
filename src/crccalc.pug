@@ -1,0 +1,150 @@
+extends /layout/bootstrapV4
+
+block beforehtml
+  - title = 'CRC Calculator'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .input-group-prepend > .input-group-text
+        width: 85px
+      .letter-spacing-n1px
+        &, .btn, textarea, select, input
+          letter-spacing: -1px
+      .text-sm
+        font-size: 0.875rem
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.mt-3.mb-0.text-center= title
+    .text-muted.text-center.text-sm Powered by #[a(target="_blank" href="https://www.npmjs.com/package/@taichunmin/crc") @taichunmin/crc]
+    .row.mx-n1.mt-3
+      .col-sm-12.col-lg-6.px-1
+        .input-group.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center Input
+          select.form-control(v-model='h.inputBase')
+            option(value="utf8") utf8
+            option(value="hex") hex
+            option(value="base64") base64
+      .col-sm-12.col-lg-6.px-1
+        .input-group.mt-2
+          .input-group-prepend: span.input-group-text.justify-content-center Output
+          select.form-control(v-model='h.outputBase')
+            option(value="hex") hex
+            option(value="dec") dec
+            option(value="oct") oct
+            option(value="bin") bin
+    .input-group.input-group-sm.mt-3
+      .input-group-prepend: span.input-group-text.justify-content-center.flex-column.justify-content-center.align-items-center
+        | Value
+        span.d-block.badge.badge-pill.badge-primary {{ inputBuf.length }}
+      textarea.form-control(v-model="h.inputValue", rows="5", :class="isValidInput ? 'is-valid' : 'is-invalid'")
+    .table-responsive.mt-3.text-sm.rounded
+      table.table.table-sm.table-bordered.table-striped.text-center
+        thead: tr
+          th Name
+          th Result
+          th Poly
+          th Init
+          th RefIn
+          th RefOut
+          th XorOut
+        tbody
+          tr(v-for="[name, algo, byteLen] of algos")
+            td {{ name }}
+            td.table-info {{ formatUint(algo.getCrc(inputBuf), byteLen) }}
+            td {{ formatUint(algo.poly, byteLen) }}
+            td {{ formatUint(algo.initial, byteLen) }}
+            td {{ algo.refin ? 'Yes' : 'No' }}
+            td {{ algo.refout ? 'Yes' : 'No' }}
+            td {{ formatUint(algo.xorout, byteLen) }}
+
+block script
+  script(type="module").
+    import { Buffer } from 'https://cdn.jsdelivr.net/npm/@taichunmin/buffer@0/+esm'
+    import * as CRC from 'https://cdn.jsdelivr.net/npm/@taichunmin/crc@0/+esm'
+    import * as GenericCrc8 from 'https://cdn.jsdelivr.net/npm/@taichunmin/crc@0/genericCrc8/+esm'
+    import * as GenericCrc16 from 'https://cdn.jsdelivr.net/npm/@taichunmin/crc@0/genericCrc16/+esm'
+    import * as GenericCrc32 from 'https://cdn.jsdelivr.net/npm/@taichunmin/crc@0/genericCrc32/+esm'
+
+    _.merge(window, { CRC, GenericCrc8, GenericCrc16, GenericCrc32, Buffer })
+    const u32 = new Buffer(4)
+    const toHex = buf => _.toUpper(buf.toString('hex'))
+    const toOct = buf => BigInt(`0x${buf.toString('hex')}`).toString(8)
+    const toBin = buf => _.map(buf, b => `0000000${b.toString(2)}`.slice(-8)).join('')
+
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        algos: _.map(_.filter(_.flatMap([GenericCrc8, GenericCrc16, GenericCrc32], _.entries), ([name, algo]) => _.startsWith(name, 'crc')), ([name, algo]) => [name, algo, ({ '8': 1, '1': 2, '3': 4 }[name[3]])]),
+        h: {
+          inputBase: 'utf8',
+          outputBase: 'hex',
+          inputValue: '123456789',
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        try {
+          const saved = JSON5.parse(localStorage.getItem(location.pathname))
+          if (saved) this.$set(this, 'h', { ...this.h, ...saved })
+        } catch (err) {}
+        this.$watch('h', () => {
+          localStorage.setItem(location.pathname, JSON5.stringify(this.h))
+        }, { deep: true })
+      },
+      computed: {
+        isValidInput () {
+          const { inputValue, inputBase } = this.h
+          if (inputValue?.length < 1) return true
+          if (inputBase === 'hex' && !/^[0-9a-fA-F\s]+$/.test(inputValue)) return false
+          if (inputBase === 'base64' && !/^[0-9a-zA-Z=+/_\s-]+$/.test(inputValue)) return false
+          return true
+        },
+        inputBuf () {
+          try {
+            return Buffer.from(this.h.inputValue, this.h.inputBase)
+          } catch (err) {
+            return Buffer.alloc(0)
+          }
+        },
+      },
+      methods: {
+        formatUint (uint, byteLen = 4) {
+          try {
+            switch (this.h.outputBase) {
+              case 'dec':
+                return uint
+                break
+              case 'hex':
+                return `0x${toHex(u32.writeUIntBE(uint, 0, byteLen).subarray(0, byteLen))}`
+                break
+              case 'oct':
+                return `0o${toOct(u32.writeUIntBE(uint, 0, byteLen).subarray(0, byteLen))}`
+                break
+              case 'bin':
+                return `0b${toBin(u32.writeUIntBE(uint, 0, byteLen).subarray(0, byteLen))}`
+                break
+            }
+          } catch (err) {
+            console.error(err)
+            return '?'
+          }
+        },
+        async btnCopy (text, container = null) {
+          if (!container) container = document.body
+          const dom = document.createElement('textarea')
+          dom.value = text
+          container.appendChild(dom)
+          dom.select()
+          dom.setSelectionRange(0, 1e6) // For mobile devices
+          document.execCommand('copy')
+          container.removeChild(dom)
+          await Swal.fire({ icon: 'success', title: '複製成功' })
+        },
+      },
+    })

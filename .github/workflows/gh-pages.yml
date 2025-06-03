@@ -7,11 +7,11 @@ on:
 
 permissions:
   contents: read
-  pages: write
   id-token: write
+  pages: write
 
 concurrency:
-  group: "pages"
+  group: gh-pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,23 +21,35 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Dump GitHub context
+        env:
+          ACTION_CONTEXT: |
+            {
+              "env": ${{ toJSON(env) }},
+              "github": ${{ toJSON(github) }},
+              "inputs": ${{ toJSON(inputs) }},
+              "job": ${{ toJSON(job) }},
+              "runner": ${{ toJSON(runner) }},
+              "secrets": ${{ toJSON(secrets) }},
+              "steps": ${{ toJSON(steps) }},
+              "vars": ${{ toJSON(vars) }}
+            }
+        run: echo "$ACTION_CONTEXT"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: lts/*
           cache: 'yarn'
       - name: install and build
         run: |
+          set -ex
           yarn
           yarn build
+      - uses: actions/configure-pages@v4
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
