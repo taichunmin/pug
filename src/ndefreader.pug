@@ -1,0 +1,481 @@
+extends /layout/bootstrapV4
+
+block beforehtml
+  - title = 'NDEFReader'
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      body, .h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6
+        font-family: 'Noto Sans TC', sans-serif
+      .input-group-prepend.w-80px > .input-group-text
+        width: 80px
+      .input-group-prepend.w-100px > .input-group-text
+        width: 100px
+      .letter-spacing-n1px
+        &, .btn, textarea, select, input
+          letter-spacing: -1px
+      .text-sm
+        font-size: 0.875rem
+
+block content
+  #app.container.my-4.text-monospace(v-cloak)
+    h3.mt-3.mb-3.text-center= title
+    .card.shadow-sm.mb-3
+      h6.card-header.bg-light #[i.fa.fa-tag.mr-1] 掃描 NFC 標記
+      .card-body
+        button.btn.btn-block.btn-outline-primary(@click="btnScanNdef") #[i.fa.fa-fw.fa-sign-out] 掃描 NFC 標記
+        .mt-3(v-for="record, recordNo of ss.scanNdef.records")
+          h6.card-title Record \#{{recordNo + 1}}:
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend.w-100px.letter-spacing-n1px: span.input-group-text.justify-content-center recordType
+            input.form-control(:value="record.recordType", readonly)
+          .input-group.input-group-sm.mt-2(v-show="record.recordType === 'mime'")
+            .input-group-prepend.w-100px.letter-spacing-n1px: span.input-group-text.justify-content-center mediaType
+            input.form-control(:value="record.mediaType", readonly)
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend.w-100px.letter-spacing-n1px: span.input-group-text.justify-content-center id
+            input.form-control(:value="record.id", readonly)
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend.w-100px.letter-spacing-n1px: span.input-group-text.justify-content-center encoding
+            input.form-control(:value="record.encoding", readonly)
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend.w-100px.letter-spacing-n1px: span.input-group-text.justify-content-center lang
+            input.form-control(:value="record.lang", readonly)
+          .input-group.input-group-sm.mt-2
+            .input-group-prepend.w-100px.letter-spacing-n1px: span.input-group-text.justify-content-center data
+            textarea.form-control(rows="4", :value="recordDecodeData(record)", readonly)
+    .card.shadow-sm.mb-3
+      h6.card-header.bg-light #[i.fa.fa-tag.mr-1] 寫入 NFC 標記 (records)
+      ul.list-group.list-group-flush
+        li.list-group-item(v-for="record, recordNo of ss.writeRecords.records", :key="recordNo")
+          h6.card-title Record \#{{recordNo + 1}}: #[code {{ record.type }}]
+          template(v-if="record.type === 'text'")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center Text
+              textarea.form-control(rows="4", v-model="record.text")
+          template(v-if="record.type === 'url'")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center URL
+              textarea.form-control(rows="4", v-model="record.url")
+          template(v-if="record.type === 'wifi'")
+            //- https://ndeflib.readthedocs.io/en/stable/records/wifi.html
+            //- https://github.com/bparmentier/WiFiKeyShare/blob/master/app/src/main/java/be/brunoparmentier/wifikeyshare/utils/NfcUtils.java
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center SSID
+              input.form-control(v-model="record.ssid")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center password
+              input.form-control(v-model="record.pass")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center auth
+              select.form-control(v-model="record.auth")
+                option(value="0x0001") Open
+                option(value="0x0002") WPA-Personal
+                option(value="0x0004") Shared
+                option(value="0x0008") WPA-Enterprise
+                option(value="0x0010") WPA2-Enterprise
+                option(value="0x0020") WPA2-Personal
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center enc
+              select.form-control(v-model="record.enc")
+                option(value="0x0001") None
+                option(value="0x0002") WEP
+                option(value="0x0004") TKIP
+                option(value="0x0008") AES
+                option(value="0x000C") TKIP + AES
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center WLAN-MAC
+              input.form-control(v-model="record.mac")
+          template(v-if="record.type === 'bluetooth'")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center MAC Addr.
+              input.form-control(v-model="record.mac")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center name
+              input.form-control(v-model="record.name")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center class
+              input.form-control(v-model="record.deviceClass")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center UUID 16
+              textarea.form-control(rows="4", v-model="record.uuid16")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center UUID 32
+              textarea.form-control(rows="4", v-model="record.uuid32")
+            .input-group.input-group-sm.mb-2
+              .input-group-prepend.w-100px: label.input-group-text.justify-content-center UUID 128
+              textarea.form-control(rows="4", v-model="record.uuid128")
+        li.list-group-item
+          .custom-control.custom-switch.mb-2
+            input.custom-control-input#ss-writeRecords-overwrite(type="checkbox", v-model="ss.writeRecords.overwrite")
+            label.custom-control-label(for="ss-writeRecords-overwrite") 允許 overwrite
+          button.btn.btn-block.btn-outline-primary(@click="btnPickRecordType") #[i.fa.fa-fw.fa-sign-out] 新增 Record
+          button.btn.btn-block.btn-outline-primary(@click="btnWriteRecords") #[i.fa.fa-fw.fa-sign-out] 寫入 NFC 標記 (records)
+          button.btn.btn-block.btn-outline-danger(@click="btnClearWriteRecords") #[i.fa.fa-fw.fa-sign-out] 清除 Records
+    .card.shadow-sm.mb-3
+      h6.card-header.bg-light #[i.fa.fa-tag.mr-1] 寫入 NFC 標記 (text)
+      .card-body
+        .input-group.input-group-sm.mb-2
+          .input-group-prepend.w-80px: label.input-group-text.justify-content-center text
+          textarea.form-control(rows="4", v-model="ss.writeText.text")
+        .custom-control.custom-switch.mb-2
+          input.custom-control-input#ss-writeText-overwrite(type="checkbox", v-model="ss.writeText.overwrite")
+          label.custom-control-label(for="ss-writeText-overwrite") 允許 overwrite
+        button.btn.btn-block.btn-outline-primary(@click="btnWriteText") #[i.fa.fa-fw.fa-sign-out] 寫入 NFC 標記 (text)
+    .card.shadow-sm.mb-3
+      h6.card-header.bg-light #[i.fa.fa-tag.mr-1] 其他
+      .card-body
+        .custom-control.custom-switch.mb-2
+          input.custom-control-input#documentHidden(type="checkbox", :value="documentHidden", disabled)
+          label.custom-control-label(for="documentHidden") documentHidden
+        button.btn.btn-block.btn-outline-primary(@click="btnHasNfcPerm") #[i.fa.fa-fw.fa-sign-out] 確認 NFC 權限
+        button.btn.btn-block.btn-outline-danger(@click="btnMakeReadOnly") #[i.fa.fa-fw.fa-sign-out] 設定為唯讀
+    .modal.fade(tabindex="-1", ref="recordTypePicker")
+      .modal-dialog.modal-dialog-centered.modal-xl
+        .modal-content
+          .modal-header
+            h5.modal-title #[i.fa.fa-fw.fa-floppy-o] Add Record
+            button.close(type="button", data-dismiss="modal") #[span &times;]
+          .modal-body
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('vcard')")
+              .my-1 Business card
+              h6.text-muted.mb-1 Add a new contact
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('url')")
+              .my-1 URL / URI
+              h6.text-muted.mb-1 Open a URL or URI
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('wifi')")
+              .my-1 Wi-Fi
+              h6.text-muted.mb-1 Connect to a Wi-Fi network
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('bluetooth')")
+              .my-1 Bluetooth
+              h6.text-muted.mb-1 Connect a Bluetooth device
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('email')")
+              .my-1 Email
+              h6.text-muted.mb-1 Send an email
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('phone')")
+              .my-1 Phone number
+              h6.text-muted.mb-1 Call a phone number
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('location')")
+              .my-1 Geo location
+              h6.text-muted.mb-1 Open location in map application
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('android')")
+              .my-1 Launch APP
+              h6.text-muted.mb-1 Launch an Android application
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('text')")
+              .my-1 Plain text
+              h6.text-muted.mb-1 Display plain text
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('sms')")
+              .my-1 SMS
+              h6.text-muted.mb-1 Send a SMS message
+            button.btn.btn-block.btn-outline-primary.mb-2.text-left(@click="recordTypePicker?.cb?.('hex')")
+              .my-1 Raw Data
+              h6.text-muted.mb-1 Enter custom data in hex format
+
+block script
+  script(type="module").
+    import { Buffer } from 'https://cdn.jsdelivr.net/npm/@taichunmin/buffer@0/+esm'
+    import VConsole from 'https://cdn.jsdelivr.net/npm/vconsole@3/+esm'
+
+    const bufToHex = buf => buf.toString('hex').toUpperCase()
+    if ("NDEFRecord" in window) {
+      //- 這是為了讓 NDEFRecord 的 data 可以被 JSON.stringify
+      NDEFRecord.prototype.toJSON = function () {
+        const tmp = _.pick(this, ['data', 'encoding', 'id', 'lang', 'mediaType', 'recordType'])
+        if (ArrayBuffer.isView(tmp.data)) tmp.data = { type: 'Buffer', hex: bufToHex(Buffer.fromView(tmp.data)) }
+        if (!_.includes(['absolute-url', 'empty', 'mime', 'text', 'unknown', 'url'], tmp.recordType)) {
+          tmp.records = (this.toRecords() ?? []).map(record1 => record1.toJSON())
+        }
+        return tmp
+      }
+    }
+    if ("NDEFMessage" in window) {
+      //- 這是為了讓 NDEFMessage 的 records 可以被 JSON.stringify
+      NDEFMessage.prototype.toJSON = function () {
+        return { records: _.map(this.records, record => record.toJSON()) }
+      }
+    }
+    if ("NDEFReadingEvent" in window) {
+      //- 這是為了讓 NDEFReadingEvent 的 message.records 可以被 JSON.stringify
+      NDEFReadingEvent.prototype.toJSON = function () {
+        return _.pick(this, ['isTrusted', 'serialNumber', 'message'])
+      }
+    }
+
+    window.vConsole = new VConsole()
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        documentHidden: false,
+        recordTypePicker: { cb: null },
+        ss: {
+          scanNdef: {
+            //- records: [],
+            serialNumber: '',
+            records: [{ recordType: 'url', data: 'https://taichunmin.idv.tw' }],
+          },
+          writeText: {
+            overwrite: true,
+            text: 'taichunmin',
+          },
+          writeRecords: {
+            overwrite: true,
+            records: [],
+          },
+        },
+      },
+      async mounted () {
+        // 自動儲存功能
+        for (const [storage, key] of [[localStorage, 'ls'], [sessionStorage, 'ss']]) {
+          try {
+            const saved = JSON5.parse(storage.getItem(location.pathname))
+            if (saved) this.$set(this, key, _.merge({}, this[key], saved))
+          } catch (err) { console.log(err) }
+          this.$watch(key, () => {
+            storage.setItem(location.pathname, JSON5.stringify(this[key]))
+          }, { deep: true })
+        }
+        // 監聽 document.hidden
+        document.addEventListener('visibilitychange', event => {
+          console.log(`visibilitychange, event = ${JSON.stringify(event)}`)
+          this.documentHidden = document.hidden ?? false
+        })
+      },
+      computed: {
+        isSupported () {
+          return 'NDEFReader' in window
+        },
+      },
+      methods: {
+        async btnScanNdef () {
+          try {
+            if (!this.isSupported) throw new Error('這個瀏覽器不支援 NDEFReader')
+            this.showLoading({ text: '讀取中' })
+            const ndef = new NDEFReader()
+            await ndef.scan()
+            const scanEvent = await new Promise((resolve, reject) => {
+              const listeners = {
+                reading: event => {
+                  console.log(`reading, event = ${JSON.stringify(event)}`)
+                  removeEventListener()
+                  resolve(event)
+                },
+                readingerror: () => {
+                  console.log(`readingerror, event = ${JSON.stringify(event)}`)
+                  removeEventListener()
+                  reject(new Error('無法從標記中讀取資料，您要嘗試其他標記嗎？'))
+                },
+              }
+              const removeEventListener = () => {
+                for (const [type, listener] of _.entries(listeners)) ndef.removeEventListener(type, listener)
+              }
+              for (const [type, listener] of _.entries(listeners)) ndef.addEventListener(type, listener)
+            })
+            this.$set(this.ss, 'scanNdef', scanEvent?.message?.toJSON())
+            Swal.close()
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '讀取失敗', text: err.message })
+          }
+        },
+        async btnWriteText () {
+          try {
+            if (!this.isSupported) throw new Error('這個瀏覽器不支援 NDEFReader')
+            this.showLoading({ text: '寫入中' })
+            const { text, overwrite } = this.ss.writeText
+            const ndef = new NDEFReader()
+            await ndef.write(text, { overwrite })
+            await Swal.fire({ icon: 'success', title: '寫入成功' })
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '寫入失敗', text: err.message })
+          }
+        },
+        async btnWriteRecords () {
+          try {
+            if (!this.isSupported) throw new Error('這個瀏覽器不支援 NDEFReader')
+            this.showLoading({ text: '寫入中' })
+            const { records, overwrite } = this.ss.writeRecords
+            const ndef = new NDEFReader()
+            await ndef.write({ records: this.toNdefRecords(records) }, { overwrite })
+            await Swal.fire({ icon: 'success', title: '寫入成功' })
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '寫入失敗', text: err.message })
+          }
+        },
+        async btnMakeReadOnly () {
+          try {
+            if (!this.isSupported) throw new Error('這個瀏覽器不支援 NDEFReader')
+            if (!("makeReadOnly" in NDEFReader.prototype)) throw new Error('這個瀏覽器不支援 makeReadOnly')
+            if (!await this.confirm(`要把標記設定為唯讀嗎？`, '確定', '取消')) return
+            this.showLoading({ text: '執行中' })
+            const ndef = new NDEFReader()
+            await ndef.makeReadOnly()
+            await Swal.fire({ icon: 'success', title: '唯讀設定成功' })
+          } catch (err) {
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '唯讀設定失敗', text: err.message })
+          }
+        },
+        async btnPickRecordType () {
+          try {
+            const $ref = window.jQuery(this.$refs.recordTypePicker)
+            const newType = await new Promise(resolve => {
+              this.$set(this, 'recordTypePicker', { cb: resolve })
+              $ref.one('hide.bs.modal', () => resolve()).modal('show')
+            })
+            $ref.modal('hide')
+            this.$set(this.recordTypePicker, 'cb', null)
+            if (_.isNil(newType)) return
+            console.log(`newType = ${newType}`)
+
+            let newRecord = null
+            switch (newType) {
+              case 'text':
+                newRecord = { type: newType, text: 'taichunmin' }
+                break
+
+              case 'url':
+                newRecord = { type: newType, url: 'https://taichunmin.idv.tw' }
+                break
+
+              case 'wifi':
+                newRecord = { type: newType, ssid: '', pass: '', auth: '0x0001', enc: '0x0001', mac: 'FF:FF:FF:FF:FF:FF' }
+                break
+
+              case 'bluetooth':
+                newRecord = { type: newType, mac: '', name: '', deviceClass: '', uuid16: '', uuid32: '', uuid128: '' }
+                break
+            }
+            if (!_.isNil(newRecord)) this.ss.writeRecords.records.push(newRecord)
+          } catch (err) {
+            await this.swalFire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        async btnClearWriteRecords () {
+          if (!await this.confirm('確定要清除當前的記錄嗎？', '清除', '取消')) return
+          this.$set(this.ss.writeRecords, 'records', [])
+        },
+        async btnHasNfcPerm () {
+          try {
+            this.showLoading({ text: '執行中' })
+            const hasPerm = (await navigator?.permissions?.query?.({ name: "nfc" }))?.state === 'granted'
+            if (hasPerm) await Swal.fire({ icon: 'success', title: '已獲得 NFC 權限' })
+            else await Swal.fire({ icon: 'error', title: '未獲得 NFC 權限' })
+          } catch (err) {
+            err.message = err.message.replace('Failed to execute \'query\' on \'Permissions\': ', '')
+            console.log(err)
+            await Swal.fire({ icon: 'error', title: '確認權限失敗', text: err.message })
+          }
+        },
+        async confirm (text, confirmButtonText, cancelButtonText) {
+          return await new Promise((resolve, reject) => {
+            let isConfirmed = false
+            const args = {
+              cancelButtonColor: '#3085d6',
+              cancelButtonText,
+              confirmButtonColor: '#d33',
+              confirmButtonText,
+              didDestroy: () => { resolve(isConfirmed) },
+              focusCancel: true,
+              icon: 'warning',
+              reverseButtons: true,
+              showCancelButton: true,
+              text,
+            }
+            Swal.fire(args).then(res => { isConfirmed = res.isConfirmed })
+          })
+        },
+        recordDecodeData (record) {
+          console.log(`record = ${JSON.stringify(record)}`)
+
+          let data = record?.data ?? ''
+          if (_.isString(data)) return data // 如果是 string 就直接回傳
+
+          // 嘗試把 data 轉換成 Buffer
+          if (!Buffer.isBuffer(data) && ArrayBuffer.isView(data)) data = Buffer.fromView(data)
+          if (data?.type === 'Buffer') { // parse Buffer
+            if (_.isString(data.hex)) data = Buffer.from(data.hex, 'hex')
+            if (_.isArray(data.data)) data = Buffer.from(data.data)
+          }
+
+          const type = record?.recordType
+          const mimeType = type === 'mime' ? record?.mediaType : null
+
+          const canDecode = _.includes(['text', 'url', 'android.com:pkg'], type) || _.includes(['text/vcard'], mimeType)
+          if (canDecode) return data.toString(record?.encoding ?? 'utf-8')
+
+          return JSON.stringify({ hex: bufToHex(data), type: 'Buffer' })
+        },
+        toNdefRecords (records = []) {
+          try {
+            if (!_.isArray(records)) throw new TypeError('records 必須是一個陣列')
+            const ndefRecords = []
+            for (const record of records) {
+              switch (record.type) {
+                case 'text':
+                  ndefRecords.push({
+                    recordType: 'text',
+                    data: record.text,
+                    encoding: record.encoding ?? 'utf-8',
+                    lang: record.lang ?? 'en',
+                  })
+                  break
+
+                case 'url':
+                  ndefRecords.push({
+                    recordType: 'url',
+                    data: record.url,
+                  })
+                  break
+
+                case 'wifi': {
+                  const [bufSsid, bufPass] = _.map(['ssid', 'pass'], k => Buffer.from(record[k] ?? '', 'utf8'))
+                  const bufMac = Buffer.from(record.mac.replace(/[^0-9A-Fa-f]/g, ''), 'hex')
+                  const bufCred = Buffer.concat([
+                    // type, length, value
+                    Buffer.pack('>HHB', 0x1026, 1, 1), // Network Index
+                    Buffer.pack(`>HH${bufSsid.length}s`, 0x1045, bufSsid.length, bufSsid), // SSID
+                    Buffer.pack('>HHH', 0x1003, 2, _.parseInt(record.auth)), // Authentication Type
+                    Buffer.pack('>HHH', 0x100F, 2, _.parseInt(record.enc)), // Encryption Type
+                    Buffer.pack(`>HH${bufPass.length}s`, 0x1027, bufPass.length, bufPass), // Network Key
+                    Buffer.pack('>HH6s', 0x1020, 6, bufMac), // WLAN MAC Address
+                  ])
+                  console.log(bufCred)
+                  ndefRecords.push({
+                    recordType: 'mime',
+                    mediaType: 'application/vnd.wfa.wsc',
+                    data: Buffer.pack(`>HH${bufCred.length}s`, 0x100E, bufCred.length, bufCred),
+                  })
+                  break
+                }
+
+                case 'bluetooth': {
+                  ndefRecords.push({
+                    recordType: 'mime',
+                    mediaType: 'application/vnd.bluetooth.ep.oob',
+                  })
+                  break
+                }
+              }
+            }
+            return ndefRecords
+          } catch (err) {
+            console.log(err)
+            return []
+          }
+        },
+        showLoading (opts = {}) {
+          opts = {
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            ...opts,
+          }
+          if (Swal.isVisible()) return Swal.update(_.omit(opts, ['progressStepsDistance']))
+          Swal.fire({ ...opts, didRender: () => { Swal.showLoading() } })
+        },
+      },
+    })

@@ -1,0 +1,173 @@
+extends /layout/liffv2
+
+block beforehtml
+  - title = 'Geolocation'
+
+block style
+  style
+    :sass
+      .letter-spacing-n1px
+        &, .btn, textarea, select, input
+          letter-spacing: -1px
+      .input-group-prepend > .input-group-text
+        width: 120px
+
+block content
+  #app.container.my-4.text-monospace.letter-spacing-n1px(v-cloak)
+    h3.my-3.text-center= title
+    .form-group.mb-3
+      label Geolocation
+      button.btn.btn-block.btn-outline-primary.mb-2(type="button", @click="btnGetGeolocation") #[i.fa.mr-1.fa-location-arrow] 取得位置資訊
+      textarea.form-control.form-control-sm.mb-2(readonly, rows="8", :value="position")
+    .form-group.mb-3
+      label liff
+      .input-group.input-group-sm.mb-1(v-for="val, key in sdk")
+        .input-group-prepend: .input-group-text {{ key }}
+        input.form-control.text-right(v-if="val.length < 32", readonly, :value="val")
+        textarea.form-control.form-control-sm(v-else, readonly, rows="6", :value="val")
+    .form-group.mb-3
+      label navigator.userAgent
+      textarea.form-control.form-control-sm(readonly, rows="4", :value="_.get(window, 'navigator.userAgent')")
+
+block script
+  script(crossorigin="anonymous", src="https://cdn.jsdelivr.net/npm/vconsole@3/dist/vconsole.min.js")
+  script.
+    window.vConsole = new VConsole()
+    const catchErr = err => { throw _.set(new Error(err.message), 'cause', err) }
+    window.loginPromise = (async () => {
+      await liff.init({ liffId: '#{liffidFull}' }).catch(catchErr)
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href })
+        await new Promise(resolve => {}) // 永遠不會結束的 Promise
+      }
+    })()
+    const GEOLOCATION_ERROR_CODE = {
+      1: 'PERMISSION_DENIED',
+      2: 'POSITION_UNAVAILABLE',
+      3: 'TIMEOUT',
+    }
+
+    const ERROR_KEYS = [
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/Error
+      'columnNumber',
+      'filename',
+      'lineNumber',
+      'message',
+      'name',
+      'stack',
+
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AggregateError
+      'errors',
+
+      // https://nodejs.org/api/errors.html
+      'address',
+      'code',
+      'dest',
+      'errno',
+      'function',
+      'info',
+      'library',
+      'opensslErrorStack',
+      'path',
+      'port',
+      'reason',
+      'syscall',
+
+      // axios: https://github.com/axios/axios/blob/v1.x/lib/core/AxiosError.js
+      'config',
+      'description',
+      'fileName',
+      'number',
+      'request',
+      'response.data',
+      'response.headers',
+      'response.status',
+      'status',
+
+      // http-errors: https://github.com/jshttp/http-errors/blob/master/index.js
+      'statusCode',
+      'statusMessage',
+
+      // GraphQLError: https://www.graphql-js.org/api-v16/error/
+      'args',
+      'originalError',
+      'positions',
+      'source',
+      'locations',
+      'line',
+      'column',
+
+      // custom
+      'data',
+    ]
+
+    function errToJson (err) {
+      return {
+        ..._.pick(err, ERROR_KEYS),
+        ...(_.isNil(err.cause) ? {} : { cause: errToJson(err.cause) }),
+      }
+    }
+    window.vm = new Vue({
+      el: '#app',
+      data: {
+        position: '',
+        sdk: {
+          getLineVersion: '',
+          getOS: '',
+          getVersion: '',
+          isInClient: '',
+          getContext: '',
+        },
+      },
+      async mounted () {
+        this.showLoading('請稍候', '網頁載入中')
+        await window.loginPromise
+        _.each([
+          ['getContext'],
+          ['getLineVersion'],
+          ['getOS'],
+          ['getVersion'],
+          ['isInClient'],
+        ], fn => {
+          this.$set(this.sdk, fn[0], JSON.stringify(_.invoke(liff, ...fn)))
+        })
+        Swal.close()
+      },
+      methods: {
+        async btnGetGeolocation () {
+          try {
+            const geolocation = window?.navigator?.geolocation
+            if (_.isNil(geolocation)) throw new Error('Geolocation is not supported by your browser')
+
+            this.showLoading('請稍候', '正在取得位置資訊')
+            const position = await new Promise((resolve, reject) => {
+              geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                maximumAge: 30000,
+                timeout: 27000,
+              })
+            }).catch(err => {
+              throw _.merge(new Error(err.message), {
+                cause: err,
+                code: `${GEOLOCATION_ERROR_CODE[err.code] ?? 'UNKNOWN'} (${err.code})`,
+              })
+            })
+            this.position = JSON.stringify(position, null, 2)
+            Swal.close()
+          } catch (err) {
+            console.log(err)
+            this.position = JSON.stringify(errToJson(err), null, 2)
+            Swal.fire({ icon: 'error', title: '發生錯誤', text: err.message })
+          }
+        },
+        showLoading (title, text) {
+          Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading() },
+          })
+        },
+      },
+    })

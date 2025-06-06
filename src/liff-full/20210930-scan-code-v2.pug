@@ -7,7 +7,8 @@ block style
   style
     :sass
       .letter-spacing-n1px
-        letter-spacing: -1px
+        &, .btn, textarea, select, input
+          letter-spacing: -1px
 
 block content
   #app.container.my-4.text-monospace(v-cloak)

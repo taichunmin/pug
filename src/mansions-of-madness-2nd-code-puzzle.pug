@@ -213,17 +213,23 @@ block script
           solver.guess = guess
           solver.simi = simi
         },
-        async confirm (message, yes = '是', no = '否') {
-          const confirm = await Swal.fire({
-            cancelButtonColor: '#3085d6',
-            cancelButtonText: no,
-            confirmButtonColor: '#d33',
-            confirmButtonText: yes,
-            icon: 'question',
-            showCancelButton: true,
-            text: message,
+        async confirm (text, confirmButtonText = '是', cancelButtonText = '否') {
+          return await new Promise((resolve, reject) => {
+            let isConfirmed = false
+            const args = {
+              cancelButtonColor: '#3085d6',
+              cancelButtonText,
+              confirmButtonColor: '#d33',
+              confirmButtonText,
+              didDestroy: () => { resolve(isConfirmed) },
+              focusCancel: true,
+              icon: 'warning',
+              reverseButtons: true,
+              showCancelButton: true,
+              text,
+            }
+            Swal.fire(args).then(res => { isConfirmed = res.isConfirmed })
           })
-          return !!confirm.value
         },
       },
     })

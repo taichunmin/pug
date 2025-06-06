@@ -58,17 +58,22 @@ block script
           this.$set(this.h, 'mining', _.times(49, () => 0))
         },
         async confirm (text, confirmButtonText, cancelButtonText) {
-          const args = {
-            cancelButtonColor: '#3085d6',
-            cancelButtonText,
-            confirmButtonColor: '#d33',
-            confirmButtonText,
-            focusCancel: true,
-            icon: 'warning',
-            showCancelButton: true,
-            text,
-          }
-          return (await Swal.fire(args))?.isConfirmed
+          return await new Promise((resolve, reject) => {
+            let isConfirmed = false
+            const args = {
+              cancelButtonColor: '#3085d6',
+              cancelButtonText,
+              confirmButtonColor: '#d33',
+              confirmButtonText,
+              didDestroy: () => { resolve(isConfirmed) },
+              focusCancel: true,
+              icon: 'warning',
+              reverseButtons: true,
+              showCancelButton: true,
+              text,
+            }
+            Swal.fire(args).then(res => { isConfirmed = res.isConfirmed })
+          })
         },
         btnMining (pos) {
           this.$set(this.h.mining, pos, 1 - (this.h?.mining?.[pos] ?? 0))
