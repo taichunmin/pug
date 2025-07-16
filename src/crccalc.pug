@@ -21,7 +21,7 @@ block style
 block content
   #app.container.my-4.text-monospace(v-cloak)
     h3.mt-3.mb-0.text-center= title
-    .text-muted.text-center.text-sm Powered by #[a(target="_blank" href="https://www.npmjs.com/package/@taichunmin/crc") @taichunmin/crc]
+    .text-muted.text-center.text-sm Powered by #[a(target="_blank" href="https://www.npmjs.com/package/@taichunmin/crc") @taichunmin/crc@{{ pkgVersion }}]
     .row.mx-n1.mt-3
       .col-sm-12.col-lg-6.px-1
         .input-group.mt-2
@@ -81,6 +81,7 @@ block script
       el: '#app',
       data: {
         algos: _.map(_.filter(_.flatMap([GenericCrc8, GenericCrc16, GenericCrc32], _.entries), ([name, algo]) => _.startsWith(name, 'crc')), ([name, algo]) => [name, algo, ({ '8': 1, '1': 2, '3': 4 }[name[3]])]),
+        pkgVersion: '?.?.?',
         h: {
           inputBase: 'utf8',
           outputBase: 'hex',
@@ -96,6 +97,7 @@ block script
         this.$watch('h', () => {
           localStorage.setItem(location.pathname, JSON5.stringify(this.h))
         }, { deep: true })
+        await this.getPkgVersion()
       },
       computed: {
         isValidInput () {
@@ -133,6 +135,13 @@ block script
           } catch (err) {
             console.error(err)
             return '?'
+          }
+        },
+        async getPkgVersion () {
+          try {
+            this.pkgVersion = (await axios.get('https://cdn.jsdelivr.net/npm/@taichunmin/crc@0/package.json'))?.data?.version || '?.?.?'
+          } catch (err) {
+            console.log(err)
           }
         },
         async btnCopy (text, container = null) {
