@@ -172,7 +172,7 @@ block script
         },
         verifyGuess (guess) {
           if (guess.length !== this.ls.letter) return false
-          return _.includes(this.candidates, _.toLower(guess))
+          return true
         },
         simiCmp (guess, answer) {
           const letter = answer.length
