@@ -15,27 +15,37 @@ block style
         height: 600px
         width: 1200px
         .screenshot
-          background: no-repeat center/contain
+          max-width: 100%
+          max-height: 100%
 
 block content
-  #app.my-3.text-monospace.container-fluid(v-cloak)
-    h1.text-center= title
-    #merged.my-2.px-1.py-2.d-flex
-      .screenshot.mx-1(v-for="img of images" :style="{'background-image': `url(${img.url})`, 'flex-grow': img.flex}")
-    //- #merged.my-2.px-1.py-2.d-flex.flex-column
-    //-   .flex-fill.d-flex
-    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/xuna4zV.png)'}")
-    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/GF5Qyz8.png)'}")
-    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/phSK2zz.png)'}")
-    //-   .flex-fill.d-flex
-    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/GjSm4C0.png)'}")
-    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/0KBhjYO.png)'}")
-    //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/YoOvVYl.png)'}")
-    .from-group
-      .input-group.mt-2
-        .input-group-prepend: button.btn.btn-primary(type="button", @click="btnMergeImages") 點此#[br]合併#[br]截圖
-        textarea.form-control.form-control-sm(v-model="h.images", rows="5", style="font-size: .75rem")
-      small.text-muted 可以貼上多個圖片網址，以換行分開。
+  #app(v-cloak)
+    .container-fluid.my-3.text-monospace
+      h1.text-center= title
+      #merged.my-2.px-1.py-2.d-flex.align-items-center(:style="{'justify-content': 'space-evenly', width: `${h.width}px`, height: `${h.height}px`}")
+        img.screenshot(v-for="img of images" :src="img.url")
+      //- #merged.my-2.px-1.py-2.d-flex.flex-column
+      //-   .flex-fill.d-flex
+      //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/xuna4zV.png)'}")
+      //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/GF5Qyz8.png)'}")
+      //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/phSK2zz.png)'}")
+      //-   .flex-fill.d-flex
+      //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/GjSm4C0.png)'}")
+      //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/0KBhjYO.png)'}")
+      //-     .screenshot.flex-fill.mx-1(:style="{'background-image': 'url(https://i.imgur.com/YoOvVYl.png)'}")
+    .container.my-3.mx-0
+      .form-group
+        .row.mx-n1.mt-2
+          .col-6.px-1: .input-group.input-group-sm
+            .input-group-prepend: span.input-group-text.justify-content-center width
+            input.form-control(placeholder="merged width", type="number", v-model.number="h.width")
+          .col-6.px-1: .input-group.input-group-sm
+            .input-group-prepend: span.input-group-text.justify-content-center height
+            input.form-control(placeholder="merged height", type="number", v-model.number="h.height")
+        .input-group.input-group-sm.mt-2
+          .input-group-prepend: button.btn.btn-primary(type="button", @click="btnMergeImages") 點此#[br]合併#[br]截圖
+          textarea.form-control.form-control-sm(v-model="h.images", rows="6", style="font-size: .75rem")
+        small.text-muted 可以貼上多個圖片網址，以換行分開。
 
 block script
   script.
@@ -43,8 +53,9 @@ block script
       el: '#app',
       data: {
         h: {
+          height: 600,
           images: '',
-          bg: '',
+          width: 1200,
         },
         images: [],
       },
@@ -60,7 +71,7 @@ block script
       },
       methods: {
         async btnMergeImages () {
-          const urls = _.compact(this.h.images.split(/\r?\n/))
+          const urls = _.compact(this.h.images.split(/\s+/))
           const images = _.compact(await Promise.all(_.map(urls, async url => {
             try {
               const size = await this.getImageUrlSize(url)

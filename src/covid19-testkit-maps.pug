@@ -1,4 +1,4 @@
-//- https://g0v.hackmd.io/@yitzu/covid-19/https%3A%2F%2Fg0v.hackmd.io%2F%40kiang%2Fantigen?fbclid=IwAR1BUhL9lM2d0SjOfz8zihXMT4aZzu_9WYWvBqWR-jgc2pc7DeexXM-T4-U
+//- https://g0v.hackmd.io/@yitzu/covid-19/https%3A%2F%2Fg0v.hackmd.io%2F%40kiang%2Fantigen
 //- https://data.nhi.gov.tw/Datasets/Download.ashx?rid=A21030000I-D03001-001&l=https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv
 //- https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv
 //- https://data.nhi.gov.tw/resource/Opendata/%E5%85%A8%E6%B0%91%E5%81%A5%E5%BA%B7%E4%BF%9D%E9%9A%AA%E7%89%B9%E7%B4%84%E9%99%A2%E6%89%80%E5%9B%BA%E5%AE%9A%E6%9C%8D%E5%8B%99%E6%99%82%E6%AE%B5.csv
@@ -43,6 +43,8 @@ block style
             text-align: right
         .table-time th
           background-color: #d6d8db
+      .swal2-container img.swal2-image
+        margin: 0 !important
 
 block content
   #app(v-cloak)
@@ -100,18 +102,18 @@ block script
           // 2022/06/06 https://i.imgur.com/1LXGFkC.jpeg
           // 2022/08/15 https://i.imgur.com/wcmhqEu.jpeg
           // 2022/08/15 https://i.imgur.com/oGxIa81.jpeg
-          const NEWS_TIMESTAMP = '2022/09/01'
+          // 2022/09/01 https://i.imgur.com/oGxIa81.jpeg
+          const NEWS_TIMESTAMP = '2023/05/01'
           if (this.h.lastNews === NEWS_TIMESTAMP) return
           const result = await Swal.fire({
             cancelButtonText: '與開發者聯絡',
             confirmButtonText: '我知道了',
-            imageUrl: 'https://i.imgur.com/oGxIa81.jpeg',
+            imageUrl: 'https://i.imgur.com/tjZwYGW.jpeg',
             reverseButtons: true,
             showCancelButton: true,
-            customClass: {
-              htmlContainer: 'mx-0',
-              image: 'my-0',
-            },
+            html: `<div style="font-size: .9rem">
+            <p>ℹ️&nbsp;&nbsp;本地圖已經調整為展示模式。</p>
+            </div>`,
           })
           this.h.lastNews = NEWS_TIMESTAMP
           if (!result.value) location.href = 'https://fb.me/taichunmin'
@@ -140,7 +142,8 @@ block script
           return opens
         },
         async fetchStores () {
-          const rows = await this.getCsv('https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv')
+          // const rows = await this.getCsv('https://data.nhi.gov.tw/resource/Nhi_Fst/Fstdata.csv')
+          const rows = await this.getCsv('https://gist.githubusercontent.com/taichunmin/056ab3585a8318c541b79961810675d6/raw/Fstdata.csv')
           const stores = new Map()
           const schema = Joi.object({
             addr: Joi.string().trim().required(),

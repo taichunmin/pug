@@ -34,7 +34,7 @@ jobs:
               "steps": ${{ toJSON(steps) }},
               "vars": ${{ toJSON(vars) }}
             }
-        run: echo "$ACTION_CONTEXT"
+        run: echo "$ACTION_CONTEXT" | jq .
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
