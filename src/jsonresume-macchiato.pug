@@ -1,0 +1,312 @@
+extends /layout/bootstrap5
+
+block style
+  style
+    :sass
+      [v-cloak]
+        display: none
+      .border-10
+        border-width: 10px !important
+      .fw-200
+        font-weight: 200 !important
+      .resume
+        &, a, .badge.bg-body-secondary
+          color: #39424B
+        a:hover
+          color: #2895F1
+        .resume-picture
+          height: 4rem
+          width: 4rem
+        .resume-title .resume-divider
+          width: 45px
+          border-top-color: #56817A !important
+
+block content
+  #app(v-cloak)
+    .navbar.shadow.navbar-expand-md.bg-body-tertiary.d-print-none
+      .container-fluid
+        button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation")
+          span.navbar-toggler-icon
+        .collapse.navbar-collapse#navbarSupportedContent.gap-2
+          ul.navbar-nav.mb-lg-0
+            li.nav-item
+              a.nav-link.icon-link(target="_blank" href="https://jsonresume.org/")
+                span.svgmask(style="--svgmask-url: url(https://api.iconify.design/qlementine-icons:resume-16.svg)")
+                | JSON Resume
+          form.d-flex.flex-fill(method="GET" action="")
+            input.form-control.me-2.ls-n1px.fw-light(type="text" inputmode="url" placeholder="GitHub username or JSON Resume URL" name="jsonresume" v-model="resumeUrl")
+            button.btn.btn-outline-success(type="submit") Load
+    .container.p-3.pb-5.mw-print-100(v-if="resume")
+      main.resume.p-4.border-top.border-success.border-10.shadow
+        header.d-flex.justify-content-between.align-items-center.mb-3
+          .resume-basics
+            h1.fs-40px.ls-1px.fw-bold {{ resume.basics.name }}
+            h2.fw-light.fs-6.mb-0 {{ resume.basics.label }}
+          img.resume-picture.rounded-circle.border.border-2.border-success(v-if="resume.basics.image ?? resume.basics.picture" :src="resume.basics.image ?? resume.basics.picture")
+        .row.resume-body.gx-4
+          .col-12.col-sm-8
+            section.resume-summary.mt-4(v-if="resume.basics.summary")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:grade-outline-rounded.svg)")
+                  | Summary
+                .resume-divider.mt-2.border-top
+              p.fs-11px.my-2 {{ resume.basics.summary }}
+            section.resume-works.mt-4(v-if="resume.work?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:work-outline.svg)")
+                  | Work
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.resume-work(v-for="work of resume.work")
+                  .d-flex.justify-content-between
+                    .resume-work-title
+                      h4.fs-14px.fw-bold.mb-1
+                        a.text-decoration-none.icon-link(v-if="work.url ?? work.website" target="_blank" :href="work.url ?? work.website")
+                          | {{ work.name ?? work.company }}
+                          span.svgmask(style="--svgmask-url: url(https://api.iconify.design/lucide:external-link.svg)")
+                        template(v-else) {{ work.name ?? work.company }}
+                      h5.fs-12px.fw-light.mb-1 {{ work.position }}
+                    .resume-date.ls-n1px.d-flex.flex-column.align-items-center.fs-11px.fw-light.font-monospace.fst-italic
+                      .text-nowrap {{ work.endDate || 'Present' }}
+                      .d-flex(style="height: .5rem"): .vr.fs-1px.bg-success
+                      .text-nowrap {{ work.startDate }}
+                  p.fs-11px.my-2 {{ work.summary }}
+                  ul.highlights.my-2.ps-3.fs-11px(v-if="work.highlights?.length")
+                    li.bullet(v-for="highlight of work.highlights") {{ highlight }}
+            section.resume-projects.mt-4(v-if="resume.projects?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:folder-data-outline-rounded.svg)")
+                  | Project
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.resume-project(v-for="project of resume.projects")
+                  .d-flex.justify-content-between
+                    a.text-decoration-none.resume-project-title(v-if="project.url ?? project.website" target="_blank" :href="project.url ?? project.website")
+                      h4.fs-14px.fw-bold.mb-1.icon-link
+                        | {{ project.name }}
+                        span.svgmask(style="--svgmask-url: url(https://api.iconify.design/lucide:external-link.svg)")
+                      h5.fs-10px.fw-light.fw-200.mb-1 {{ project.url ?? project.website }}
+                    .resume-project-title(v-else)
+                      h4.fs-14px.fw-bold.mb-1 {{ project.name }}
+                    .resume-date.ls-n1px.d-flex.flex-column.align-items-center.fs-11px.fw-light.font-monospace.fst-italic
+                      .text-nowrap {{ project.endDate || 'Present' }}
+                      .d-flex(style="height: .5rem"): .vr.fs-1px.bg-success
+                      .text-nowrap {{ project.startDate }}
+                  p.fs-11px.my-2 {{ project.description }}
+                  ul.highlights.my-2.ps-3.fs-11px(v-if="project.highlights?.length")
+                    li.bullet(v-for="highlight of project.highlights") {{ highlight }}
+            section.resume-education.mt-4(v-if="resume.education?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/tdesign:education.svg)")
+                  | Education
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.resume-education(v-for="edu of resume.education")
+                  .d-flex.justify-content-between
+                    .resume-project-title
+                      h4.fs-14px.fw-bold.mb-1 {{ edu.institution }}
+                      h5.fs-10px.fw-light.fw-200.mb-1 {{ edu.studyType }}, {{ edu.area }}
+                    .resume-date.ls-n1px.d-flex.flex-column.align-items-center.fs-11px.fw-light.font-monospace.fst-italic
+                      .text-nowrap {{ edu.endDate || 'Present' }}
+                      .d-flex(style="height: .5rem"): .vr.fs-1px.bg-success
+                      .text-nowrap {{ edu.startDate }}
+            section.resume-volunteers.mt-4(v-if="resume.volunteer?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:volunteer-activism-outline.svg)")
+                  | Volunteer
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.resume-volunteer(v-for="volunteer of resume.volunteer")
+                  .d-flex.justify-content-between
+                    .resume-volunteer-title
+                      h4.fs-14px.fw-bold.mb-1
+                        a.text-decoration-none.icon-link(v-if="volunteer.url ?? volunteer.website" target="_blank" :href="volunteer.url ?? volunteer.website")
+                          | {{ volunteer.organization }}
+                          span.svgmask(style="--svgmask-url: url(https://api.iconify.design/lucide:external-link.svg)")
+                        template(v-else) {{ volunteer.organization }}
+                      h5.fs-12px.fw-light.mb-1 {{ volunteer.position }}
+                    .resume-date.ls-n1px.d-flex.flex-column.align-items-center.fs-11px.fw-light.font-monospace.fst-italic
+                      .text-nowrap {{ volunteer.endDate || 'Present' }}
+                      .d-flex(style="height: .5rem"): .vr.fs-1px.bg-success
+                      .text-nowrap {{ volunteer.startDate }}
+                  p.fs-11px.my-2 {{ volunteer.summary }}
+                  ul.highlights.my-2.ps-3.fs-11px(v-if="volunteer.highlights?.length")
+                    li.bullet(v-for="highlight of volunteer.highlights") {{ highlight }}
+            section.resume-awards.mt-4(v-if="resume.awards?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:trophy-outline.svg)")
+                  | Awards
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.resume-award(v-for="award of resume.awards")
+                  .d-flex.justify-content-between
+                    .resume-award-title
+                      h4.fs-14px.fw-bold.mb-1 {{ award.title }}
+                      h5.fs-10px.fw-light.fw-200.mb-1 {{ award.awarder }}
+                    .resume-date.ls-n1px.d-flex.flex-column.align-items-center.fs-11px.fw-light.font-monospace.fst-italic
+                      .text-nowrap {{ award.date }}
+                  p.fs-11px.my-2 {{ award.summary }}
+            section.resume-publications.mt-4(v-if="resume.publications?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:menu-book-outline.svg)")
+                  | Publications
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.resume-publication(v-for="publication of resume.publications")
+                  .d-flex.justify-content-between
+                    .resume-publication-title
+                      h4.fs-14px.fw-bold.mb-1
+                        a.text-decoration-none.icon-link(v-if="publication.url" target="_blank" :href="publication.url")
+                          | {{ publication.name }}
+                          span.svgmask(style="--svgmask-url: url(https://api.iconify.design/lucide:external-link.svg)")
+                        template(v-else) {{ publication.name }}
+                      h5.fs-10px.fw-light.fw-200.mb-1 {{ publication.publisher }}
+                    .resume-date.ls-n1px.d-flex.flex-column.align-items-center.fs-11px.fw-light.font-monospace.fst-italic
+                      .text-nowrap {{ publication.releaseDate }}
+                  p.fs-11px.my-2 {{ publication.summary }}
+            section.resume-references.mt-4(v-if="resume.references?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:thumb-up-outline-rounded.svg)")
+                  | References
+                .resume-divider.mt-2.border-top
+                .row.gy-2.my-2
+                  .resume-reference.d-flex(v-for="reference of resume.references")
+                    .fs-16px.me-1: span.svgmask(style="--svgmask-url: url(https://api.iconify.design/carbon:quotes.svg)")
+                    figure.mb-0
+                      blockquote.blockquote.fs-11px.fst-italic.mb-0(style="white-space: pre-line") {{ reference.reference }}
+                      figcaption.blockquote-footer.fs-11px.fw-light.my-1.text-end {{ reference.name }}
+          .col-12.col-sm-4.position-relative
+            .vr.position-absolute.start-0.h-100.d-none.d-sm-block.mt-4
+            section.resume-contact.mt-4
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:android-contacts-outline.svg)")
+                  | Contact
+                .resume-divider.mt-2.border-top
+              .row.gy-2.my-2
+                .col-12.d-flex.align-items-center.icon-link(v-if="home")
+                  img.svgmask(v-if="resume?.basics?.location?.countryCode" :src="`https://api.iconify.design/circle-flags:${resume.basics.location.countryCode.toLowerCase()}.svg`")
+                  span.svgmask(v-else style="--svgmask-url: url(https://api.iconify.design/material-symbols:home.svg)")
+                  .fs-12px.ls-n1px {{ home }}
+                .col-12.d-flex.align-items-center.icon-link(v-if="resume.basics.birthday")
+                  span.svgmask(style="--svgmask-url: url(https://api.iconify.design/icon-park-outline:birthday-cake.svg)")
+                  .fs-12px.ls-n1px {{ resume.basics.birthday }}
+                .col-12.d-flex.align-items-center.icon-link(v-if="resume.basics.email")
+                  span.svgmask(style="--svgmask-url: url(https://api.iconify.design/material-symbols:mail-outline.svg)")
+                  a.text-decoration-none.fs-12px(target="_blank" :href="`mailto:${resume.basics.email}`") {{ resume.basics.email }}
+                .col-12.d-flex.align-items-center.icon-link(v-if="resume.basics.phone")
+                  span.svgmask(style="--svgmask-url: url(https://api.iconify.design/material-symbols:call-outline.svg)")
+                  a.text-decoration-none.fs-12px(target="_blank" :href="`tel:${resume.basics.phone}`") {{ resume.basics.phone }}
+                .col-12.d-flex.align-items-center.icon-link(v-if="resume.basics.url ?? resume.basics.website")
+                  span.svgmask(style="--svgmask-url: url(https://api.iconify.design/material-symbols:globe.svg)")
+                  a.text-decoration-none.fs-12px(target="_blank" :href="resume.basics.url ?? resume.basics.website") {{ trimProto(resume.basics.url ?? resume.basics.website) }}
+                template(v-for="profile of resume.basics.profiles")
+                  .col-12.d-flex.align-items-center.icon-link(v-if="icons.has(profile.network.toLowerCase())")
+                    span.svgmask(:style="`--svgmask-url: url(${icons.get(profile.network.toLowerCase())})`")
+                    a.text-decoration-none.fs-12px(target="_blank" :href="profile.url") {{ profile.username }}
+            section.resume-skill.mt-4(v-for="skill of resume.skills")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/streamline:magic-wand-2-remix.svg)")
+                  | {{ skill.name }}
+                  .badge.text-bg-success.fs-10px.fw-light {{ skill.level }}
+                .resume-divider.mt-2.border-top
+                .resume-badges.mt-2.d-flex.flex-wrap.gap-1
+                  .badge.bg-body-secondary.fs-10px.fw-light(v-for="keyword of skill.keywords") {{ keyword }}
+            section.resume-language.mt-4(v-if="resume.languages?.length")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask.fs-16px(style="--svgmask-url: url(https://api.iconify.design/material-symbols:language.svg)")
+                  | Languages
+                .resume-divider.mt-2.border-top
+                .resume-badges.mt-2.d-flex.flex-wrap.gap-1
+                  .badge.bg-body-secondary.fs-10px.fw-light(v-for="lang of resume.languages") {{ lang.language }} ({{ lang.fluency }})
+            section.resume-interest.mt-4(v-for="interest of resume.interests")
+              .resume-title
+                h3.fs-14px.fw-light.mb-0.d-flex.align-items-center.icon-link
+                  span.svgmask(style="--svgmask-url: url(https://api.iconify.design/material-symbols:interests-outline.svg)")
+                  | {{ interest.name }}
+                .resume-divider.mt-2.border-top
+                .resume-badges.mt-2.d-flex.flex-wrap.gap-1
+                  .badge.bg-body-secondary.fs-10px.fw-light(v-for="keyword of interest.keywords") {{ keyword }}
+
+block script
+  script(type="module").
+    // https://github.com/biosan/jsonresume-theme-macchiato
+    import _ from 'lodash'
+    import { computed, createApp, onMounted, ref } from 'vue'
+    // https://gist.github.com/taichunmin/5521c4d0e9dab5303a8e02f2bd0fcc5e
+    const JSONRESUME_URL = 'taichunmin'
+
+    export async function getJson (url, cachetime = 3e4) {
+      if (_.isString(url)) url = new URL(url)
+      url.searchParams.set('cachebust', Math.trunc(Date.now() / cachetime))
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed to fetch ${url}`)
+      return await res.json()
+    }
+
+    window.vm = createApp({
+      setup () {
+        const resume = ref(null)
+        const resumeUrl = ref(JSONRESUME_URL)
+        const icons = ref(new Map([
+          ['facebook', 'https://api.iconify.design/mdi:facebook.svg'],
+          ['github', 'https://api.iconify.design/garden:github-stroke-16.svg'],
+          ['instagram', 'https://api.iconify.design/mdi:instagram.svg'],
+          ['line', 'https://api.iconify.design/garden:line-social-stroke-16.svg'],
+          ['linkedin', 'https://api.iconify.design/mdi:linkedin.svg'],
+          ['telegram', 'https://api.iconify.design/mdi:telegram.svg'],
+        ]))
+
+        function showLoading (opts = {}) {
+          opts = {
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            ...opts,
+          }
+          if (Swal.isVisible()) return Swal.update(_.omit(opts, ['progressStepsDistance']))
+          Swal.fire({ ...opts, didRender: () => { Swal.showLoading() } })
+        }
+
+        function trimProto (url) {
+          return url.replace(/^https?:\/\//, '')
+        }
+
+        const home = computed(() => {
+          const loc = resume.value?.basics?.location
+          if (_.isNil(loc)) return null
+          return _.chain(['postalCode', 'region', 'city', 'address']).map(key => loc[key]).compact().join(', ').value()
+        })
+
+        onMounted(async () => {
+          try {
+            showLoading({ text: '讀取中...' })
+
+            // try to fetch jsonresume url from search params
+            try {
+              const pageUrl = new URL(location)
+              let tmp1 = pageUrl.searchParams.get('jsonresume') ?? JSONRESUME_URL
+              if (/^(?![^-]*--)[a-z\d][a-z\d-]{0,37}[a-z\d]$/i.test(tmp1)) tmp1 = new URL(`https://registry.jsonresume.org/${tmp1}.json`)
+              let tmp2 = new URL(tmp1)
+              if (/^https:\/\/gist.github.com\/[^/]+\/[0-9a-f]+\/raw\//.test(tmp2.href)) tmp2 = new URL(tmp2.href.replace('https://gist.github.com/', 'https://gist.githubusercontent.com/'))
+              resumeUrl.value = tmp2.href
+            } catch (err) {}
+            resume.value = await getJson(resumeUrl.value)
+            Swal.close()
+          } catch (err) {
+            console.error(err)
+          }
+        })
+
+        return { home, icons, resume, resumeUrl, trimProto }
+      }
+    }).mount('#app')

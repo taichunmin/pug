@@ -19,6 +19,9 @@ exports.build = async () => {
     baseurl: getBaseurl(),
     NODE_ENV: getenv('NODE_ENV', 'production'),
     liffidFull: getenv('LIFFID_FULL', '1654046335-4BDKExAV'),
+    site: {
+      gtagId: 'G-KB8ZL6LPH5',
+    },
   }
 
   const htmlMinifierOptions = {
