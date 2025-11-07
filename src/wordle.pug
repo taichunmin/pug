@@ -141,7 +141,6 @@ block script
           window.allows = this.sortWordsByLetterCnt(words)
         },
         sortWordsByLetterCnt (words) {
-          console.log(`words.length = ${words.length}`)
           const letterCnt = new Map()
           for (const word of words) {
             for (const letter of word) letterCnt.set(letter, (letterCnt.get(letter) ?? 0) + 1)
@@ -154,6 +153,7 @@ block script
           return _.includes(window.allows, _.toLower(guess))
         },
         simiCmp (guess, answer) {
+          // guess = 'freshed', answer = 'service', flags = [0, 1, 1, 1, 0, 1, 0]
           const flags = _.times(10, () => 0)
           for (let i = 0; i < 5; i++) {
             if (guess[i] === answer[i]) flags[i] = flags[5 + i] = 2
@@ -161,8 +161,9 @@ block script
           for (let i = 0; i < 5; i++) {
             if (flags[i]) continue
             for (let j = 0; j < 5; j++) {
-              if (i === j || flags[5 + j]) continue
-              if (guess[i] === answer[j]) flags[i] = flags[5 + j] = 1
+              if (i === j || flags[wordLen + j] || guess[i] !== answer[j]) continue
+              flags[i] = flags[wordLen + j] = 1
+              break
             }
           }
           return flags.slice(0, 5)

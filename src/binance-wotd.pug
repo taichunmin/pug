@@ -29,12 +29,8 @@ block style
 block content
   #app.container.my-4.text-monospace(v-cloak)
     h3.my-3.mb-0.text-center= title
-    .input-group.input-group-sm.mb-3.letter-spacing-n1px
-      .input-group-prepend: span.input-group-text Words
-      textarea.form-control(v-model="ss.article", rows="5")
-      .input-group-append: button.btn.btn-outline-secondary(@click="ss.article = ''") #[i.fa.fa-fw.fa-times]
     .card.mb-3
-      h6.card-header 輸入猜測及結果 #[span.badge.badge-pill.badge-primary {{ ls.letter }}]
+      h6.card-header 輸入猜測及比對結果 #[span.badge.badge-pill.badge-primary {{ ls.wordLen }}]
       ul.list-group.list-group-flush
         li.list-group-item
           .row.mx-n1
@@ -47,26 +43,47 @@ block content
             input.form-control(type="text", v-model="solver.guess")
             .input-group-append: button.btn.btn-outline-secondary(@click="solver.guess = ''") #[i.fa.fa-fw.fa-times]
           .d-flex.flex-row.justify-content-between.align-items-center(role="toolbar")
-            .d-block.my-0 結果
+            .d-block.my-0 比對結果
             .btn-group.btn-group-sm(role="group")
               button.btn.btn-outline-dark(v-for="v, k of solver.simiArr", @click="$set(solver.simiArr, k, (v+1)%3)")
                 i.fa.fa-square(:class="`text-${['muted', 'warning', 'success'][v]}`")
     .card.mb-3
-      h6.card-header 探索謎底 #[span.badge.badge-pill.badge-primary {{ candidates.length }}]
+      h6.card-header 輔助猜題 #[span.badge.badge-pill.badge-primary {{ candidates.length }}]
       .card-body
-        .form-group.mb-0
-          label.my-1 可能的謎底 #[span.badge.badge-pill.badge-success {{ possibles.length }}]
-          small.my-1.form-text.text-muted(v-if="possibles.length > 100") 僅顯示前 100 筆可能的謎底
+        .form-group
+          .my-1 找可能的謎底 #[span.badge.badge-pill.badge-success {{ result.possibles.length }}]
+          small.my-1.form-text.text-muted(v-if="result.possibles.length > 50") 僅顯示前 50 筆
           #possibles
-            span.badge.badge-info.mr-1(v-for="possible in _.take(possibles, 100)", @click="btnCopy(possible)") {{ possible }}
+            span.badge.badge-info.mr-1(v-for="word in _.take(result.possibles, 50)", @click="btnCopy(word)") {{ word }}
+        .form-group.mb-0
+          .my-1 找可能的字母 #[span.badge.badge-pill.badge-success {{ result.incorrectLetters.length }}]
+          small.my-1.form-text.text-muted(v-if="result.incorrectLetters.length > 50") 僅顯示前 50 筆
+          #incorrectLetters
+            span.badge.badge-info.mr-1(v-for="word in _.take(result.incorrectLetters, 50)", @click="btnCopy(word)") {{ word }}
+    .input-group.input-group-sm.mb-3.letter-spacing-n1px
+      .input-group-prepend: span.input-group-text Words
+      textarea.form-control(v-model="ss.article", rows="5")
+      .input-group-append: button.btn.btn-outline-secondary(@click="ss.article = ''") #[i.fa.fa-fw.fa-times]
+    .modal.fade(tabindex="-1", ref="wordLenPicker")
+      .modal-dialog.modal-dialog-centered.modal-xl
+        .modal-content
+          .modal-header
+            h5.modal-title #[i.fa.fa-fw.fa-floppy-o] 請選擇字數
+            button.close(type="button", data-dismiss="modal") #[span &times;]
+          .modal-body
+            a.btn.btn-block.btn-outline-primary.mb-2(
+              v-for="n in [3,4,5,6,7,8]"
+              @click="wordLenPicker.cb?.(n)"
+            ) {{ n }} 個字母
 
 block script
   script(type="module").
     window.vm = new Vue({
       el: '#app',
       data: {
+        wordLenPicker: { cb: null },
         ls: {
-          letter: 7,
+          wordLen: 7,
         },
         ss: {
           article: '',
@@ -89,72 +106,104 @@ block script
       computed: {
         candidates () {
           try {
-            const { ls: { letter }, ss: { article } } = this
+            const { ls: { wordLen }, ss: { article } } = this
             let words = _.chain(article.split(/\s+/))
               .map(_.toLower)
               .map(word => word.replaceAll(/[^a-zA-Z]/g, ''))
-              .filter(word => word.length === letter)
+              .filter(word => word.length === wordLen)
               .uniq()
               .value()
             if (words.length < 1) return []
-            const letterCnt = this.createLetterCnt(words)
+            const letterCnt = new Map()
+            for (const word of words) {
+              for (const letter of word) letterCnt.set(letter, (letterCnt.get(letter) ?? 0) + 1)
+            }
             words = _.orderBy(words, [
               word => _.uniq(word.split('')).length,
-              word => _.sumBy(word, letter => letterCnt.get(letter) ?? 0),
+              word => _.sumBy(_.uniq(word.split('')), l => letterCnt.get(l) ?? 0),
               word => word,
             ], ['desc', 'desc', 'asc'])
-            console.log(words)
+            // console.log(words)
             return words
           } catch (err) {
             return []
           }
         },
-        candidatesLetterCnt () {
-          return this.createLetterCnt(this.candidates)
-        },
         validSolvers () {
-          return _.filter(this.ss.solvers, solver => this.verifyGuess(solver.guess))
+          const wordLen = this.ls.wordLen
+          return _.compact(_.map(this.ss.solvers, solver => {
+            if (solver.guess.length !== wordLen) return null
+            return { ...solver, guess: _.toLower(solver.guess) }
+          }))
         },
-        possibles () {
+        result () {
+          const candidates = this.candidates
+          const wordLen = this.ls.wordLen
           const solvers = _.map(this.validSolvers, solver => ({
-            guess: _.toLower(solver.guess),
+            ...solver,
             simi: this.simiArrToInt(solver.simiArr),
           }))
-          if (!solvers.length) return this.candidates
-          const words = _.filter(this.candidates, word => _.every(solvers, solver => this.simiArrToInt(this.simiCmp(solver.guess, word)) === solver.simi))
-          return words
+
+          if (solvers.length < 1) {
+            return { possibles: candidates, incorrectLetters: [] }
+          }
+
+          // 計算可能的謎底
+          const possibles = _.filter(candidates, word => _.every(solvers, solver => this.simiArrToInt(this.simiCmp(solver.guess, word)) === solver.simi))
+
+          // 計算可能謎底的字母出現次數 (忽略綠燈位置)
+          const posHasGreen = _.times(wordLen, i => _.some(solvers, solver => solver.simiArr[i] === 2))
+          const possiblesLetterCnt = new Map()
+          for (let i = 0; i < wordLen; i++) {
+            if (posHasGreen[i]) continue
+            for (const word of possibles) {
+              const l = word[i]
+              possiblesLetterCnt.set(l, (possiblesLetterCnt.get(l) ?? 0) + 1)
+            }
+          }
+          // console.log(`possiblesLetterCnt = ${JSON.stringify([...possiblesLetterCnt.entries()])}`)
+
+          const incorrectLetters = _.chain(candidates)
+            .map(word => {
+              const tmp = _.uniq(word.split(''))
+              return [
+                word,
+                _.sumBy(tmp, l => possiblesLetterCnt.has(l) ? 1 : 0), // 字母有出現在可能謎底中的數量
+                _.sumBy(tmp, l => possiblesLetterCnt.get(l) ?? 0), // 字母在可能謎底中出現的頻繁程度
+              ]
+            })
+            .filter(([,, letterCntSum]) => letterCntSum > 0)
+            .orderBy([1, 2, 0], ['desc', 'desc', 'asc'])
+            .map(0)
+            .value()
+
+          return { possibles, incorrectLetters }
         },
       },
       methods: {
         async btnNewSolver (force = false) {
           if (!force && !await this.confirm('是否重設及修改字數？')) return
-          const { promise: destroyPromise, resolve: didDestroy } = this.promiseWithResolvers()
-          const { isConfirmed, value: letter } = await Swal.fire({
-            didDestroy,
-            input: 'number',
-            inputAttributes: { autocapitalize: "off" },
-            inputAttributes: { min: 3, max: 8, step: 1 },
-            inputPlaceholder: '請輸入 3 到 8 的數字',
-            inputValidator: newVal => _.inRange(newVal, 3, 9) ? null : '請輸入 3 到 8 的數字',
-            inputValue: this.ls.letter,
-            reverseButtons: true,
-            showCancelButton: true,
-            title: '請輸入字數',
+          const $ref = window.jQuery(this.$refs.wordLenPicker)
+          const newVal = await new Promise(resolve => {
+            this.$set(this, 'wordLenPicker', { cb: resolve })
+            $ref.one('hide.bs.modal', () => resolve()).modal('show')
           })
-          if (!isConfirmed) return
-          this.ls.letter = _.toInteger(letter)
-          this.$set(this.ss, 'solvers', _.times(8, () => ({
+          $ref.modal('hide')
+          this.$set(this.wordLenPicker, 'cb', null)
+          if (_.isNil(newVal)) return
+
+          this.ls.wordLen = newVal
+          this.$set(this.ss, 'solvers', _.times(6, () => ({
             guess: '',
-            simiArr: _.times(letter, () => 0),
+            simiArr: _.times(this.ls.wordLen, () => 0),
           })))
-          await destroyPromise
           await this.btnLoadDict()
         },
         async btnLoadDict () {
           try {
             this.showLoading({ text: '載入預設詞庫' })
-            const letter = this.ls.letter
-            const dict = (await axios.get(`https://gist.githubusercontent.com/taichunmin/e3a6a7b504bc416e36c0cb8aa2f2c7ec/raw/${letter}.txt`))?.data
+            const wordLen = this.ls.wordLen
+            const dict = (await axios.get(`https://gist.githubusercontent.com/taichunmin/e3a6a7b504bc416e36c0cb8aa2f2c7ec/raw/${wordLen}.txt`))?.data
             if (_.isEmpty(dict)) throw new Error('詞庫為空')
             this.ss.article = dict
             await Swal.fire({ icon: 'success', title: '載入預設詞庫成功' })
@@ -163,35 +212,30 @@ block script
             await this.swalFire({ icon: 'error', title: '載入失敗', text: err.message })
           }
         },
-        createLetterCnt (words) {
-          const letterCnt = new Map()
-          for (const word of words) {
-            for (const letter of word) letterCnt.set(letter, (letterCnt.get(letter) ?? 0) + 1)
-          }
-          return letterCnt
-        },
         verifyGuess (guess) {
-          if (guess.length !== this.ls.letter) return false
+          if (guess.length !== this.ls.wordLen) return false
           return true
         },
         simiCmp (guess, answer) {
-          const letter = answer.length
-          const flags = _.times(letter * 2, () => 0)
-          for (let i = 0; i < letter; i++) {
-            if (guess[i] === answer[i]) flags[i] = flags[letter + i] = 2
+          // guess = 'freshed', answer = 'service', flags = [0, 1, 1, 1, 0, 1, 0]
+          const wordLen = answer.length
+          const flags = _.times(wordLen * 2, () => 0)
+          for (let i = 0; i < wordLen; i++) {
+            if (guess[i] === answer[i]) flags[i] = flags[wordLen + i] = 2
           }
-          for (let i = 0; i < letter; i++) {
+          for (let i = 0; i < wordLen; i++) {
             if (flags[i]) continue
-            for (let j = 0; j < letter; j++) {
-              if (i === j || flags[letter + j]) continue
-              if (guess[i] === answer[j]) flags[i] = flags[letter + j] = 1
+            for (let j = 0; j < wordLen; j++) {
+              if (i === j || flags[wordLen + j] || guess[i] !== answer[j]) continue
+              flags[i] = flags[wordLen + j] = 1
+              break
             }
           }
-          return flags.slice(0, letter)
+          return flags.slice(0, wordLen)
         },
         simiArrToInt (simiArr) {
           let simi = 0
-          for (let tmp of simiArr) simi = simi * 4 + tmp
+          for (let tmp of simiArr) simi = simi * 4 + tmp + 1
           return simi
         },
         promiseWithResolvers () {
