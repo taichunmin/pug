@@ -161,8 +161,8 @@ block script
           for (let i = 0; i < 5; i++) {
             if (flags[i]) continue
             for (let j = 0; j < 5; j++) {
-              if (i === j || flags[wordLen + j] || guess[i] !== answer[j]) continue
-              flags[i] = flags[wordLen + j] = 1
+              if (i === j || flags[5 + j] || guess[i] !== answer[j]) continue
+              flags[i] = flags[5 + j] = 1
               break
             }
           }
